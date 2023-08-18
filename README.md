@@ -11,6 +11,16 @@ The Components Tab lists your open components. Components are the visible buildi
 
 Each component has Properties, Storage, Children, and Events.
 
+Components can do things! A component can...
+
+✅ accept Properties, immutable instances of concepts passed down by a parent
+
+✅ maintain Storage, mutable instances of concepts that only the component can access
+
+✅ have Children, by constructing instances of other components and passing properties to them
+
+✅ fire Events, which it forwards from its own children
+
 #### 📚 Concepts Tab
 
 The Concepts Tab lists your open concepts. Concepts are the types of information your apps can understand and store.
