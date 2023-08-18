@@ -11,15 +11,15 @@ The Components Tab lists your open components. Components are the visible buildi
 
 Each component has Properties, Storage, Children, and Events.
 
-Components can do things! A component can...
+🧪 Components are inert prototypes, but a component instance does things! A component instance can...
 
-✅ accept Properties, immutable instances of concepts passed down by a parent
+✅ Accept Properties: immutable concept instances passed down by its parent.
 
-✅ maintain Storage, mutable instances of concepts that only the component can access
+✅ Maintain Storage: mutable concept instances that only the component instance can access.
 
-✅ have Children, by constructing instances of other components and passing properties to them
+✅ Have Children, by creating instances of components and passing properties to them.
 
-✅ fire Events, which it forwards from its own children
+✅ Fire Events, which it forwards from its children to its parent.
 
 #### 📚 Concepts Tab
 
