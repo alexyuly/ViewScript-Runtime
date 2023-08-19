@@ -17,9 +17,9 @@ Each component has Properties, Storage, Children, and Events.
 
 ✅ Maintain Storage: mutable concept instances that only the component instance can access.
 
-✅ Have Children, by creating instances of components and passing properties to them.
+✅ Have Children, by creating component instances and passing properties to them.
 
-✅ Fire Events, which it forwards from its children to its parent.
+✅ Fire Events to its parent, by responding when its children fire events.
 
 #### 📚 Concepts Tab
 
