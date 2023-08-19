@@ -1,4 +1,4 @@
-# compendium.dev
+🪄 compendium.dev
 upend development
 
 ## Working with the Compendium IDE
@@ -9,9 +9,9 @@ upend development
 
 The Components Tab lists your open components. Components are the visible building blocks of your apps (including your apps themselves).
 
-Each component has Properties, Storage, Children, and Events.
+Each component has **properties**, **storage**, **children**, and **events**.
 
-🧪 Components are inert prototypes, but component instances do things! A component instance can...
+🧪 Components are inert prototypes, but component instances do things! 🧙🪄✨ A component instance can...
 
 🎁 Accept *properties*: immutable concept instances passed down by its parent.
 
