@@ -25,9 +25,9 @@ _Use these to..._
 
 _Use this to..._
 
-- hold temporary state while a component is active;
-- store values in memory while an app is running;
-- save and load data from external persistent storage.
+- Keep state while a component is active
+- Have context while an app is running
+- Save and load data from persistent storage
 
 🐣 Have **children**, by creating component instances and passing properties to them.
 
