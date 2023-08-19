@@ -15,16 +15,16 @@ Each component has Properties, Storage, Children, and Events.
 
 ✅ Accept Properties: immutable concept instances passed down by its parent.
 
-You can use this to...
-- pass environment variables to an app deployment (which is like a component instance)
-- pass custom traits and elements to a reusable design component or a part of your app
+Use these to...
+- pass environment variables to an app deployment (which is like a component instance);
+- pass custom traits and elements to a reusable design component or a part of your app.
 
 ✅ Maintain Storage: mutable concept instances that only the component instance can access.
 
-You can use this to...
-- keep temporary state while a component is in use
-- store values in memory while an app is running
-- save and load data from external persistent storage
+Use this to...
+- hold temporary state while a component is active;
+- store values in memory while an app is running;
+- save and load data from external persistent storage.
 
 ✅ Have Children, by creating component instances and passing properties to them.
 
@@ -32,11 +32,13 @@ You can use this to...
 
 #### 📚 Concepts Tab
 
-The Concepts Tab lists your open concepts. Concepts are the types of information your components can understand and store.
+The Concepts Tab lists your open concepts. Concepts are the types of information your components can interpret and manipulate.
 
-Each concept has Properties and Methods.
+Each concept has Properties and Methods. Components create concept instances, which are data structures conforming to the schema defined by a concept's properties. 
 
-💡 A concept defines a data type along with pure functions of that data type.
+📦 A property is a concept with a unique name, within another concept of a certain type.
+
+🏭 A method is a pure function which operates on a concept instance of a certain type, plus some parameters, to produce a new concept instance.
 
 ### 🔎 Inspector
 
