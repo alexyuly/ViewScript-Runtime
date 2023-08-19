@@ -11,7 +11,7 @@ The Components Tab lists your open components. Components are the visible buildi
 
 Each component has Properties, Storage, Children, and Events.
 
-🧪 Components are inert prototypes, but a component instance does things! A component instance can...
+🧪 Components are inert prototypes, but component instances do things! A component instance can...
 
 ✅ Accept Properties: immutable concept instances passed down by its parent.
 
@@ -23,9 +23,11 @@ Each component has Properties, Storage, Children, and Events.
 
 #### 📚 Concepts Tab
 
-The Concepts Tab lists your open concepts. Concepts are the types of information your apps can understand and store.
+The Concepts Tab lists your open concepts. Concepts are the types of information your components can understand and store.
 
 Each concept has Properties and Methods.
+
+💡 A concept defines a data type along with pure functions of that data type.
 
 ### 🔎 Inspector
 
