@@ -30,17 +30,19 @@ _Use this to..._
 
 🐣 Have *children*, by creating component instances and passing properties to them.
 
-📣 Report *events* to its parent, by responding when its children fire events.
+📣 Report *events* to its parent, by responding when its children report events.
 
 #### 📚 Concepts Tab
 
 The Concepts Tab lists your open concepts. Concepts are the types of information your components can interpret and manipulate.
 
-Each concept has Properties and Methods. Components create concept instances, which are data structures conforming to the schema defined by a concept's properties. 
+Each concept has Properties and Methods. 
 
-📦 A property is a concept with a unique name, within another concept of a certain type.
+Components create concept instances, which are data structures that conform to the schema defined by a concept's properties.
 
-🏭 A method is a pure function which operates on a concept instance of a certain type, plus some parameters, to produce a new concept instance.
+📦 A property is a concept associated with a name that is unique within the given concept _X_.
+
+🏭 A method is a pure function which operates on a concept instance of type _X_, plus some parameters, to produce a new concept instance.
 
 ### 🔎 Inspector
 
