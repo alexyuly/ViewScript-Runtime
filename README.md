@@ -1,4 +1,5 @@
-🪄 compendium.dev
+# compendium.dev
+
 upend development
 
 ## Working with the Compendium IDE
