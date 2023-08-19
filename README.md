@@ -39,7 +39,9 @@ The Concepts Tab lists your open concepts. Concepts are the types of data that y
 
 💡 Concepts don't do anything. They are recipes that your components use to create data.
 
-📦 **Properties** are named references to other concepts within a concept. Use them to nest data and create hierarchies.
+A concept has two elements...
+
+📦 **Properties** are named references to other concepts within a concept. Use them to create hierarchies and graphs!
 
 🛠️ **Methods** are pure functions that work with a particular type of data to produce more data. They can also accept parameters!
 
