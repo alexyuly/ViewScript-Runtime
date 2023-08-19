@@ -16,9 +16,8 @@ Each component has Properties, Storage, Children, and Events.
 ✅ Accept Properties: immutable concept instances passed down by its parent.
 
 You can use this to...
-- pass environment variables to an app deployment
-- pass component instances to a reusable layout
-- pass custom traits to a reusable design component
+- pass environment variables to an app deployment (which is like a component instance)
+- pass custom traits and elements to a reusable design component or a part of your app
 
 ✅ Maintain Storage: mutable concept instances that only the component instance can access.
 
