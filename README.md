@@ -35,15 +35,13 @@ _Use this to..._
 
 #### 📚 Concepts Tab
 
-The Concepts Tab lists your open concepts. Concepts are the types of information your components can interpret and manipulate.
+The Concepts Tab lists your open concepts. Concepts are the types of data that your components can read and write.
 
-Each concept has **properties** and **methods**. 
+💡 Concepts don't do anything. They are recipes that your components use to create data.
 
-Components create concept instances, which are data structures that conform to the schema defined by a concept's properties.
+📦 **Properties** are named references to other concepts within a concept. Use them to nest data and create hierarchies.
 
-📦 A *property* is a concept associated with a name that is unique within the given concept _X_.
-
-🏭 A *method* is a pure function which operates on a concept instance of type _X_, plus some parameters, to produce a new concept instance.
+🛠️ **Methods** are pure functions that work with a particular type of data to produce more data. They can also accept parameters!
 
 ### 🔎 Inspector
 
