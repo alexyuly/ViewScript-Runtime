@@ -16,14 +16,14 @@ Each component has **properties**, **storage**, **children**, and **events**.
 
 A component instance can...
 
-🎁 Accept *properties*: immutable concept instances passed down by its parent.
+🎁 Accept **properties**: immutable concept instances passed down by its parent.
 
 _Use these to..._
 
 - pass environment variables to an app deployment (which is like a component instance);
 - pass custom traits and elements to a reusable design component or a part of your app.
 
-🗄️ Maintain *storage*: mutable concept instances that only the component instance can access.
+🗄️ Maintain **storage**: mutable concept instances that only the component instance can access.
 
 _Use this to..._
 
@@ -31,9 +31,9 @@ _Use this to..._
 - store values in memory while an app is running;
 - save and load data from external persistent storage.
 
-🐣 Have *children*, by creating component instances and passing properties to them.
+🐣 Have **children**, by creating component instances and passing properties to them.
 
-📣 Report *events* to its parent, by responding when its children report events.
+📣 Report **events** to its parent, by responding when its children report events.
 
 #### 📚 Concepts Tab
 
