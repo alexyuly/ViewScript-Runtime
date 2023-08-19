@@ -14,14 +14,14 @@ The Components Tab lists your open components. Components are the visible buildi
 
 A component instance can...
 
-🎁 Accept **properties**: immutable concept instances passed down by its parent.
+🎁 Accept **properties**: immutable data passed down by its parent.
 
 _Use these to..._
 
-- pass environment variables to an app deployment (which is like a component instance);
-- pass custom traits and elements to a reusable design component or a part of your app.
+- Provide environment variables to an app deployment (which is like a component instance)
+- Pass custom traits and elements to a reusable design component or a part of your app
 
-🗄️ Maintain **storage**: mutable concept instances that only the component instance can access.
+🗄️ Maintain **storage**: mutable data that only the component instance can read and write.
 
 _Use this to..._
 
