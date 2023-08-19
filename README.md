@@ -1,5 +1,5 @@
 # compendium.dev
-making app dev make sense
+upend development
 
 ## Working with the Compendium IDE
 
