@@ -15,7 +15,16 @@ Each component has Properties, Storage, Children, and Events.
 
 ✅ Accept Properties: immutable concept instances passed down by its parent.
 
+- pass environment variables to an app deployment
+- pass custom traits to a reusable design component
+
 ✅ Maintain Storage: mutable concept instances that only the component instance can access.
+
+- keep temporary state while a component is in use
+- store values in memory while an app is running
+- save and load data from external persistent storage
+- manage permissions to access external data
+ 
 
 ✅ Have Children, by creating component instances and passing properties to them.
 
