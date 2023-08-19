@@ -10,8 +10,6 @@ upend development
 
 The Components Tab lists your open components. Components are the visible building blocks of your apps (including your apps themselves).
 
-Each component has **properties**, **storage**, **children**, and **events**.
-
 🧪 Components are inert prototypes, but component instances do things! 🧙🪄✨
 
 A component instance can...
