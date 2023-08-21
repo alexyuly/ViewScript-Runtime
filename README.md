@@ -89,8 +89,8 @@ Can complete:
 
 Inspector shows detail for the items selected in Explorer.
 
-- 📋 Component instance parameters
-- 📢 Event handler implementations
+- 📋 Interface parameter values
+- 📢 Event handler and method implementations
 - 💎 Source code
 
 ## Viewer
