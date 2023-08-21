@@ -4,7 +4,9 @@
 
 The explorer shows your open files, plus a summary of the elements within each one.
 
-Select `File -> Open...` to add a file.
+Select `File -> New...` to create a new file, add it to Explorer, and select it.
+
+Select `File -> Open...` to add a saved file to Explorer and select it.
 
 Select `File -> Close...` to remove the selected files, after confirming.
 
