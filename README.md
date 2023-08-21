@@ -115,6 +115,18 @@ Can complete ->
 
 ```
 
+### Environments 🌎
+
+"Deployments"
+
+"Databases"
+
+"Servers"
+
+_and all that good stuff_
+
+An app is an instance of a component deployed to an environment.
+
 ## Inspector
 
 Inspector shows detail for the items selected in Explorer.
