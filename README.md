@@ -43,6 +43,7 @@ Has timer:
   Loops = true
   Paused = count
   | `Is at least` 100
+
   Time ->
     Count
     | Add 1
