@@ -16,7 +16,7 @@ Has paragraph:
 Component `To-do List`
 
 # storage
-Keeps list(`to-do item`)
+Keeps list of `to-do item`
 
 # children
 Has section:
@@ -31,12 +31,17 @@ Has section:
       - Has button:
           Type = "submit"
           Content = "Add to list"
-      Submit event -> event
-      | `get form data`
-      | get "text"
+      Submit ->
+        @`New to-do item text` = event
+          | `Get form data`
+          | Get "text"
+        @`New to-do item` = new `to-do item`:
+          Text = @`new to-do item text`
+        List of `to-do item`
+        | Push @`new to-do item`
   - Has list:
       Content = `to-do item`
-      | `for each in` list(`to-do item`)
+      | `For each in` list(`to-do item`)
 ```
 
 ```
@@ -52,9 +57,9 @@ Has `list item`:
     - Has input:
         Type = "checkbox"
         Checked = data.completed
-    - data.text
+    - Data.text
     Click -> `to-do item`
-    | complete
+    | Complete
 ```
 
 ### Concepts 📚
