@@ -25,6 +25,29 @@ Has paragraph:
 ```
 
 ```
+Component `Counter`
+
+Keeps count
+
+Has section:
+  Content =
+  - Has button:
+      Content = "Click me!"
+      Click ->
+        count
+        | Add 1
+  - Has paragraph:
+      Content = "{count} total click(s)"
+
+Has timer:
+  Interval = 1000
+  Time ->
+    count
+    | Add 1
+
+```
+
+```
 Component `To-do List`
 
 Keeps list of `to-do item`
@@ -68,7 +91,7 @@ Has `list item`:
     - `To-do item`.content
 
     Click ->
-      `to-do item`
+      `To-do item`
       | Complete
 
 ```
