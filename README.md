@@ -31,7 +31,7 @@ Keeps list of `to-do item`
 
 Has section:
   Content =
-  - Has form:
+  - Has form of `to-do item`
       Content =
       - Has label:
           Content =
@@ -42,11 +42,8 @@ Has section:
           Type = "submit"
           Content = "Add to list"
       Submit ->
-        Let `new to-do item content` = event
-          | `Get form data`
-          | Get "content"
         Let `new to-do item` = new `to-do item`:
-          Content = `new to-do item content`
+          Content = event.`form data`.content
         List of `to-do item`
         | Push `new to-do item`
   - Has list:
