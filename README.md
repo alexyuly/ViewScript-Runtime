@@ -2,7 +2,11 @@
 
 ## Explorer
 
-The explorer shows your open files. Select `File -> Open...` to add a file. Select `File -> Close...` to remove the selected files, after confirming.
+The explorer shows your open files, plus a summary of the elements within each one.
+
+Select `File -> Open...` to add a file.
+
+Select `File -> Close...` to remove the selected files, after confirming.
 
 ### Components 🧱
 
@@ -83,10 +87,16 @@ Has text content
 Has condition completed
 
 Can complete:
-  completed = true
+  Completed = true
 
 ```
 
 ## Inspector
+
+Inspector shows detail for the selected items in Explorer.
+
+📋 Component instance parameters
+📢 Event handler implementations
+💎 Source code
 
 ## Viewer
