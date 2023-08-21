@@ -26,17 +26,17 @@ Has section:
           Content =
           - "New To-do:"
           - Has input:
-              Name = "text"
+              Name = "content"
       - Has button:
           Type = "submit"
           Content = "Add to list"
 
       Submit ->
-        @`New to-do item text` = event
+        @`New to-do item content` = event
           | `Get form data`
-          | Get "text"
+          | Get "content"
         @`New to-do item` = new `to-do item`:
-          Text = @`new to-do item text`
+          Content = @`new to-do item content`
         List of `to-do item`
         | Push @`new to-do item`
 
@@ -57,7 +57,7 @@ Has `list item`:
     - Has input:
         Type = "checkbox"
         Checked = data.completed
-    - `To-do item`.text
+    - `To-do item`.content
 
     Click -> `to-do item`
     | Complete
@@ -69,12 +69,8 @@ Has `list item`:
 ```
 Concept `To-do Item`
 
-# properties
-
-Has text
+Has text content
 Has condition completed
-
-# methods
 
 Can complete:
   completed = true
