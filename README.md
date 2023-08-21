@@ -57,7 +57,7 @@ Has `list item`:
     - Has input:
         Type = "checkbox"
         Checked = data.completed
-    - Data.text
+    - `To-do item`.text
     Click -> `to-do item`
     | Complete
 ```
