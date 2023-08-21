@@ -31,8 +31,12 @@ Has section:
       - Has button:
           Type = "submit"
           Content = "Add to list"
+      Submit event -> event
+      | `get form data`
+      | get "text"
   - Has list:
-      Content = `to-do item` `for each in` list(`to-do item`)
+      Content = `to-do item`
+      | `for each in` list(`to-do item`)
 ```
 
 ```
@@ -49,8 +53,8 @@ Has `list item`:
         Type = "checkbox"
         Checked = data.completed
     - data.text
-    Click ->
-      Complete `to-do item`
+    Click -> `to-do item`
+    | complete
 ```
 
 ### Concepts 📚
