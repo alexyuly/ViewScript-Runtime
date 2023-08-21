@@ -7,20 +7,15 @@
 ```
 Component `Hello World`
 
-# children
-
 Has paragraph:
   Content = "Hello, world!"
+
 ```
 
 ```
 Component `To-do List`
 
-# storage
-
 Keeps list of `to-do item`
-
-# children
 
 Has section:
   Content =
@@ -48,29 +43,25 @@ Has section:
   - Has list:
       Content = `to-do item`
       | `For each in` list(`to-do item`)
+
 ```
 
 ```
 Component `To-do Item`
 
-# interface
-
 Takes `to-do item`
-
-# children
 
 Has `list item`:
   Content = has label:
     Content =
-
     - Has input:
         Type = "checkbox"
         Checked = data.completed
-
     - `To-do item`.text
 
     Click -> `to-do item`
     | Complete
+
 ```
 
 ### Concepts 📚
@@ -87,6 +78,7 @@ Has condition completed
 
 Can complete:
   completed = true
+
 ```
 
 ## Inspector
