@@ -8,7 +8,7 @@
 Component `Hello World`
 
 # children
-Has p:
+Has paragraph:
   Content = "Hello, world!"
 ```
 
@@ -19,44 +19,41 @@ Component `To-do List`
 Keeps list(`to-do item`)
 
 # children
-Has div:
+Has section:
   Content =
   - Has form:
       Content =
       - Has label:
           Content =
           - "New To-do:"
-          - Render input:
+          - Has input:
               Name = "text"
       - Has button:
           Type = "submit"
           Content = "Add to list"
-  - Has ul:
-      Content = has `to-do item` `for each in` list(`to-do item`)
+  - Has list:
+      Content = `to-do item` `for each in` list(`to-do item`)
 ```
 
 ```
 Component `To-do Item`
 
-# inteface
-Takes `to-do item` data
-
-# events
-Can click `to-do item`
+# interface
+Takes `to-do item`
 
 # children
-Has li:
-  Content =
-  - Has label:
-      Content =
-      - Has input:
-          Type = "checkbox"
-          Checked = data.completed
-      - data.text
-  - On click -> this click data
+Has `list item`:
+  Content = has label:
+    Content =
+    - Has input:
+        Type = "checkbox"
+        Checked = data.completed
+    - data.text
+    Click ->
+      Complete `to-do item`
 ```
 
-### Concepts
+### Concepts 📚
 
 ```
 Concept `To-do Item`
@@ -67,7 +64,7 @@ Has condition completed
 
 # methods
 Can complete:
-    This condition = true
+  condition = true
 ```
 
 ## Inspector
