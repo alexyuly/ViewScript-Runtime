@@ -40,7 +40,8 @@ Has section:
       Content = "{count} total click(s)"
 
 Has timer:
-  Interval = 1000
+  Period = 1000
+  Loops = true
   Time ->
     Count
     | Add 1
