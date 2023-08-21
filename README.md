@@ -105,6 +105,6 @@ Viewer shows a preview of the items selected in Explorer.
 
 Viewer has three modes:
 
-1. 🫳 Selection
-2. 🔎 Refinement
+1. 🫳 Arrangement
+2. 🎨 Refinement
 3. 🛠️ Testing
