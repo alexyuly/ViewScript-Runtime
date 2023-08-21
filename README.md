@@ -93,10 +93,18 @@ Can complete:
 
 ## Inspector
 
-Inspector shows detail for the selected items in Explorer.
+Inspector shows detail for the items selected in Explorer.
 
-📋 Component instance parameters
-📢 Event handler implementations
-💎 Source code
+- 📋 Component instance parameters
+- 📢 Event handler implementations
+- 💎 Source code
 
 ## Viewer
+
+Viewer shows a preview of the items selected in Explorer.
+
+Viewer has three modes:
+
+1. 🫳 Selection
+2. 🔎 Refinement
+3. 🛠️ Testing
