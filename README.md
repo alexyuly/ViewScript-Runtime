@@ -54,28 +54,26 @@ Component `To-do List`
 
 Keeps list of `to-do item`
 
-Has section:
+Has form of `to-do item`
   Content =
-  - Has form of `to-do item`
+  - Has label:
       Content =
-      - Has label:
-          Content =
-          - "New To-do:"
-          - Has input:
-              Name = "content"
+      - "New To-do:"
+      - Has input:
+          Name = "content"
 
-      - Has button:
-          Type = "submit"
-          Content = "Add to list"
+  - Has button:
+      Type = "submit"
+      Content = "Add to list"
 
-      Submit ->
-        List of `to-do item`
-        | Push new `to-do item`:
-            Content = event.`form data`.content
+  Submit ->
+    List of `to-do item`
+    | Push new `to-do item`:
+        Content = event.`form data`.content
 
-  - Has list:
-      Content = `to-do item`
-      | `For each in` list of `to-do item`
+Has list:
+  Content = `to-do item`
+  | `For each in` list of `to-do item`
 
 ```
 
