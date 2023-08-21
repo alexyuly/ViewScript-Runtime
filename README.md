@@ -38,13 +38,16 @@ Has section:
           - "New To-do:"
           - Has input:
               Name = "content"
+
       - Has button:
           Type = "submit"
           Content = "Add to list"
+
       Submit ->
         List of `to-do item`
         | Push new `to-do item`:
             Content = event.`form data`.content
+
   - Has list:
       Content = `to-do item`
       | `For each in` list of `to-do item`
@@ -63,6 +66,7 @@ Has `list item`:
         Type = "checkbox"
         Checked = `to-do item`.completed
     - `To-do item`.content
+
     Click ->
       `to-do item`
       | Complete
@@ -81,7 +85,7 @@ Concept `To-do Item`
 Has text content
 Has condition completed
 
-Can complete:
+Can complete ->
   Completed = true
 
 ```
