@@ -1,54 +1,74 @@
-# compendium.dev
+# Compendium
 
-upend development
+## Explorer
 
-## Working with the Compendium IDE
+### Components 🧱
 
-### 🧭 Explorer
+```
+Component `Hello World`
 
-#### 🧱 Components Tab
+Has p:
+  Content = "Hello, world!"
+```
 
-The Components Tab lists your open components. Components are the visible building blocks of your apps (including your apps themselves).
+```
+Component `To-do List`
 
-🧪 Components are inert prototypes, but component instances do things! 🧙🪄✨
+Store list(`to-do item`)
 
-A component instance can...
+Has div:
+  Content =
+  - Has form:
+      Content =
+      - Has label:
+          Content =
+          - "New To-do:"
+          - Render input:
+              Name = "text"
+      - Has button:
+          Type = "submit"
+          Content = "Add to list"
+  - Has ul:
+      Content = has `to-do item` `for each in` list(`to-do item`)
+```
 
-🎁 Accept **properties**: immutable data passed down by its parent.
+```
+Component `To-do Item`
 
-_Use these to..._
+Take `to-do item` data
 
-- Provide environment variables to an app deployment (which is like a component instance)
-- Pass custom traits and elements to a reusable design component or a part of your app
+# TODO implement children
+```
 
-🗄️ Maintain **storage**: mutable data that only the component instance can read and write.
+#### Interface
 
-_Use this to..._
 
-- Keep state while a component is active
-- Have context while an app is running
-- Save and load data from persistent storage
 
-🐣 Have **children**, by creating component instances and passing properties to them.
+#### Storage
 
-📣 Report **events** to its parent, by responding when its children report events.
+#### Children
 
-#### 📚 Concepts Tab
+#### Events
 
-The Concepts Tab lists your open concepts. Concepts are the types of data that your components can read and write.
+### Concepts
 
-💡 Concepts don't do anything. They are recipes that your components use to create data.
+```
+Concept `To-do Item`
 
-A concept has two elements...
+Has text
+Has condition completed
 
-📦 **Properties** are named references to other concepts within a concept. Use them to create hierarchies and graphs!
+Can edit text:
+    This text = text
 
-🛠️ **Methods** are pure functions that work with a particular type of data to produce more data. They can also accept parameters!
+Can complete:
+    This condition = true
+```
 
-### 🔎 Inspector
+#### Properties
 
-The Inspector shows detail for items selected in the Explorer.
+#### Methods
 
-### 👀 Viewer
+## Inspector
 
-The Viewer shows a preview of items selected in the Explorer.
+## Viewer
