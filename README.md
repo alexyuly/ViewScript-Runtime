@@ -42,7 +42,7 @@ Has timer:
   Period = 1000
   Loops = true
   Paused = count
-  | `is at least` 100
+  | `Is at least` 100
   Time ->
     Count
     | Add 1
