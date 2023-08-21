@@ -32,15 +32,12 @@ Keeps count
 Has paragraph:
   Content = "The count is {count}."
 
-# increment when a button is clicked
 Has button:
   Content = "Click me!"
   Click ->
     Count
     | Add 1
 
-# also increment when a timer goes off
-# ...but stop when it gets to 100
 Has timer:
   Period = 1000
   Loops = true
