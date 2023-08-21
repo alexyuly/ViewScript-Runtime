@@ -29,8 +29,7 @@ Component `Counter`
 
 Keeps count
 
-# This app counts when the button is clicked.
-
+# increment when the button is clicked
 Has section:
   Content =
   - Has button:
@@ -42,8 +41,7 @@ Has section:
   - Has paragraph:
       Content = "{count} total click(s)"
 
-# It also counts when the timer goes off.
-
+# also increment when the timer goes off
 Has timer:
   Period = 1000
   Loops = true
