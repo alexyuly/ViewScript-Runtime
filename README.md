@@ -73,7 +73,7 @@ Has condition completed
 
 # methods
 Can complete:
-  condition = true
+  completed = true
 ```
 
 ## Inspector
