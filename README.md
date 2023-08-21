@@ -7,6 +7,7 @@
 ```
 Component `Hello World`
 
+# children
 Has p:
   Content = "Hello, world!"
 ```
@@ -14,8 +15,10 @@ Has p:
 ```
 Component `To-do List`
 
-Store list(`to-do item`)
+# storage
+Keeps list(`to-do item`)
 
+# children
 Has div:
   Content =
   - Has form:
@@ -35,39 +38,37 @@ Has div:
 ```
 Component `To-do Item`
 
-Take `to-do item` data
+# inteface
+Takes `to-do item` data
 
-# TODO implement children
+# events
+Can click `to-do item`
+
+# children
+Has li:
+  Content =
+  - Has label:
+      Content =
+      - Has input:
+          Type = "checkbox"
+          Checked = data.completed
+      - data.text
+  - On click -> this click data
 ```
-
-#### Interface
-
-
-
-#### Storage
-
-#### Children
-
-#### Events
 
 ### Concepts
 
 ```
 Concept `To-do Item`
 
+# properties
 Has text
 Has condition completed
 
-Can edit text:
-    This text = text
-
+# methods
 Can complete:
     This condition = true
 ```
-
-#### Properties
-
-#### Methods
 
 ## Inspector
 
