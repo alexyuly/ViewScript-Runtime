@@ -36,6 +36,7 @@ Has section:
       Click ->
         Count
         | Add 1
+
   - Has paragraph:
       Content = "{count} total click(s)"
 
