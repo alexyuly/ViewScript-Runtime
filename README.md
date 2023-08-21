@@ -8,6 +8,7 @@
 Component `Hello World`
 
 # children
+
 Has paragraph:
   Content = "Hello, world!"
 ```
@@ -16,11 +17,14 @@ Has paragraph:
 Component `To-do List`
 
 # storage
+
 Keeps list of `to-do item`
 
 # children
+
 Has section:
   Content =
+
   - Has form:
       Content =
       - Has label:
@@ -31,6 +35,7 @@ Has section:
       - Has button:
           Type = "submit"
           Content = "Add to list"
+
       Submit ->
         @`New to-do item text` = event
           | `Get form data`
@@ -39,6 +44,7 @@ Has section:
           Text = @`new to-do item text`
         List of `to-do item`
         | Push @`new to-do item`
+
   - Has list:
       Content = `to-do item`
       | `For each in` list(`to-do item`)
@@ -48,16 +54,21 @@ Has section:
 Component `To-do Item`
 
 # interface
+
 Takes `to-do item`
 
 # children
+
 Has `list item`:
   Content = has label:
     Content =
+
     - Has input:
         Type = "checkbox"
         Checked = data.completed
+
     - `To-do item`.text
+
     Click -> `to-do item`
     | Complete
 ```
@@ -68,10 +79,12 @@ Has `list item`:
 Concept `To-do Item`
 
 # properties
+
 Has text
 Has condition completed
 
 # methods
+
 Can complete:
   completed = true
 ```
