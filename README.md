@@ -4,6 +4,10 @@
 
 ### Components 🧱
 
+"Apps"
+
+"Building blocks"
+
 ```
 Component `Hello World`
 
@@ -65,6 +69,10 @@ Has `list item`:
 ```
 
 ### Concepts 📚
+
+"Data types"
+
+"Business logic"
 
 ```
 Concept `To-do Item`
