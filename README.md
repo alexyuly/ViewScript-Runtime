@@ -34,7 +34,7 @@ Has section:
   - Has button:
       Content = "Click me!"
       Click ->
-        count
+        Count
         | Add 1
   - Has paragraph:
       Content = "{count} total click(s)"
@@ -42,7 +42,7 @@ Has section:
 Has timer:
   Interval = 1000
   Time ->
-    count
+    Count
     | Add 1
 
 ```
