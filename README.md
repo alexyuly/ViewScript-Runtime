@@ -41,10 +41,9 @@ Has section:
       - Has button:
           Type = "submit"
           Content = "Add to list"
-      Submit ->
-        List of `to-do item`
-        | Push new `to-do item`:
-            Content = event.`form data`.content
+      Submit -> List of `to-do item`
+      | Push new `to-do item`:
+          Content = event.`form data`.content
   - Has list:
       Content = `to-do item`
       | `For each in` list of `to-do item`
