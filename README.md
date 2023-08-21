@@ -29,19 +29,17 @@ Component `Counter`
 
 Keeps count
 
-# increment when the button is clicked
-Has section:
-  Content =
-  - Has button:
-      Content = "Click me!"
-      Click ->
-        Count
-        | Add 1
+Has paragraph:
+  Content = "The count is {count}."
 
-  - Has paragraph:
-      Content = "{count} total click(s)"
+# increment when a button is clicked
+Has button:
+  Content = "Click me!"
+  Click ->
+    Count
+    | Add 1
 
-# also increment when the timer goes off
+# also increment when a timer goes off
 Has timer:
   Period = 1000
   Loops = true
