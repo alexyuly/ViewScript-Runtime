@@ -106,6 +106,7 @@ Has `list item`:
 Concept `To-do Item`
 
 Has text content
+
 Has condition completed
 
 Can complete ->
