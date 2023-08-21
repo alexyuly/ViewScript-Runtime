@@ -2,6 +2,8 @@
 
 ## Explorer
 
+The explorer shows your open files. Select `File -> Open...` to add a file. Select `File -> Close...` to remove the selected files, after confirming.
+
 ### Components 🧱
 
 "Apps"
