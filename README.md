@@ -32,17 +32,17 @@ Has section:
           Content = "Add to list"
 
       Submit ->
-        @`New to-do item content` = event
+        Let `new to-do item content` = event
           | `Get form data`
           | Get "content"
-        @`New to-do item` = new `to-do item`:
-          Content = @`new to-do item content`
+        Let `new to-do item` = new `to-do item`:
+          Content = `new to-do item content`
         List of `to-do item`
-        | Push @`new to-do item`
+        | Push `new to-do item`
 
   - Has list:
       Content = `to-do item`
-      | `For each in` list(`to-do item`)
+      | `For each in` list of `to-do item`
 
 ```
 
@@ -56,7 +56,7 @@ Has `list item`:
     Content =
     - Has input:
         Type = "checkbox"
-        Checked = data.completed
+        Checked = `to-do item`.completed
     - `To-do item`.content
 
     Click -> `to-do item`
