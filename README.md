@@ -29,7 +29,6 @@ Keeps list of `to-do item`
 
 Has section:
   Content =
-
   - Has form:
       Content =
       - Has label:
@@ -40,7 +39,6 @@ Has section:
       - Has button:
           Type = "submit"
           Content = "Add to list"
-
       Submit ->
         Let `new to-do item content` = event
           | `Get form data`
@@ -49,7 +47,6 @@ Has section:
           Content = `new to-do item content`
         List of `to-do item`
         | Push `new to-do item`
-
   - Has list:
       Content = `to-do item`
       | `For each in` list of `to-do item`
@@ -68,7 +65,6 @@ Has `list item`:
         Type = "checkbox"
         Checked = `to-do item`.completed
     - `To-do item`.content
-
     Click -> `to-do item`
     | Complete
 
