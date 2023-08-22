@@ -1,6 +1,6 @@
 # Compendium
 
-Welcome to Compendium! From here, you will embark on a magical journey, building apps for  web browsers, in an integrated tool with everything you need.
+Welcome to Compendium! From here, you will embark on a magical journey, building apps for  web browsers, in an integrated tool with everything you need for project victory.
 
 🪄✨💖🌺
 
