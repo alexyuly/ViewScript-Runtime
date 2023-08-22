@@ -1,27 +1,146 @@
-# React + TypeScript + Vite
+# Compendium
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Explorer
 
-Currently, two official plugins are available:
+The explorer shows your open files, plus a summary of the elements within each one.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Select `File -> New...` to create a new file, add it to Explorer, and select it.
 
-## Expanding the ESLint configuration
+Select `File -> Open...` to add a saved file to Explorer and select it.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+Select `File -> Close...` to remove the selected files, after confirming.
 
-- Configure the top-level `parserOptions` property like this:
+### Components 🧱
 
-```js
-   parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-   },
+"Apps"
+
+"Building blocks"
+
+```
+Component `Hello World`
+
+Has paragraph:
+  Content = "Hello, world!"
+
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+```
+Component `Counter`
+
+Keeps count
+
+Has paragraph:
+  Content = "The count is {count}."
+
+Has button:
+  Content = "Click me!"
+  Click ->
+    Count
+    | Add 1
+
+Has timer:
+  Period = 1000
+  Loops = true
+  Paused = count
+  | `Is at least` 100
+
+  Time ->
+    Count
+    | Add 1
+
+```
+
+```
+Component `To-do List`
+
+Keeps list of `to-do item`
+
+Has form of `to-do item`
+  Content =
+  - Has label:
+      Content =
+      - "New To-do:"
+      - Has input:
+          Name = "content"
+
+  - Has button:
+      Type = "submit"
+      Content = "Add to list"
+
+  Submit ->
+    List of `to-do item`
+    | Push new `to-do item`:
+        Content = event.`form data`.content
+
+Has list:
+  Content = `to-do item`
+  | `For each in` list of `to-do item`
+
+```
+
+```
+Component `To-do Item`
+
+Takes `to-do item`
+
+Has `list item`:
+  Content = has label:
+    Content =
+    - Has input:
+        Type = "checkbox"
+        Checked = `to-do item`.completed
+    - `To-do item`.content
+
+    Click ->
+      `To-do item`
+      | Complete
+
+```
+
+### Concepts 📚
+
+"Data types"
+
+"Business logic"
+
+```
+Concept `To-do Item`
+
+Has text content
+
+Has condition completed
+
+Can complete ->
+  Completed = true
+
+```
+
+### Environments 🌎
+
+"Deployments"
+
+"Databases"
+
+"Servers"
+
+_and all that good stuff_
+
+An app is an instance of a component deployed to an environment.
+
+## Inspector
+
+Inspector shows detail for the items selected in Explorer.
+
+- 📋 Interface parameter values
+- 📢 Event handler and method implementations
+- 💎 Source code
+
+## Viewer
+
+Viewer shows a preview of the items selected in Explorer.
+
+Viewer has three modes:
+
+1. 🧩 Arrangement
+2. 🎨 Refinement
+3. 🚘 Testing
