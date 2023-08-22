@@ -30,6 +30,8 @@ Select `File -> Close...` to remove the selected files, after confirming.
 
 Components are the building blocks of apps.
 
+A component is defined in code by the `Component [name]` declaration. The `[name]` part can be a sequence of a-z case-insensitive characters, or a sequence of any non-line-break characters enclosed by backticks.
+
 Each component has
 - 🔻 **Parameters**
   - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
