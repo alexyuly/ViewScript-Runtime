@@ -10,7 +10,7 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 - ☑️ Explore a tree of open files and their inner elements.
 - ☑️ Develop reactive components with two-way data bindings. _(Yes!)_
 - ☑️ Define reusable concepts with data and business logic.
-- ☑️ Drag, drop, adjust, and inspect your app like it was Figma.
+- ☑️ Drag, drop, adjust, and inspect your app using design tools.
 - ☑️ Preview and test your app without compiling or refreshing.
 - ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
 
