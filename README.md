@@ -143,4 +143,4 @@ Viewer has three modes:
 
 1. 🧩 Arrangement
 2. 🎨 Refinement
-3. 🛠️ Testing
+3. 🚘 Testing
