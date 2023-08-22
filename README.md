@@ -6,7 +6,7 @@ Welcome to Compendium! From here, you will embark on a magical journey, building
 
 Compendium Studio is your one stop shop for building apps that run in a web browser.
 
-- ☑️ Create, open, and save `.spec` files containing Compendium code.
+- ☑️ Create, open, and update `.spec` files containing Compendium code.
 - ☑️ Explore a tree of open files and their inner elements.
 - ☑️ Develop reactive components with two-way data bindings. _(Yes!)_
 - ☑️ Define reusable concepts with data and business logic.
