@@ -1,5 +1,11 @@
 # Compendium
 
+Welcome to Compendium! You will embark on a magical journey, building apps for the web, in an integrated tool with everything you need. 
+
+🪄✨💖🌺
+
+Compendium Studio is available as an app for desktop platforms like macOS and Windows.
+
 ## Explorer
 
 The explorer shows your open files, plus a summary of the elements within each one.
