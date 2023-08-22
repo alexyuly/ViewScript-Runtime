@@ -30,17 +30,27 @@ Select `File -> Close...` to remove the selected files, after confirming.
 
 Components are the building blocks of apps.
 
-A component is defined in code by the `Component [name]` declaration. The `[name]` part can be a sequence of a-z case-insensitive characters, or a sequence of any non-line-break characters enclosed by backticks.
+A component is defined in code by the
+
+```
+Component [name]
+```
+
+declaration. The `[name]` part can be a sequence of a-z case-insensitive characters, or a sequence of any non-line-break characters enclosed by backticks.
 
 Each component has
 - 🔻 **Parameters**
   - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
+  - It is declared by `Takes [concept] [identifier]`.
 - 🟨 **Stores**
   - A store is a writable value created and updated privately, by the instance of a component that created it, and by any units that component creates.
+  - It is declared by `Keeps [concept] [identifier]`.
 - 🔵 **Units**
   - A unit is an instance of one component created by another. It does something for its creator, like painting a part of the UI, or running a timer.
+  - It is declared by `Has [component]`.
 - 🔺 **Events**
   - An event is a read-only message sent from a unit to its creator. It's useful in broadly reusable components which don't update their own parameters.
+  - It is declared by `Can [identifier] [concept]`.
 
 Here are some examples.
 
