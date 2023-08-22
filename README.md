@@ -121,6 +121,10 @@ Has `list item`:
 
 Concepts are data types that include specification of how to create and update related objects.
 
+Each concept has
+- 🟢 **Properties**
+- ⚡️ **Methods**
+
 Here is an example.
 
 ```
