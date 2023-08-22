@@ -14,9 +14,9 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 - ☑️ Preview and test your app without compiling or refreshing.
 - ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
 
-## Explorer 🧑‍🚀
+## Finder 🧑‍🚀
 
-Explorer shows your open files, plus a summary of the elements within each one.
+Finder shows a searchable tree of your open files, with a summary of the elements within each one.
 
 Select `File -> New...` to create a new file, add it to Explorer, and select it.
 
@@ -113,7 +113,9 @@ Has `list item`:
 
 ### Concepts 📚
 
-Concepts are reusable data types, which are used to create reactive, mutable objects.
+Concepts are data types that include specification of how to create and update related objects.
+
+Here is an example.
 
 ```
 Concept `To-do Item`
@@ -129,27 +131,18 @@ Can complete ->
 
 ### Environments 🌎
 
-"Deployments"
+Environments hold sets of variables you can pass down to apps when you build and deploy.
 
-"Databases"
+## Editor 🧑‍🔧
 
-"Servers"
+Editor shows editable content for the items selected in Finder.
 
-_and all that good stuff_
+- 📋 Add, edit, and delete interface parameters, event handlers, and other values.
+- 💎 View and edit source code.
 
-An app is an instance of a component deployed to an environment.
+## Viewer 🕵️
 
-## Inspector
-
-Inspector shows detail for the items selected in Explorer.
-
-- 📋 Interface parameter values
-- 📢 Event handler and method implementations
-- 💎 Source code
-
-## Viewer
-
-Viewer shows a preview of the items selected in Explorer.
+Viewer shows a preview of the items selected in Finder.
 
 Viewer has three modes:
 
