@@ -14,9 +14,9 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 - ☑️ Preview and test your app without compiling or refreshing.
 - ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
 
-## Finder 🧑‍🚀
+## Finder
 
-Finder shows a searchable tree of your open files, with a summary of the elements within each one.
+**Finder** shows a searchable tree of your open files, with a summary of the elements within each one.
 
 Select `File -> New...` to create a new file, add it to Explorer, and select it.
 
@@ -133,16 +133,16 @@ Can complete ->
 
 Environments hold sets of variables you can pass down to apps when you build and deploy.
 
-## Editor 🧑‍🔧
+## Editor
 
-Editor shows editable content for the items selected in Finder.
+**Editor** shows editable content for the items selected in Finder.
 
 - 📋 Add, edit, and delete interface parameters, event handlers, and other values.
 - 💎 View and edit source code.
 
-## Viewer 🕵️
+## Viewer
 
-Viewer shows a preview of the items selected in Finder.
+**Viewer** shows a preview of the items selected in Finder.
 
 Viewer has three modes:
 
