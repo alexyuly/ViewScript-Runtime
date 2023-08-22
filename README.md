@@ -31,7 +31,7 @@ Components are the building blocks of apps.
 Each component has
 - 🔻 **Parameters**
 - 🟨 **Stores**
-- 🔵 **Children**
+- 🔵 **Units**
 - 🔺 **Events**
 
 Here are some examples.
