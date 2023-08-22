@@ -14,9 +14,9 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 - ☑️ Preview and test your app without compiling or refreshing.
 - ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
 
-## Explorer
+## Explorer 🧑‍🚀
 
-The explorer shows your open files, plus a summary of the elements within each one.
+Explorer shows your open files, plus a summary of the elements within each one.
 
 Select `File -> New...` to create a new file, add it to Explorer, and select it.
 
@@ -26,9 +26,9 @@ Select `File -> Close...` to remove the selected files, after confirming.
 
 ### Components 🧱
 
-"Apps"
+Components are the building blocks of apps.
 
-"Building blocks"
+Here are some examples.
 
 ```
 Component `Hello World`
@@ -113,9 +113,7 @@ Has `list item`:
 
 ### Concepts 📚
 
-"Data types"
-
-"Business logic"
+Concepts are reusable data types, which are used to create reactive, mutable objects.
 
 ```
 Concept `To-do Item`
