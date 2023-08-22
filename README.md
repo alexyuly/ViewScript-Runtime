@@ -9,9 +9,11 @@ Compendium Studio is available as an app for desktop platforms like macOS and Wi
 Compendium Studio is your one stop shop. 
 - ☑️ Create, open, and save `.spec` files with Compendium code.
 - ☑️ Explore open files and their inner elements.
-- ☑️ Develop reusable, stateful components
-- ☑️ Define readable concepts with data and business logic
-- ☑️ Build and deploy HTML, CSS, JS to remote environments
+- ☑️ Develop reusable, stateful components.
+- ☑️ Define readable concepts with data and business logic.
+- ☑️ Build and deploy HTML, CSS, JS to remote environments.
+- ☑️ Preview and test your apps.
+
 
 ## Explorer
 
