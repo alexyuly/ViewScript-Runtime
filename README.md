@@ -30,13 +30,13 @@ Select `File -> Close...` to remove the selected files, after confirming.
 
 Components are the building blocks of apps.
 
-A component is defined in code by the
+A component is declared in code by
 
 ```
 Component [name]
 ```
 
-declaration. The `[name]` part can be a sequence of a-z case-insensitive characters, or a sequence of any non-line-break characters enclosed by backticks.
+The `[name]` can be a sequence of a-z case-insensitive characters, or a sequence of any characters except line breaks and backticks, enclosed by backticks.
 
 Each component has
 - 🔻 **Parameters**
@@ -141,7 +141,11 @@ Concepts are data types that include specification of how to create and update r
 
 Each concept has
 - 🔶 **Properties**
+  - A property is an instance of one concept that is part of another. It stores data that can be read by anyone, written by its own methods, and used to construct a new instance of the concept.
+  - It is declared by `Has [modifier] [concept] [identifier]`.
 - ⚡️ **Methods**
+  - A method is a routine which updates a concept instance or creates a new one based on it, with an optional argument.
+  - It is declared by `Can [identifier] [concept] [concept identifier]`.
 
 Here is an example.
 
