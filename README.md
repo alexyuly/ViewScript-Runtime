@@ -32,9 +32,13 @@ Components are the building blocks of apps.
 
 Each component has
 - 🔻 **Parameters**
+  - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
 - 🟨 **Stores**
+  - A store is a writable value created and updated privately, only by the instance of a component that created it.
 - 🔵 **Units**
+  - A unit is an instance of one component created by another. It does something for its creator, like painting a part of the UI, or running a timer.
 - 🔺 **Events**
+  - An event is a read-only message sent from a unit to its creator. It's useful in broadly reusable components which don't update their own parameters.
 
 Here are some examples.
 
