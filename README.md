@@ -34,7 +34,7 @@ Each component has
 - 🔻 **Parameters**
   - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
 - 🟨 **Stores**
-  - A store is a writable value created and updated privately, only by the instance of a component that created it.
+  - A store is a writable value created and updated privately, by the instance of a component that created it, and by any units that component creates.
 - 🔵 **Units**
   - A unit is an instance of one component created by another. It does something for its creator, like painting a part of the UI, or running a timer.
 - 🔺 **Events**
