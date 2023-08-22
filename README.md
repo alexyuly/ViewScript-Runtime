@@ -28,6 +28,12 @@ Select `File -> Close...` to remove the selected files, after confirming.
 
 Components are the building blocks of apps.
 
+Each component has
+- 🔻 **Parameters**
+- 🟨 **Stores**
+- 🔵 **Children**
+- 🔺 **Events**
+
 Here are some examples.
 
 ```
