@@ -14,6 +14,8 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 - ☑️ Preview and test your app without compiling or refreshing.
 - ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
 
+Now, code _is_ your spec, what you build _IS_ your product!!
+
 ## Finder
 
 **Finder** shows a searchable tree of your open files, with a summary of the elements within each one.
