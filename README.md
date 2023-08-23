@@ -178,11 +178,11 @@ Environments hold sets of variables you can pass down to apps when you build and
 
 Viewer has three modes:
 
-1. 🧩 Arrangement
-  i. Click units to select them
-  i. Drag units to reorder them
-2. 🎨 Refinement
-  i. Click units to select them
-  i. Hover units and areas around and between units to view helpful tooltips
-3. 🚘 Testing
-  i. Interact with the app as if it were running in a browser
+1. 🧩 Arrangement:
+  - Click units to select them
+  - Drag units to reorder them
+2. 🎨 Refinement:
+  - Click units to select them
+  - Hover units and areas around and between units to view helpful tooltips
+3. 🚘 Testing:
+  - Interact with the app as if it were running in a browser
