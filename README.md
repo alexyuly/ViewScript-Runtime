@@ -140,6 +140,7 @@ Has `list item`:
 Concepts are data types that include specification of how to create and update related objects.
 
 TODO Explain Concept syntax in code
+
 TODO Cover generic concepts and components
 
 Each concept has
@@ -182,10 +183,10 @@ Environments hold sets of variables you can pass down to apps when you build and
 Viewer has three modes:
 
 1. 🧩 Arrangement:
-  - Click units to select them
-  - Drag units to reorder them
+  - Click units to select them.
+  - Drag units to reorder and reposition them.
 2. 🎨 Refinement:
-  - Click units to select them
-  - Hover units and areas around and between units to view helpful tooltips
+  - Click units to select them.
+  - Drag areas around and between units to adjust sizing and spacing.
 3. 🚘 Testing:
-  - Interact with the app as if it were running in a browser
+  - Interact with the app as if it were running in a browser.
