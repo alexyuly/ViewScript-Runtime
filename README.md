@@ -139,6 +139,9 @@ Has `list item`:
 
 Concepts are data types that include specification of how to create and update related objects.
 
+TODO Explain Concept syntax in code
+TODO Cover generic concepts and components
+
 Each concept has
 - 🔶 **Properties**
   - A property is an instance of one concept that is part of another. It stores data that can be read by anyone, written by its own methods, and used to construct a new instance of the concept.
@@ -169,8 +172,8 @@ Environments hold sets of variables you can pass down to apps when you build and
 
 **Editor** shows editable content for the items selected in Finder.
 
-- 📋 Add, edit, and delete interface parameters, event handlers, and other values.
-- 💎 View and edit source code.
+- 📋 Create, update, and delete items, in a detailed property editor.
+- 💎 View and edit the source code of spec files, and parts of files.
 
 ## Viewer
 
