@@ -120,7 +120,7 @@ New list
 ```
 Component `To-do Item`
 
-Has `to-do item`
+Takes `to-do item`
 
 New `list item`
   Content = new label
