@@ -120,18 +120,18 @@ New list
 ```
 Component `To-do Item`
 
-Takes `to-do item`
+Takes `to-do item` data
 
 New `list item`
   Content = new label
     Content =
     - New input
         Type = "checkbox"
-        Checked = `to-do item`.completed
-    - `To-do item`.content
+        Checked = data.completed
+    - Data.content
 
     Click ->
-      `To-do item`
+      Data
       | Complete
 
 ```
@@ -167,7 +167,7 @@ Can complete ->
 
 Can view ->
   New `to-do item`
-    `To-do item` = this
+    Data = this
     
 
 ```
