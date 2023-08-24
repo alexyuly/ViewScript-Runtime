@@ -108,7 +108,7 @@ New form of `to-do item`
 
   Submit ->
     List of `to-do item`
-    | Push new `to-do item`
+    | Push `to-do item`
         Content = event.`form data`.content
 
 New list
