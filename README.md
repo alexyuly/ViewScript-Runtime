@@ -45,10 +45,10 @@ Each component has
   - It is declared by `Takes [concept] [identifier]`.
 - 🟨 **Stores**
   - A store is a writable value created and updated privately, by the instance of a component that created it, and by any units that component creates.
-  - It is declared by `Keeps [concept] [identifier]`.
+  - It is declared by `Has [concept] [identifier]`.
 - 🔵 **Units**
   - A unit is an instance of one component created by another. It does something for its creator, like painting a part of the UI, or running a timer.
-  - It is declared by `Has [component]`.
+  - It is declared by `New [component]`.
 - 🔺 **Events**
   - An event is a read-only message sent from a unit to its creator. It's useful in broadly reusable components which don't update their own parameters.
   - It is declared by `Can [identifier] [concept]`.
@@ -58,7 +58,7 @@ Here are some examples.
 ```
 Component `Hello World`
 
-Has paragraph
+New paragraph
   Content = "Hello, world!"
 
 ```
@@ -66,18 +66,18 @@ Has paragraph
 ```
 Component `Counter`
 
-Keeps count
+Has count
 
-Has paragraph
+New paragraph
   Content = "The count is $count."
 
-Has button
+New button
   Content = "Click me!"
   Click ->
     Count
     | Add 1
 
-Has timer
+New timer
   Period = 1000
   Loops = true
   Paused = count
@@ -92,17 +92,17 @@ Has timer
 ```
 Component `To-do List`
 
-Keeps list of `to-do item`
+Has list of `to-do item`
 
-Has form of `to-do item`
+New form of `to-do item`
   Content =
-  - Has label
+  - New label
       Content =
       - "New To-do:"
-      - Has input
+      - New input
           Name = "content"
 
-  - Has button
+  - New button
       Type = "submit"
       Content = "Add to list"
 
@@ -111,21 +111,21 @@ Has form of `to-do item`
     | Push new `to-do item`
         Content = event.`form data`.content
 
-Has list
-  Content = static `to-do item`
-  | `For each in` list of `to-do item`
+New list
+  Content = list of `to-do item`
+  | `Map to` view
 
 ```
 
 ```
 Component `To-do Item`
 
-Takes `to-do item`
+Has `to-do item`
 
-Has `list item`
-  Content = has label
+New `list item`
+  Content = new label
     Content =
-    - Has input
+    - New input
         Type = "checkbox"
         Checked = `to-do item`.completed
     - `To-do item`.content
@@ -164,6 +164,11 @@ Has condition completed
 
 Can complete ->
   Completed = true
+
+Can view ->
+  New `to-do item`
+    `To-do item` = this
+    
 
 ```
 
