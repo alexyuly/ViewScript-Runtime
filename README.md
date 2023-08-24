@@ -168,7 +168,6 @@ Can complete ->
 Can view ->
   New `to-do item`
     Data = this
-    
 
 ```
 
