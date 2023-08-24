@@ -163,7 +163,7 @@ Has text content
 Has condition completed
 
 Can complete ->
-  Completed = true
+  Set completed true
 
 Can view ->
   New `to-do item`
