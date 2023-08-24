@@ -112,7 +112,7 @@ Has form of `to-do item`
         Content = event.`form data`.content
 
 Has list:
-  Content = `to-do item`
+  Content = static `to-do item`
   | `For each in` list of `to-do item`
 
 ```
