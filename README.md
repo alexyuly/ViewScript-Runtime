@@ -39,6 +39,7 @@ Component [name]
 The `[name]` can be a sequence of a-z case-insensitive characters, or a sequence of any characters except line breaks and backticks, enclosed by backticks.
 
 Each component has
+
 - 🔻 **Parameters**
   - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
   - It is declared by `Takes [concept] [identifier]`.
@@ -144,6 +145,7 @@ TODO Explain Concept syntax in code
 TODO Cover generic concepts and components
 
 Each concept has
+
 - 🔶 **Properties**
   - A property is an instance of one concept that is part of another. It stores data that can be read by anyone, written by its own methods, and used to construct a new instance of the concept.
   - It is declared by `Has [modifier] [concept] [identifier]`.
@@ -183,10 +185,15 @@ Environments hold sets of variables you can pass down to apps when you build and
 Viewer has three modes:
 
 1. 🧩 Arrangement:
-  - Click units to select them.
-  - Drag units to reorder and reposition them.
+
+- Click units to select them.
+- Drag units to reorder and reposition them.
+
 2. 🎨 Refinement:
-  - Click units to select them.
-  - Drag areas around and between units to adjust sizing and spacing.
+
+- Click units to select them.
+- Drag areas around and between units to adjust sizing and spacing.
+
 3. 🚘 Testing:
-  - Interact with the app as if it were running in a browser.
+
+- Interact with the app as if it were running in a browser.
