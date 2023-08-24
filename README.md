@@ -69,7 +69,7 @@ Component `Counter`
 Keeps count
 
 Has paragraph
-  Content = "The count is {count}."
+  Content = "The count is $count."
 
 Has button
   Content = "Click me!"
