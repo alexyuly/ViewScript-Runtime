@@ -58,7 +58,7 @@ Here are some examples.
 ```
 Component `Hello World`
 
-Has paragraph:
+Has paragraph
   Content = "Hello, world!"
 
 ```
@@ -68,16 +68,16 @@ Component `Counter`
 
 Keeps count
 
-Has paragraph:
+Has paragraph
   Content = "The count is {count}."
 
-Has button:
+Has button
   Content = "Click me!"
   Click ->
     Count
     | Add 1
 
-Has timer:
+Has timer
   Period = 1000
   Loops = true
   Paused = count
@@ -96,22 +96,22 @@ Keeps list of `to-do item`
 
 Has form of `to-do item`
   Content =
-  - Has label:
+  - Has label
       Content =
       - "New To-do:"
-      - Has input:
+      - Has input
           Name = "content"
 
-  - Has button:
+  - Has button
       Type = "submit"
       Content = "Add to list"
 
   Submit ->
     List of `to-do item`
-    | Push new `to-do item`:
+    | Push new `to-do item`
         Content = event.`form data`.content
 
-Has list:
+Has list
   Content = static `to-do item`
   | `For each in` list of `to-do item`
 
@@ -122,10 +122,10 @@ Component `To-do Item`
 
 Takes `to-do item`
 
-Has `list item`:
-  Content = has label:
+Has `list item`
+  Content = has label
     Content =
-    - Has input:
+    - Has input
         Type = "checkbox"
         Checked = `to-do item`.completed
     - `To-do item`.content
