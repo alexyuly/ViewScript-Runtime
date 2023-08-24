@@ -113,7 +113,7 @@ New form of `to-do item`
 
 New list
   Content = list of `to-do item`
-  | `Map to` view
+  | Map -> view
 
 ```
 
