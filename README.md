@@ -64,7 +64,9 @@ New box
   Content = new paragraph
     Content = "Hello, world!"
 
+    Border = "1px dashed gray"
     Color = if hovered then "blue" else nil
+    Cursor = "pointer"
     Font-size = "24px"
     Font-weight = "bold"
     Padding = "48px"
