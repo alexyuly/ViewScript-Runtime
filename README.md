@@ -142,6 +142,20 @@ New `list item`
 
 ```
 
+```
+Concept `To-do Item`
+
+Has text content
+
+Has condition completed
+
+Can complete -> completed.set true
+
+Can view -> new `to-do item`
+  Model = this
+
+```
+
 ### Concepts 📚
 
 Concepts are data types that include specification of how to create and update related objects.
@@ -158,22 +172,6 @@ Each concept has
 - ⚡️ **Methods**
   - A method is a routine which updates a concept instance or creates a new one based on it, with an optional argument.
   - It is declared by `Can [identifier] [concept] [concept identifier]`.
-
-Here is an example.
-
-```
-Concept `To-do Item`
-
-Has text content
-
-Has condition completed
-
-Can complete -> completed.set true
-
-Can view -> new `to-do item`
-  Model = this
-
-```
 
 ### Environments 🌎
 
