@@ -119,7 +119,7 @@ New form of `to-do item`
       Content = "Add to list"
       Type = "submit"
   Submit => list.push data `to-do item`
-      Content = event.values.content
+    Content = event.values.content
 
 New list
   Content = list.map to view
