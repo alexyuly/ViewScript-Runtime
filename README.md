@@ -84,7 +84,7 @@ New main
 ```
 
 ```
-Component `Counter`
+Component Counter
 
 Has count
 
