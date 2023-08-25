@@ -69,7 +69,7 @@ Component `Counter`
 Has count
 
 New paragraph
-  Content = "The count is $count."
+  Content = "The count is {count}."
 
 New button
   Content = "Click me!"
