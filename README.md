@@ -41,8 +41,11 @@ The `[name]` can be a sequence of a-z case-insensitive characters, or a sequence
 Each component has
 
 - 🔻 **Parameters**
-  - A parameter is a writable value sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
-  - It is declared by `Takes [concept] [identifier]`.
+  - A parameter is a writable value, or a read-only instance of a component, sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
+  - It is declared by
+    - `Takes [concept] [identifier]` or
+    - `Uses [component] [identifier]`
+
 - 🟨 **Stores**
   - A store is a writable value created and updated privately, by the instance of a component that created it, and by any units that component creates.
   - It is declared by `Has [concept] [identifier]`.
