@@ -130,7 +130,7 @@ New form of `to-do item`
       Content = "Add to list"
 
   Submit ->
-    List.push object `to-do item`
+    List.push data `to-do item`
       Content = event.`form data`.content
 
 New list
@@ -141,18 +141,18 @@ New list
 ```
 Component `To-do Item`
 
-Takes `to-do item` data
+Takes `to-do item` model
 
 New `list item`
   Content = new label
     Content =
     - New input
         Type = "checkbox"
-        Checked = data.completed
-    - Data.content
+        Checked = model.completed
+    - Model.content
 
     Click ->
-      Data.complete
+      Model.complete
 
 ```
 
