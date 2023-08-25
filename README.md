@@ -72,12 +72,10 @@ New box
     Padding = "48px"
 
     Pointer-enter ->
-      Hovered
-      | Set true
+      Hovered.set true
 
     Pointer-leave ->
-      Hovered
-      | Set false
+      Hovered.set false
 
   Align-items = "center"
   Display = "flex"
@@ -100,18 +98,15 @@ New button
   Content = "Click me!"
 
   Click ->
-    Count
-    | Add 1
+    Count.add 1
 
 New timer
   Loops = true
-  Paused = count
-  | `Is at least` 100
+  Paused = count.`is at least` 100
   Period = 1000
 
   Time ->
-    Count
-    | Add 1
+    Count.add 1
 
 ```
 
@@ -132,13 +127,11 @@ New form of `to-do item`
       Content = "Add to list"
 
   Submit ->
-    List of `to-do item`
-    | Push `to-do item`
-        Content = event.`form data`.content
+    List.push `to-do item`
+      Content = event.`form data`.content
 
 New list
-  Content = list of `to-do item`
-  | Map -> view
+  Content = list.map -> view
 
 ```
 
@@ -156,8 +149,7 @@ New `list item`
     - Data.content
 
     Click ->
-      Data
-      | Complete
+      Data.complete
 
 ```
 
@@ -188,8 +180,7 @@ Has text content
 Has condition completed
 
 Can complete ->
-  Completed
-  | Set true
+  Completed.set true
 
 Can view ->
   New `to-do item`
