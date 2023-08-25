@@ -74,10 +74,10 @@ New main
     Font-weight = "bold"
     Padding = "48px"
 
-    Pointer-enter ->
+    Pointer-enter =>
       Hovered.set true
 
-    Pointer-leave ->
+    Pointer-leave =>
       Hovered.set false
 
   Align-items = "center"
@@ -100,7 +100,7 @@ New paragraph
 New button
   Content = "Click me!"
 
-  Click ->
+  Click =>
     Count.add 1
 
 New timer
@@ -108,7 +108,7 @@ New timer
   Paused = count.`is at least` 100
   Period = 1000
 
-  Time ->
+  Time =>
     Count.add 1
 
 ```
@@ -129,7 +129,7 @@ New form of `to-do item`
       Type = "submit"
       Content = "Add to list"
 
-  Submit ->
+  Submit =>
     List.push data `to-do item`
       Content = event.`form data`.content
 
@@ -151,7 +151,7 @@ New `list item`
         Checked = model.completed
     - Model.content
 
-    Click ->
+    Click =>
       Model.complete
 
 ```
