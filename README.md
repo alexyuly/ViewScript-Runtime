@@ -79,7 +79,6 @@ Has count
 
 New paragraph
   Content = "The count is {count}."
-  Margin-bottom = "12px"
 
 New button
   Content = "Click me!"
