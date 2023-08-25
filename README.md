@@ -72,7 +72,7 @@ New box
   Justify-content = "center"
   Position = "fixed"
   Width = "100%"
-  
+
   Pointer-enter ->
     Hovered
     | Set true
@@ -93,15 +93,16 @@ New paragraph
 
 New button
   Content = "Click me!"
+
   Click ->
     Count
     | Add 1
 
 New timer
   Loops = true
-  Period = 1000
   Paused = count
   | `Is at least` 100
+  Period = 1000
 
   Time ->
     Count
@@ -121,7 +122,6 @@ New form of `to-do item`
       - "New To-do:"
       - New input
           Name = "content"
-
   - New button
       Type = "submit"
       Content = "Add to list"
