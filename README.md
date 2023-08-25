@@ -60,7 +60,7 @@ Component `Hello World`
 
 Has condition hovered
 
-New box
+New flex
   Content = new paragraph
     Content = "Hello, world!"
 
@@ -78,7 +78,6 @@ New box
       Hovered.set false
 
   Align-items = "center"
-  Display = "flex"
   Height = "100%"
   Justify-content = "center"
   Position = "fixed"
