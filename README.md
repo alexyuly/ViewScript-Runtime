@@ -58,11 +58,17 @@ Here are some examples.
 ```
 Component `Hello World`
 
-New paragraph
+New box
   Content = "Hello, world!"
+  Align-items = "center"
   Color = "blue"
+  Display = "flex"
   Font-size = "24px"
   Font-weight = "bold"
+  Height = "100%"
+  Justify-content = "center"
+  Position = "fixed"
+  Width = "100%"
 
 ```
 
