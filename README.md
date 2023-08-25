@@ -54,7 +54,7 @@ Each component has
   - It is declared by `New [component]`.
 - 🔺 **Events**
   - An event is a read-only message sent from a unit to its creator. It's useful in broadly reusable components which don't update their own parameters.
-  - It is declared by `Can [identifier] [concept]`.
+  - It is declared by `Will [identifier] [concept]`.
 
 Here are some examples.
 
