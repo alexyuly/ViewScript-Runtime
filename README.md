@@ -61,8 +61,8 @@ Component `Hello World`
 New paragraph
   Content = "Hello, world!"
   Color = "blue"
-  `Font-size` = "24px"
-  `Font-weight` = "bold"
+  Font-size = "24px"
+  Font-weight = "bold"
 
 ```
 
@@ -73,7 +73,7 @@ Has count
 
 New paragraph
   Content = "The count is {count}."
-  `Margin-bottom` = "12px"
+  Margin-bottom = "12px"
 
 New button
   Content = "Click me!"
