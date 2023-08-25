@@ -61,25 +61,28 @@ Component `Hello World`
 Has condition hovered
 
 New box
-  Content = "Hello, world!"
+  Content = new paragraph
+    Content = "Hello, world!"
+
+    Color = if hovered then "blue" else nil
+    Font-size = "24px"
+    Font-weight = "bold"
+    Padding = "48px"
+
+    Pointer-enter ->
+      Hovered
+      | Set true
+
+    Pointer-leave ->
+      Hovered
+      | Set false
 
   Align-items = "center"
-  Color = if hovered then "blue" else nil
   Display = "flex"
-  Font-size = "24px"
-  Font-weight = "bold"
   Height = "100%"
   Justify-content = "center"
   Position = "fixed"
   Width = "100%"
-
-  Pointer-enter ->
-    Hovered
-    | Set true
-
-  Pointer-leave ->
-    Hovered
-    | Set false
 
 ```
 
