@@ -116,8 +116,8 @@ New form of `to-do item`
       - New input
           Name = "content"
   - New button
-      Type = "submit"
       Content = "Add to list"
+      Type = "submit"
   Submit => list.push data `to-do item`
       Content = event.values.content
 
