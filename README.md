@@ -58,10 +58,13 @@ Here are some examples.
 ```
 Component `Hello World`
 
+Has condition hovered
+
 New box
   Content = "Hello, world!"
+
   Align-items = "center"
-  Color = "blue"
+  Color = if hovered then "blue" else "default"
   Display = "flex"
   Font-size = "24px"
   Font-weight = "bold"
@@ -69,6 +72,14 @@ New box
   Justify-content = "center"
   Position = "fixed"
   Width = "100%"
+  
+  Pointer-enter ->
+    Hovered
+    | Set true
+
+  Pointer-leave ->
+    Hovered
+    | Set false
 
 ```
 
