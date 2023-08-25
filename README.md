@@ -66,20 +66,14 @@ Has condition hovered
 New main
   Content = new paragraph
     Content = "Hello, world!"
-
     Border = "1px dashed gray"
     Color = if hovered then "blue"
     Cursor = "pointer"
     Font-size = "24px"
     Font-weight = "bold"
     Padding = "48px"
-
-    Pointer-enter =>
-      Hovered.set true
-
-    Pointer-leave =>
-      Hovered.set false
-
+    Pointer-enter => hovered.set true
+    Pointer-leave => hovered.set false
   Align-items = "center"
   Display = "flex"
   Height = "100%"
@@ -99,17 +93,13 @@ New paragraph
 
 New button
   Content = "Click me!"
-
-  Click =>
-    Count.add 1
+  Click => count.add 1
 
 New timer
   Loops = true
   Paused = count.`is at least` 100
   Period = 1000
-
-  Time =>
-    Count.add 1
+  Time => count.add 1
 
 ```
 
@@ -128,10 +118,8 @@ New form of `to-do item`
   - New button
       Type = "submit"
       Content = "Add to list"
-
-  Submit =>
-    List.push data `to-do item`
-      Content = event.`form data`.content
+  Submit => list.push data `to-do item`
+      Content = event.values.content
 
 New list
   Content = list.map to view
@@ -150,9 +138,7 @@ New `list item`
         Type = "checkbox"
         Checked = model.completed
     - Model.content
-
-    Click =>
-      Model.complete
+    Click => model.complete
 
 ```
 
@@ -182,12 +168,10 @@ Has text content
 
 Has condition completed
 
-Can complete ->
-  Completed.set true
+Can complete -> completed.set true
 
-Can view ->
-  New `to-do item`
-    Model = this
+Can view -> new `to-do item`
+  Model = this
 
 ```
 
