@@ -64,7 +64,7 @@ New box
   Content = "Hello, world!"
 
   Align-items = "center"
-  Color = if hovered then "blue" else "default"
+  Color = if hovered then "blue" else nil
   Display = "flex"
   Font-size = "24px"
   Font-weight = "bold"
