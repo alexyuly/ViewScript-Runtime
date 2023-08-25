@@ -134,7 +134,7 @@ New form of `to-do item`
       Content = event.`form data`.content
 
 New list
-  Content = list.map -> view
+  Content = list.map to view
 
 ```
 
