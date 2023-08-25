@@ -65,7 +65,7 @@ New box
     Content = "Hello, world!"
 
     Border = "1px dashed gray"
-    Color = if hovered then "blue" else nil
+    Color = if hovered then "blue"
     Cursor = "pointer"
     Font-size = "24px"
     Font-weight = "bold"
