@@ -138,7 +138,7 @@ New list
 ```
 Component `To-do Item`
 
-Takes objective `to-do item` data
+Takes `to-do item` data
 
 New `list item`
   Content = new label
