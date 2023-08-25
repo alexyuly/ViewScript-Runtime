@@ -60,7 +60,7 @@ Component `Hello World`
 
 Has condition hovered
 
-New flex
+New main
   Content = new paragraph
     Content = "Hello, world!"
 
@@ -78,6 +78,7 @@ New flex
       Hovered.set false
 
   Align-items = "center"
+  Display = "flex"
   Height = "100%"
   Justify-content = "center"
   Position = "fixed"
@@ -126,7 +127,7 @@ New form of `to-do item`
       Content = "Add to list"
 
   Submit ->
-    List.push new `to-do item`
+    List.push object `to-do item`
       Content = event.`form data`.content
 
 New list
@@ -182,7 +183,7 @@ Can complete ->
   Completed.set true
 
 Can view ->
-  New subjective `to-do item`
+  New `to-do item`
     Data = this
 
 ```
