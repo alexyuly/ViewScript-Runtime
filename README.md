@@ -127,7 +127,7 @@ New form of `to-do item`
       Content = "Add to list"
 
   Submit ->
-    List.push `to-do item`
+    List.push create `to-do item`
       Content = event.`form data`.content
 
 New list
