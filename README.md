@@ -138,7 +138,7 @@ New list
 ```
 Component `To-do Item`
 
-Takes `to-do item` data
+Takes concept `to-do item` data
 
 New `list item`
   Content = new label
@@ -183,7 +183,7 @@ Can complete ->
   Completed.set true
 
 Can view ->
-  New `to-do item`
+  New component `to-do item`
     Data = this
 
 ```
