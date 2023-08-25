@@ -61,7 +61,7 @@ Here are some examples.
 ```
 Component `Hello World`
 
-Has condition hovered
+Has hovered condition
 
 New main
   Content = new paragraph
@@ -114,12 +114,12 @@ New form of `to-do item`
       Content =
       - "New To-do:"
       - New input
-          Name = "content"
+          Name = "text"
   - New button
       Content = "Add to list"
       Type = "submit"
   Submit => list.push data `to-do item`
-    Content = event.values.content
+    Text = event.values.text
 
 New list
   Content = list.map to view
@@ -129,7 +129,7 @@ New list
 ```
 Component `To-do Item`
 
-Takes `to-do item` model
+Takes model `to-do item`
 
 New `list item`
   Content = new label
@@ -137,7 +137,7 @@ New `list item`
     - New input
         Type = "checkbox"
         Checked = model.completed
-    - Model.content
+    - Model.text
     Click => model.complete
 
 ```
@@ -145,9 +145,9 @@ New `list item`
 ```
 Concept `To-do Item`
 
-Has text content
+Has text
 
-Has condition completed
+Has completed condition
 
 Can complete -> completed.set true
 
