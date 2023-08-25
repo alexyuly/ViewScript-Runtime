@@ -60,6 +60,9 @@ Component `Hello World`
 
 New paragraph
   Content = "Hello, world!"
+  Color = "blue"
+  `Font-size` = "24px"
+  `Font-weight` = "bold"
 
 ```
 
@@ -70,6 +73,7 @@ Has count
 
 New paragraph
   Content = "The count is {count}."
+  `Margin-bottom` = "12px"
 
 New button
   Content = "Click me!"
@@ -78,8 +82,8 @@ New button
     | Add 1
 
 New timer
-  Period = 1000
   Loops = true
+  Period = 1000
   Paused = count
   | `Is at least` 100
 
