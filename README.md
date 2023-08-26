@@ -6,57 +6,93 @@ Welcome to Compendium! From here, you will embark on a magical journey, building
 
 Compendium Studio is your one stop shop for building apps that run in a web browser.
 
-- ☑️ Create, open, and update `.spec` files containing Compendium code.
-- ☑️ Explore a tree of open files and their inner elements.
-- ☑️ Develop reactive components with two-way data bindings. _(Yes!)_
-- ☑️ Define reusable concepts with data and business logic.
-- ☑️ Drag, drop, adjust, and inspect your app using design tools.
-- ☑️ Preview and test your app without compiling or refreshing.
-- ☑️ Build and deploy production-ready HTML, CSS, and JavaScript.
-
-Now, code _is_ your spec, and what you build _is_ your product!
-
 ## Finder
 
 **Finder** shows a searchable tree of your open files, with a summary of the elements within each one.
-
-Select `File -> New...` to create a new file, add it to Explorer, and select it.
-
-Select `File -> Open...` to add a saved file to Explorer and select it.
-
-Select `File -> Close...` to remove the selected files, after confirming.
 
 ### Components 🧱
 
 Components are the building blocks of apps.
 
-A component is declared in code by
+- `Component [identifier]`
+- `Component [identifier] of [concept]`
 
-```
-Component [name]
-```
+Each `[identifier]` is a case-insensitive sequence of characters including a-z and hyphens, or else any characters except line breaks and backticks, if enclosed by backticks.
 
-The `[name]` can be a sequence of a-z case-insensitive characters, or a sequence of any characters except line breaks and backticks, enclosed by backticks.
-
-Each component has
+Each component may have these declarations:
 
 - 🔻 **Parameters**
-  - A parameter is a writable value, or a read-only instance of a component, sent from an instance of one component to another that it created. It's useful in any component whose behavior depends on context.
-  - It is declared by
-    - `Takes [concept] [identifier]` or
-    - `Shows [component] [identifier]`
-
+  - `Takes [concept]`
+  - `Takes optional [concept]`
+  - `Takes [identifier] [concept]`
+  - `Takes optional [identifier] [concept]`
+  - `Shows [component]`
+  - `Shows optional [component]`
+  - `Shows [identifier] [component]`
+  - `Shows optional [identifier] [component]`
 - 🟨 **Stores**
-  - A store is a writable value created and updated privately, by the instance of a component that created it, and by any units that component creates.
-  - It is declared by `Has [concept] [identifier]`.
+  - `Has [concept]`
+  - `Has optional [concept]`
+  - `Has [identifier] [concept]`
+  - `Has optional [identifier] [concept]`
 - 🔵 **Units**
-  - A unit is an instance of one component created by another. It does something for its creator, like painting a part of the UI, or running a timer.
-  - It is declared by `New [component]`.
+  - `New [component]`
 - 🔺 **Events**
-  - An event is a read-only message sent from a unit to its creator. It's useful in broadly reusable components which don't update their own parameters.
-  - It is declared by `Will [identifier] [concept]`.
+  - `Will [identifier]`
+  - `Will [identifier] [concept]`
+  - `Will [identifier] optional [concept]`
 
-Here are some examples.
+### Concepts 📚
+
+Concepts are data types that include specification of how to create and update related objects.
+
+- `Concept [identifier]`
+- `Concept [identifier] of [concept]`
+
+Each concept may have these declarations:
+
+- 🔶 **Properties**
+  - `Has [concept]`
+  - `Has optional [concept]`
+  - `Has [identifier] [concept]`
+  - `Has optional [identifier] [concept]`
+- ⚡️ **Methods**
+  - `Can [identifier]`
+  - `Can [identifier] [concept]`
+  - `Can [identifier] optional [concept]`
+
+### Environments 🌎
+
+Environments hold sets of variables you can pass down to apps when you build and deploy.
+
+## Editor
+
+**Editor** shows editable content for the items selected in Finder.
+
+- 📋 Create, update, and delete items, in a detailed property editor.
+- 💎 View and edit the source code of spec files, and parts of files.
+
+## Viewer
+
+**Viewer** shows a preview of the items selected in Finder.
+
+Viewer has three modes:
+
+1. 🧩 Arrangement:
+
+- Click units to select them.
+- Drag units to reorder and reposition them.
+
+2. 🎨 Refinement:
+
+- Click units to select them.
+- Drag areas around and between units to adjust sizing and spacing.
+
+3. 🚘 Testing:
+
+- Interact with the app as if it were running in a browser.
+
+## Code Examples
 
 ```
 Component `Hello World`
@@ -155,51 +191,3 @@ Can view -> new `to-do item`
   Model = this
 
 ```
-
-### Concepts 📚
-
-Concepts are data types that include specification of how to create and update related objects.
-
-TODO Explain Concept syntax in code
-
-TODO Cover generic concepts and components
-
-Each concept has
-
-- 🔶 **Properties**
-  - A property is an instance of one concept that is part of another. It stores data that can be read by anyone, written by its own methods, and used to construct a new instance of the concept.
-  - It is declared by `Has [modifier] [concept] [identifier]`.
-- ⚡️ **Methods**
-  - A method is a routine which updates a concept instance or creates a new one based on it, with an optional argument.
-  - It is declared by `Can [identifier] [concept] [concept identifier]`.
-
-### Environments 🌎
-
-Environments hold sets of variables you can pass down to apps when you build and deploy.
-
-## Editor
-
-**Editor** shows editable content for the items selected in Finder.
-
-- 📋 Create, update, and delete items, in a detailed property editor.
-- 💎 View and edit the source code of spec files, and parts of files.
-
-## Viewer
-
-**Viewer** shows a preview of the items selected in Finder.
-
-Viewer has three modes:
-
-1. 🧩 Arrangement:
-
-- Click units to select them.
-- Drag units to reorder and reposition them.
-
-2. 🎨 Refinement:
-
-- Click units to select them.
-- Drag areas around and between units to adjust sizing and spacing.
-
-3. 🚘 Testing:
-
-- Interact with the app as if it were running in a browser.
