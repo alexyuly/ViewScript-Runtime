@@ -76,6 +76,14 @@ Each concept may have these declarations:
 
 Environments hold sets of variables you can pass down to apps when you build and deploy.
 
+- `Environment [identifier]`
+
+Each environment may have these declarations:
+
+- 📦 **Builds**
+  - One or more declarations
+  - `App [component]`
+
 ## Editor
 
 **Editor** shows editable content for the items selected in Finder.
@@ -205,6 +213,10 @@ Can view -> new `to-do item`
 
 ```
 Environment Local
+
+App `hello world`
+
+App counter
 
 App `to-do list`
 
