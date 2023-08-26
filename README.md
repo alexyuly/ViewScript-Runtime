@@ -35,12 +35,12 @@ Each component may have these declarations:
   - `Has optional [concept]`
   - `Has [identifier] [concept]`
   - `Has optional [identifier] [concept]`
-- 🔵 **Units**
-  - `New [component]`
 - 🔺 **Events**
   - `Will [identifier]`
   - `Will [identifier] [concept]`
   - `Will [identifier] optional [concept]`
+- 🔵 **Units**
+  - `New [component]`
 
 ### Concepts 📚
 
