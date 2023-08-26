@@ -15,12 +15,12 @@ Compendium Studio is your one stop shop for building apps that run in a web brow
 Components are the building blocks of apps.
 
 - `Component [identifier]`
-- `Component [identifier] of [concept]`
 
 Each `[identifier]` is a case-insensitive sequence of characters including a-z and hyphens, or else any characters except line breaks and backticks, if enclosed by backticks.
 
 Each component may have these declarations:
 
+- `Generic [identifier] extends [concept]`
 - 🔻 **Parameters**
   - `Shows [component]`
   - `Shows optional [component]`
@@ -47,10 +47,11 @@ Each component may have these declarations:
 Concepts are data types that include specification of how to create and update related objects.
 
 - `Concept [identifier]`
-- `Concept [identifier] of [concept]`
+- `Concept [identifier] extends [concept]`
 
 Each concept may have these declarations:
 
+- `Generic [identifier] extends [concept]`
 - 🔶 **Properties**
   - `Has [concept]`
   - `Has optional [concept]`
