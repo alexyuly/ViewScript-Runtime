@@ -22,14 +22,14 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 Each component may have these declarations:
 
 - 🔻 **Parameters**
-  - `Takes [concept]`
-  - `Takes optional [concept]`
-  - `Takes [identifier] [concept]`
-  - `Takes optional [identifier] [concept]`
   - `Shows [component]`
   - `Shows optional [component]`
   - `Shows [identifier] [component]`
   - `Shows optional [identifier] [component]`
+  - `Takes [concept]`
+  - `Takes optional [concept]`
+  - `Takes [identifier] [concept]`
+  - `Takes optional [identifier] [concept]`
 - 🟨 **Stores**
   - `Has [concept]`
   - `Has optional [concept]`
