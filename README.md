@@ -20,8 +20,11 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 
 Each component may have these declarations:
 
-- `Generic [identifier] extends [concept]`
+- Generic concept
+  - Zero or one declaration
+  - `Generic [identifier] extends [concept]`
 - 🔻 **Parameters**
+  - Zero or more declarations
   - `Shows [component]`
   - `Shows optional [component]`
   - `Shows [identifier] [component]`
@@ -31,15 +34,18 @@ Each component may have these declarations:
   - `Takes [identifier] [concept]`
   - `Takes optional [identifier] [concept]`
 - 🟨 **Stores**
+  - Zero or more declarations
   - `Has [concept]`
   - `Has optional [concept]`
   - `Has [identifier] [concept]`
   - `Has optional [identifier] [concept]`
 - 🔺 **Events**
+  - Zero or more declarations
   - `Will [identifier]`
   - `Will [identifier] [concept]`
   - `Will [identifier] optional [concept]`
 - 🔵 **Units**
+  - One or more declarations
   - `New [component]`
 
 ### Concepts 📚
@@ -51,13 +57,17 @@ Concepts are data types that include specification of how to create and update r
 
 Each concept may have these declarations:
 
-- `Generic [identifier] extends [concept]`
+- Generic concept
+  - Zero or one declaration
+  - `Generic [identifier] extends [concept]`
 - 🔶 **Properties**
+  - One or more declarations
   - `Has [concept]`
   - `Has optional [concept]`
   - `Has [identifier] [concept]`
   - `Has optional [identifier] [concept]`
 - ⚡️ **Methods**
+  - Zero or more declarations
   - `Can [identifier]`
   - `Can [identifier] [concept]`
   - `Can [identifier] optional [concept]`
