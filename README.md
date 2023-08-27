@@ -120,7 +120,8 @@ Has hovered condition
 
 New main
   Content = new paragraph
-    Content = "Hello, world!"
+    Content = new text
+      Content = "Hello, world!"
     Border = "1px dashed gray"
     Color = if hovered then "blue"
     Cursor = "pointer"
@@ -144,7 +145,8 @@ Component Counter
 Has count
 
 New paragraph
-  Content = "The count is {count}."
+  Content = new text
+    Content = "The count is {count}."
 
 New button
   Content = "Click me!"
@@ -167,11 +169,13 @@ New form of `to-do item`
   Content =
   - New label
       Content =
-      - "New To-do:"
+      - New text
+          Content = "New To-do:"
       - New input
           Name = "text"
   - New button
-      Content = "Add to list"
+      Content = new text
+        Content = "Add to list"
       Type = "submit"
   Submit => list.push data `to-do item`
     Text = it.values.text
@@ -192,7 +196,8 @@ New `list item`
     - New input
         Type = "checkbox"
         Checked = model.completed
-    - Model.text
+    - New text
+        Content = Model.text
     Click => model.complete
 
 ```
