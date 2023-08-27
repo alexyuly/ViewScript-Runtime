@@ -190,7 +190,7 @@ Component `To-do Item`
 
 Takes model `to-do item`
 
-New `list item`
+New list-item
   Content = new label
     Content =
     - New input
@@ -219,10 +219,10 @@ Can view -> new `to-do item`
 ```
 Environment Local
 
-App `hello world`
+App `Hello World`
 
-App counter
+App Counter
 
-App `to-do list`
+App `To-do List`
 
 ```
