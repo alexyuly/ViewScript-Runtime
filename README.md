@@ -230,6 +230,26 @@ App `To-do List`
 Lower level
 
 ```
+Alias `List Or One`
+
+Generic type
+
+As any
+- Type
+- List of type
+
+```
+
+```
+Alias `Phrasing Content`
+
+As `list or one` of any
+- Span
+- Text
+
+```
+
+```
 Natural Component Text
 
 Takes content text
@@ -241,9 +261,7 @@ Will naturally create
 ```
 Natural Component Span
 
-Takes content one of
-- Text
-- Span
+Handles content `phrasing content`
 
 Will naturally create 
 
@@ -252,9 +270,7 @@ Will naturally create
 ```
 Natural Component Paragraph
 
-Handles content one of
-- Text
-- Span
+Handles content `phrasing content`
 
 Will naturally create
 
