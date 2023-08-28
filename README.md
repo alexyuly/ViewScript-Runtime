@@ -25,10 +25,10 @@ Each component may have these declarations:
   - `Generic [identifier] extends [concept]`
 - 🔻 **Parameters**
   - Zero or more declarations
-  - `Shows [component]`
-  - `Shows optional [component]`
-  - `Shows [identifier] [component]`
-  - `Shows optional [identifier] [component]`
+  - `Consumes [component]`
+  - `Consumes optional [component]`
+  - `Consumes [identifier] [component]`
+  - `Consumes optional [identifier] [component]`
   - `Takes [concept]`
   - `Takes optional [concept]`
   - `Takes [identifier] [concept]`
