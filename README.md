@@ -285,4 +285,12 @@ Takes color `css color`
 
 Will create naturally
 
+Will pointer-enter naturally
+
+Will pointer-leave naturally
+
+# etc...
+
+# and we need to implement component mixins 
+
 ```
