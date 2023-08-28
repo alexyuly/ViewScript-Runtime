@@ -20,9 +20,10 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 
 Each component may have these declarations:
 
-- Generic concept
+- When an unknown concept should be specified later:
   - Zero or one declaration
-  - `Generic [identifier] extends [concept]`
+  - `Knows [identifier]`
+  - `Knows [identifier] extends [concept]`
 - 🔻 **Parameters**
   - Zero or more declarations
   - `Handles [component]`
@@ -57,9 +58,10 @@ Concepts are data types that include specification of how to create and update r
 
 Each concept may have these declarations:
 
-- Generic concept
+- When an unknown concept should be specified later:
   - Zero or one declaration
-  - `Generic [identifier] extends [concept]`
+  - `Knows [identifier]`
+  - `Knows [identifier] extends [concept]`
 - 🔶 **Properties**
   - One or more declarations
   - `Has [concept]`
@@ -232,7 +234,7 @@ Lower level
 ```
 Alias `List Or One`
 
-Generic type
+Knows type
 
 As any
 - Type
