@@ -232,7 +232,9 @@ App `To-do List`
 Lower level
 
 ```
-Alias `List Or One` of type
+Alias `List Or One`
+
+Knows of type
 
 As any of
 - Type
