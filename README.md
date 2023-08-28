@@ -226,3 +226,36 @@ App Counter
 App `To-do List`
 
 ```
+
+Lower level
+
+```
+Natural Component Text
+
+Takes content text
+
+Will naturally create 
+
+```
+
+```
+Natural Component Span
+
+Takes content one of
+- Text
+- Span
+
+Will naturally create 
+
+```
+
+```
+Natural Component Paragraph
+
+Handles content one of
+- Text
+- Span
+
+Will naturally create
+
+```
