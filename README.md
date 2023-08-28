@@ -263,7 +263,7 @@ Naturally will create
 ```
 Natural Component Span
 
-Mixes in `html element`
+Mixes in element
 
 Handles content `phrasing content`
 
@@ -272,14 +272,14 @@ Handles content `phrasing content`
 ```
 Natural Component Paragraph
 
-Mixes in `html element`
+Mixes in element
 
 Handles content `phrasing content`
 
 ```
 
 ```
-Recipe `Html Element`
+Abstract Component Element
 
 Takes border `css shorthand` of
 - `Css border-width`
@@ -288,12 +288,12 @@ Takes border `css shorthand` of
 
 Takes color `css color`
 
-# and so much more...
-
 Naturally will create
 
 Will pointer-enter pointer
 
 Will pointer-leave pointer
+
+# and so much more...
 
 ```
