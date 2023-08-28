@@ -263,7 +263,7 @@ Naturally will create
 ```
 Natural Component Span
 
-Mixes in element
+Implements element
 
 Handles content `phrasing content`
 
@@ -272,7 +272,7 @@ Handles content `phrasing content`
 ```
 Natural Component Paragraph
 
-Mixes in element
+Implements element
 
 Handles content `phrasing content`
 
