@@ -274,6 +274,15 @@ Natural Component Paragraph
 
 Handles content `phrasing content`
 
+Takes border `css shorthand`
+- `Css border-width`
+- `Css border-style`
+- `Css border-color`
+
+Takes color `css color`
+
+# and so much more...
+
 Will create naturally
 
 ```
