@@ -232,11 +232,9 @@ App `To-do List`
 Lower level
 
 ```
-Alias `List Or One`
+Alias `List Or One` of type
 
-Knows of type
-
-As any
+As any of
 - Type
 - List of type
 
@@ -245,7 +243,7 @@ As any
 ```
 Alias `Phrasing Content`
 
-As `list or one` of any
+As `list or one` of any of
 - Span
 - Text
 
@@ -267,6 +265,8 @@ Implements element
 
 Handles content `phrasing content`
 
+Naturally will create
+
 ```
 
 ```
@@ -275,6 +275,8 @@ Natural Component Paragraph
 Implements element
 
 Handles content `phrasing content`
+
+Naturally will create
 
 ```
 
@@ -287,8 +289,6 @@ Takes border `css shorthand` of
 - `Css border-color`
 
 Takes color `css color`
-
-Naturally will create
 
 Will pointer-enter pointer
 
