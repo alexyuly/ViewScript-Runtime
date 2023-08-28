@@ -256,7 +256,7 @@ Natural Component Text
 
 Takes content text
 
-Will create naturally
+Naturally will create
 
 ```
 
@@ -265,7 +265,7 @@ Natural Component Span
 
 Handles content `phrasing content`
 
-Will create naturally
+Naturally will create
 
 ```
 
@@ -283,11 +283,11 @@ Takes color `css color`
 
 # and so much more...
 
-Will create naturally
+Naturally will create
 
-Will pointer-enter naturally
+Will pointer-enter pointer
 
-Will pointer-leave naturally
+Will pointer-leave pointer
 
 # etc...
 
