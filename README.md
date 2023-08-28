@@ -22,8 +22,8 @@ Each component may have these declarations:
 
 - When an unknown concept should be specified later:
   - Zero or one declaration
-  - `Knows [identifier]`
-  - `Knows [identifier] extends [concept]`
+  - `Knows of [identifier]`
+  - `Knows of [identifier] extends [concept]`
 - 🔻 **Parameters**
   - Zero or more declarations
   - `Handles [component]`
@@ -60,8 +60,8 @@ Each concept may have these declarations:
 
 - When an unknown concept should be specified later:
   - Zero or one declaration
-  - `Knows [identifier]`
-  - `Knows [identifier] extends [concept]`
+  - `Knows of [identifier]`
+  - `Knows of [identifier] extends [concept]`
 - 🔶 **Properties**
   - One or more declarations
   - `Has [concept]`
@@ -234,7 +234,7 @@ Lower level
 ```
 Alias `List Or One`
 
-Knows type
+Knows of type
 
 As any
 - Type
@@ -274,7 +274,7 @@ Natural Component Paragraph
 
 Handles content `phrasing content`
 
-Takes border `css shorthand`
+Takes border `css shorthand` of
 - `Css border-width`
 - `Css border-style`
 - `Css border-color`
