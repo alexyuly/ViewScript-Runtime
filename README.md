@@ -254,7 +254,7 @@ Natural Component Text
 
 Takes content text
 
-Will naturally create 
+Will create naturally
 
 ```
 
@@ -263,7 +263,7 @@ Natural Component Span
 
 Handles content `phrasing content`
 
-Will naturally create 
+Will create naturally
 
 ```
 
@@ -272,6 +272,6 @@ Natural Component Paragraph
 
 Handles content `phrasing content`
 
-Will naturally create
+Will create naturally
 
 ```
