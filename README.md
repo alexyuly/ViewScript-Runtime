@@ -20,10 +20,10 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 
 Each component may have these declarations:
 
-- When an unknown concept or component should be specified later:
+- When an unknown concept should be specified later:
   - Zero or more declarations
   - `Knows [identifier]`
-  - `Knows [identifier] extends [type]`
+  - `Knows [identifier] extends [concept]`
 - 🔻 **Parameters**
   - Zero or more declarations
   - `Handles [component]`
@@ -285,17 +285,37 @@ Naturally will create
 ```
 Abstract Component Element
 
-Takes border `css shorthand` of any
-- `Css border-width`
-- `Css border-style`
-- `Css border-color`
+Takes align-items
+Takes background
+Takes border
+Takes color
+Takes cursor
+Takes display
+Takes flex
+Takes flex-flow
+Takes font
+Takes font-family
+Takes font-size
+Takes font-weight
+Takes gap
+Takes grid-template
+Takes height
+Takes justify-content
+Takes margin
+Takes outline
+Takes padding
+Takes position
+Takes text-decoration
+Takes width
 
-Takes color `css color`
-
+Will blur
+Will click pointer
+Will focus
+Will pointer-cancel pointer
+Will pointer-down pointer
 Will pointer-enter pointer
-
 Will pointer-leave pointer
-
-# and so much more...
+Will pointer-move pointer
+Will pointer-up pointer
 
 ```
