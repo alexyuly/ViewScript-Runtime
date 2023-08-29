@@ -21,9 +21,11 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 Each component may have these declarations:
 
 - When an unknown concept should be specified later:
-  - Zero or one declaration
-  - `Knows of [identifier]`
-  - `Knows of [identifier] extends [concept]`
+  - Zero or more declarations
+  - `Knows [identifier]`
+  - `Knows many [identifier]`
+  - `Knows [identifier] extends [concept]`
+  - `Knows many [identifier] extends [concept]`
 - 🔻 **Parameters**
   - Zero or more declarations
   - `Handles [component]`
