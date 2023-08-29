@@ -20,12 +20,10 @@ Each `[identifier]` is a case-insensitive sequence of characters including a-z a
 
 Each component may have these declarations:
 
-- When an unknown concept should be specified later:
+- When an unknown concept or component should be specified later:
   - Zero or more declarations
   - `Knows [identifier]`
-  - `Knows many [identifier]`
-  - `Knows [identifier] extends [concept]`
-  - `Knows many [identifier] extends [concept]`
+  - `Knows [identifier] extends [type]`
 - 🔻 **Parameters**
   - Zero or more declarations
   - `Handles [component]`
@@ -62,8 +60,8 @@ Each concept may have these declarations:
 
 - When an unknown concept should be specified later:
   - Zero or one declaration
-  - `Knows of [identifier]`
-  - `Knows of [identifier] extends [concept]`
+  - `Knows [identifier]`
+  - `Knows [identifier] extends [concept]`
 - 🔶 **Properties**
   - One or more declarations
   - `Has [concept]`
@@ -236,9 +234,9 @@ Lower level
 ```
 Alias `List Or One`
 
-Knows of type
+Knows type
 
-As any of
+As any
 - Type
 - List of type
 
@@ -247,7 +245,7 @@ As any of
 ```
 Alias `Phrasing Content`
 
-As `list or one` of any of
+As `list or one` of any
 - Span
 - Text
 
@@ -287,7 +285,7 @@ Naturally will create
 ```
 Abstract Component Element
 
-Takes border `css shorthand` of
+Takes border `css shorthand` of any
 - `Css border-width`
 - `Css border-style`
 - `Css border-color`
