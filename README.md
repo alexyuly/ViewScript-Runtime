@@ -23,13 +23,34 @@ In fact, vanilla JavaScript fails resoundingly at the task of maintaining large 
 **The Compendium** provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is _NOT_ intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Many or most web-based content will never need the Compendium. Only dynamic web apps can benefit from it, and even then probably only greenfield apps with limited external integrations.
 
 I have three key design goals:
-- **Dramatically reduce the bloat** of web apps, in terms of dependency quality and quantity, file size, and runtime performance.
-- **Eliminate boilerplate code** for web apps, by requiring consistent, predictable design patterns for components and systems.
-- **Elevate ubiquitous technical terminology** in apps and products, shared across R&D by engineers, designers, and managers.
+- **To dramatically reduce the bloat** of frontend web apps,
+  - in terms of dependency quality and quantity, file size, and runtime performance.
+- **To eliminate boilerplate code** for frontend web apps,
+  - by requiring consistent, predictable design patterns for components and systems.
+- **To elevate ubiquitous technical terminology** in apps and products,
+  - shared across R&D by frontend engineers, designers, and managers.
 
-_TODO more... ✏️_
+_TODO anything else to say? ✏️_
 
-## High-Level
+## Compendium Studio
+
+_TODO expand this section as studio is developed..._
+
+### Finder
+
+**Finder** shows a searchable tree of your open files, with a summary of the items within each one.
+
+### Editor
+
+**Editor** shows editable content for the items selected in Finder.
+
+### Viewer
+
+**Viewer** shows a preview of the items selected in Finder, which may be edited and manipulated.
+
+## Compendium Core Spec
+
+_TODO expand this section as the core is developed..._
 
 ### Identifiers
 
@@ -37,7 +58,7 @@ Each `[identifier]` is delimited by whitespace, case insensitive, and:
 - if enclosed by backticks, then any characters except line breaks and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
-## Components 🧱
+### Components 🧱
 
 Components are the building blocks of apps.
 
@@ -61,7 +82,7 @@ Each component may declare these items:
     - `Will [identifier] [concept]`
     - `Will [identifier] optional [concept]`
 
-## Concepts 📚
+### Concepts 📚
 
 Concepts are the building blocks of data in apps.
 
@@ -86,7 +107,7 @@ Each concept may have these declarations:
     - `Makes [identifier] of [concept] from [expression]`
     - `Makes [identifier] of optional [concept] from [expression]`
 
-## Environments 🌎
+### Environments 🌎
 
 Environments pass down variables to apps when they build.
 
@@ -96,19 +117,7 @@ Each environment may have these declarations:
 
 - 📦 **Builds**
 
-## Finder
-
-**Finder** shows a searchable tree of your open files, with a summary of the items within each one.
-
-## Editor
-
-**Editor** shows editable content for the items selected in Finder.
-
-## Viewer
-
-**Viewer** shows a preview of the items selected in Finder, which may be edited and manipulated.
-
-## Code Examples
+## Compendium Code Examples
 
 ### "Hello, World!" (Stylish Version)
 
