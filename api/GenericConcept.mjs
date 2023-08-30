@@ -1,6 +1,3 @@
-import assert from "assert";
-import GenericListener from "./GenericListener.mjs";
-
 /**
  * Boxes any value for publishing and subscribing
  */
@@ -19,11 +16,6 @@ export default class GenericConcept {
   }
 
   subscribe(listener) {
-    assert(
-      listener instanceof GenericListener,
-      "You must provide an instance of GenericListener to subscribe to a GenericConcept"
-    );
-
     this.listeners.push(listener);
   }
 }
