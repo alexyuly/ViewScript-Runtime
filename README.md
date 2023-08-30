@@ -38,9 +38,9 @@ Each component may declare these items:
   - 🔵 **Units**
     - `Create [identifier]`
   - 🔺 **Events**
-    - `Will [event identifier]`
-    - `Will [event identifier] [concept]`
-    - `Will [event identifier] optional [concept]`
+    - `Will [identifier]`
+    - `Will [identifier] [concept]`
+    - `Will [identifier] optional [concept]`
 
 ## Concepts 📚
 
@@ -63,9 +63,9 @@ Each concept may have these declarations:
     - `Can [identifier] [concept]`
     - `Can [identifier] optional [concept]`
   - 🧪 **Methods**
-    - `Makes [event identifier] from [expression]`
-    - `Makes [event identifier] of [concept] from [expression]`
-    - `Makes [event identifier] of optional [concept] from [expression]`
+    - `Makes [identifier] from [expression]`
+    - `Makes [identifier] of [concept] from [expression]`
+    - `Makes [identifier] of optional [concept] from [expression]`
 
 ## Environments 🌎
 
