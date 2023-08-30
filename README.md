@@ -128,9 +128,9 @@ Create <main>
     cursor = "pointer"
     font = "24px sans-serif bold"
     padding = "48px"
-    pointerenter =>
+    On pointerenter
       Set hovered to true
-    pointerleave =>
+    On pointerleave
       Set hovered to false
   align-items = "center"
   display = "flex"
@@ -151,14 +151,14 @@ Create <p>
 
 Create <button>
   content = "Click me!"
-  click =>
+  On click
     Count add 1
 
 Create timer
   Loops = true
   Paused = count `is less than` 100
   Period = 1000
-  Time =>
+  On time
     Count add 1
 
 ```
@@ -179,7 +179,7 @@ Create <form> of `to-do item`
   - <button>
       content = "Add to list"
       type = "submit"
-  submit =>
+  On submit
     To-dos push new `to-do item`
       Text = it.values.text
 
@@ -200,8 +200,8 @@ Create <li>
         checked = model.completed
         type = "checkbox"
     - Model.text
-    click =>
-      Model.complete
+    On click
+      Model complete
 
 ```
 
@@ -212,10 +212,10 @@ Take text of string
 
 Let completed be false
 
-Can complete ->
+Can complete
   Set completed to true
 
-Can view ->
+Can view
   Create `to-do item`
     Model = this
 
