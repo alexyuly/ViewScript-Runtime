@@ -10,6 +10,10 @@ export default class StringBoxedValue extends GenericBoxedValue {
 
   // Methods:
 
+  is(value) {
+    return Object.is(this.value, value);
+  }
+
   length() {
     return value.length;
   }

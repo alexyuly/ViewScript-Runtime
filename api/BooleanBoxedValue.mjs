@@ -18,7 +18,7 @@ export default class BooleanBoxedValue extends GenericBoxedValue {
     this.publish(true);
   }
 
-  toggle() {
+  reverse() {
     this.publish(this.inverse());
   }
 

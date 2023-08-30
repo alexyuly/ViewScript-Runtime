@@ -1,7 +1,7 @@
-Boxed Concept Boolean
+Natural Concept Boolean
 
 Can disable
 Can enable
-Can toggle
+Can reverse
 
 Makes inverse from boolean
