@@ -26,9 +26,29 @@ export default class NumberBoxedValue extends GenericBoxedValue {
     this.publish(-this.value);
   }
 
+  subtract(value) {
+    this.publish(this.value - value);
+  }
+
   // Methods:
+
+  is(value) {
+    return Object.is(this.value, value);
+  }
 
   ["is at least"](value) {
     return this.value >= value;
+  }
+
+  ["is at most"](value) {
+    return this.value <= value;
+  }
+
+  ["is less than"](value) {
+    return this.value < value;
+  }
+
+  ["is more than"](value) {
+    return this.value > value;
   }
 }
