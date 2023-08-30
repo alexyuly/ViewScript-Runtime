@@ -129,9 +129,9 @@ Create <main>
     font = "24px sans-serif bold"
     padding = "48px"
     On pointerenter
-      Set hovered to true
+      Hovered: enable
     On pointerleave
-      Set hovered to false
+      Hovered: disable
   align-items = "center"
   display = "flex"
   height = "100%"
@@ -152,14 +152,14 @@ Create <p>
 Create <button>
   Content = "Click me!"
   On click
-    Count add 1
+    Count: add 1
 
 Create timer
   Loops = true
   Paused = count `is less than` 100
   Period = 1000
   On time
-    Count add 1
+    Count: add 1
 
 ```
 
@@ -201,7 +201,7 @@ Create <li>
         type = "checkbox"
     - Model.text
     On click
-      Model complete
+      Model: complete
 
 ```
 
@@ -213,7 +213,7 @@ Take text of string
 Let completed be false
 
 Can complete
-  Set completed to true
+  Completed: enable
 
 Can view -> create `to-do item`
   Model = this
