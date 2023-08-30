@@ -184,7 +184,7 @@ Create <form> of `to-do item`
       Text = it.data.text
 
 Create <ul>
-  Content = to-dos map -> view
+  Content = to-dos map to view
 
 ```
 
@@ -215,8 +215,9 @@ Let completed be false
 Can complete
   Completed: enable
 
-Can view -> create `to-do item`
-  Model = this
+Can view
+  Return create `to-do item`
+    Model = this
 
 ```
 
