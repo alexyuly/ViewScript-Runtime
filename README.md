@@ -180,11 +180,11 @@ Create <form> of `to-do item`
       Content = "Add to list"
       type = "submit"
   On submit
-    To-dos push new `to-do item`
+    To-dos: push new `to-do item`
       Text = it.data.text
 
 Create <ul>
-  Content = to-dos map to view
+  Content = to-dos: map to view
 
 ```
 
