@@ -121,8 +121,8 @@ Component `Hello World`
 Let hovered be false
 
 Create <main>
-  content = <p>
-    content = "Hello, world!"
+  Content = <p>
+    Content = "Hello, world!"
     border = "1px dashed gray"
     color = if hovered then "blue"
     cursor = "pointer"
@@ -147,10 +147,10 @@ Component Counter
 Let count be 0
 
 Create <p>
-  content = "The count is {count}."
+  Content = "The count is {count}."
 
 Create <button>
-  content = "Click me!"
+  Content = "Click me!"
   On click
     Count add 1
 
@@ -169,22 +169,22 @@ Component `To-do List`
 Let to-dos be new list of `to-do item`
 
 Create <form> of `to-do item`
-  content =
+  Content =
   - <label>
-      content =
+      Content =
       - "New To-do:"
       - <input>
           name = "text"
           type = "text"
   - <button>
-      content = "Add to list"
+      Content = "Add to list"
       type = "submit"
   On submit
     To-dos push new `to-do item`
       Text = it.values.text
 
 Create <ul>
-  content = to-dos map for view
+  Content = to-dos map for view
 
 ```
 
@@ -194,8 +194,8 @@ Component `To-do Item`
 Take model of `to-do item`
 
 Create <li>
-  content = <label>
-    content =
+  Content = <label>
+    Content =
     - <input>
         checked = model.completed
         type = "checkbox"
