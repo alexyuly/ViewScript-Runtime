@@ -123,19 +123,19 @@ Store hovered = false
 Create <main>
   content = <p>
     content = "Hello, world!"
-    border = 1px dashed gray
-    color = if hovered then blue
-    cursor = pointer
-    font = 24px sans-serif bold
-    padding = 48px
+    border = "1px dashed gray"
+    color = if hovered then "blue"
+    cursor = "pointer"
+    font = "24px sans-serif bold"
+    padding = "48px"
     on pointerenter: hovered = true
     on pointerleave: hovered = false
-  align-items = center
-  display = flex
-  height = 100%
-  justify-content = center
-  position = fixed
-  width = 100%
+  align-items = "center"
+  display = "flex"
+  height = "100%"
+  justify-content = "center"
+  position = "fixed"
+  width = "100%"
 
 ```
 
@@ -170,7 +170,7 @@ Create <form> of `to-do item`
       content =
       - "New To-do:"
       - <input>
-          type = text
+          type = "text"
           name = "text"
   - <button>
       content = "Add to list"
@@ -192,7 +192,7 @@ Create <li>
   content = <label>
     content =
     - <input>
-        type = checkbox
+        type = "checkbox"
         checked = model.completed
     - model.text
     on click: model.complete
