@@ -31,6 +31,8 @@ I have three key design goals:
   - shared across R&D by frontend engineers, designers, and managers.
 
 _TODO anything else to say? ✏️_
+- HTML and CSS are almost entirely user-facing; JavaScript is not, mostly
+- striving for parity between GUI and code development experiences within an IDE
 
 ## Compendium Studio
 
