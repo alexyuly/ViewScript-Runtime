@@ -118,7 +118,7 @@ Viewer has three modes:
 ```
 Component `Hello World`
 
-Let hovered = false
+Let hovered be false
 
 Create <main>
   content = <p>
@@ -129,9 +129,9 @@ Create <main>
     font = "24px sans-serif bold"
     padding = "48px"
     pointerenter =>
-      Set hovered = true
+      Set hovered to true
     pointerleave =>
-      Set hovered = false
+      Set hovered to false
   align-items = "center"
   display = "flex"
   height = "100%"
@@ -144,7 +144,7 @@ Create <main>
 ```
 Component Counter
 
-Let count = 0
+Let count be 0
 
 Create <p>
   content = "The count is {count}."
@@ -166,7 +166,7 @@ Create timer
 ```
 Component `To-do List`
 
-Let to-dos = new list of `to-do item`
+Let to-dos be new list of `to-do item`
 
 Create <form> of `to-do item`
   content =
@@ -184,7 +184,7 @@ Create <form> of `to-do item`
       Text = it.values.text
 
 Create <ul>
-  content = to-dos map to view
+  content = to-dos map for view
 
 ```
 
@@ -210,10 +210,10 @@ Concept `To-do Item`
 
 Take text of string
 
-Let completed = false
+Let completed be false
 
 Can complete ->
-  Set completed = true
+  Set completed to true
 
 Can view ->
   Create `to-do item`
