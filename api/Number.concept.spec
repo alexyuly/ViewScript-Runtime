@@ -6,8 +6,8 @@ Can multiply number
 Can negate
 Can subtract number
 
-Makes is of number from boolean
-Makes `is at least` of number from boolean
-Makes `is at most` of number from boolean
-Makes `is less than` of number from boolean
-Makes `is more than` of number from boolean
+Makes is number from boolean
+Makes `is at least` number from boolean
+Makes `is at most` number from boolean
+Makes `is less than` number from boolean
+Makes `is more than` number from boolean

@@ -23,6 +23,7 @@ In fact, vanilla JavaScript fails resoundingly at the task of maintaining large 
 **The Compendium** provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is _NOT_ intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Many or most web-based content will never need the Compendium. Only dynamic web apps can benefit from it, and even then probably only greenfield apps with limited external integrations.
 
 I have three key design goals:
+
 - **To dramatically reduce the bloat** of frontend web apps,
   - in terms of dependency quality and quantity, file size, and runtime performance.
 - **To eliminate boilerplate code** for frontend web apps,
@@ -31,6 +32,7 @@ I have three key design goals:
   - shared across R&D by frontend engineers, designers, and managers.
 
 _TODO anything else to say? ✏️_
+
 - HTML and CSS are almost entirely user-facing; JavaScript is not, mostly
 - striving for parity between GUI and code development experiences within an IDE
 
@@ -57,6 +59,7 @@ _TODO expand this section as the core is developed..._
 ### Identifiers
 
 Each `[identifier]` is delimited by whitespace, case insensitive, and:
+
 - if enclosed by backticks, then any characters except line breaks and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
@@ -106,8 +109,8 @@ Each concept may have these declarations:
     - `Can [identifier] optional [concept]`
   - 🧪 **Methods**
     - `Makes [identifier] from [expression]`
-    - `Makes [identifier] of [concept] from [expression]`
-    - `Makes [identifier] of optional [concept] from [expression]`
+    - `Makes [identifier] [concept] from [expression]`
+    - `Makes [identifier] optional [concept] from [expression]`
 
 ### Environments 🌎
 
