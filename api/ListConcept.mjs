@@ -12,12 +12,46 @@ export default class ListConcept extends GenericConcept {
 
   // Actions:
 
+  /**
+   * Removes the last item from a stack
+   */
+  pop() {
+    this.value.pop();
+    this.publish(this.value);
+  }
+
+  /**
+   * Adds an item to the end of a stack
+   */
   push(boxed) {
     this.value.push(boxed);
     this.publish(this.value);
   }
 
+  /**
+   * Removes the first item from a queue
+   */
+  shift() {
+    this.value.shift();
+    this.publish(this.value);
+  }
+
+  /**
+   * Adds an item to the end of a queue
+   */
+  unshift(boxed) {
+    this.value.unshift(boxed);
+    this.publish(this.value);
+  }
+
   // Methods:
+
+  /**
+   * @returns the first item in a queue (that is, the one that shift will next return)
+   */
+  first() {
+    return this.value[0];
+  }
 
   is(boxed) {
     if (this.value.length !== boxed.value.length) {
@@ -31,6 +65,13 @@ export default class ListConcept extends GenericConcept {
     }
 
     return new BooleanConcept(true);
+  }
+
+  /**
+   * @returns the last (next out) item in a stack (that is, the one that pop will next return)
+   */
+  last() {
+    return this.value[this.value.length - 1];
   }
 
   length() {
