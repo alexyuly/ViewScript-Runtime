@@ -174,7 +174,7 @@ Create <form> of `to-do item`
           name = "text"
   - <button>
       content = "Add to list"
-      type = submit
+      type = "submit"
   on submit: list.push new `to-do item`
     text = it.values.text
 
