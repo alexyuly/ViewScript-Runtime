@@ -15,7 +15,7 @@ export default class StringBoxedValue extends GenericBoxedValue {
   }
 
   length() {
-    return value.length;
+    return this.value.length;
   }
 
   split(separator) {
