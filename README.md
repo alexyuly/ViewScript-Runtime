@@ -181,7 +181,7 @@ Create <form> of `to-do item`
       type = "submit"
   On submit
     To-dos push new `to-do item`
-      Text = it.values.text
+      Text = it.data.text
 
 Create <ul>
   Content = to-dos map for view
