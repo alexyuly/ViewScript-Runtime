@@ -2,9 +2,9 @@
 
 Welcome to Compendium! From here, you will embark on a magical journey, building apps for web browsers, in an integrated tool with everything you need for victory.
 
-🪄✨💖🌺
-
 Compendium Studio is your one stop shop for building apps that run in a web browser.
+
+🪄✨💖🌺
 
 ## Finder
 
@@ -118,24 +118,24 @@ Viewer has three modes:
 ```
 Component `Hello World`
 
-Store hovered = false
+Hovered = false
 
 Create <main>
-  content = <p>
-    content = "Hello, world!"
-    border = "1px dashed gray"
-    color = if hovered then "blue"
-    cursor = "pointer"
-    font = "24px sans-serif bold"
-    padding = "48px"
-    on pointerenter: hovered = true
-    on pointerleave: hovered = false
-  align-items = "center"
-  display = "flex"
-  height = "100%"
-  justify-content = "center"
-  position = "fixed"
-  width = "100%"
+  Content = <p>
+    Content = "Hello, world!"
+    Border = "1px dashed gray"
+    Color = if hovered then "blue"
+    Cursor = "pointer"
+    Font = "24px sans-serif bold"
+    Padding = "48px"
+    Pointerenter => hovered = true
+    Pointerleave => hovered = false
+  Align-items = "center"
+  Display = "flex"
+  Height = "100%"
+  Justify-content = "center"
+  Position = "fixed"
+  Width = "100%"
 
 ```
 
@@ -145,17 +145,17 @@ Component Counter
 Store count = 0
 
 Create <p>
-  content = "The count is {count}."
+  Content = "The count is {count}."
 
 Create <button>
-  content = "Click me!"
-  on click: count.add 1
+  Content = "Click me!"
+  Click => count.add 1
 
 Create timer
-  loops = true
-  paused = count.`is less than` 100
-  period = 1000
-  on time: count.add 1
+  Loops = true
+  Paused = count.`is less than` 100
+  Period = 1000
+  Time => count.add 1
 
 ```
 
@@ -165,18 +165,18 @@ Component `To-do List`
 Store list of `to-do item`
 
 Create <form> of `to-do item`
-  content =
+  Content =
   - <label>
-      content =
+      Content =
       - "New To-do:"
       - <input>
-          type = "text"
-          name = "text"
+          Name = "text"
+          Type = "text"
   - <button>
-      content = "Add to list"
-      type = "submit"
-  on submit: list.push new `to-do item`
-    text = it.values.text
+      Content = "Add to list"
+      Type = "submit"
+  Submit => list.push new `to-do item`
+    Text = it.values.text
 
 Create <ul>
   content = list.map to view
@@ -189,13 +189,13 @@ Component `To-do Item`
 Take model `to-do item`
 
 Create <li>
-  content = <label>
-    content =
+  Content = <label>
+    Content =
     - <input>
-        type = "checkbox"
-        checked = model.completed
-    - model.text
-    on click: model.complete
+        Checked = model.completed
+        Type = "checkbox"
+    - Model.text
+    Click => model.complete
 
 ```
 
@@ -206,10 +206,10 @@ Has text
 
 Has completed = false
 
-Can complete: completed = true
+Can complete -> completed = true
 
-Can view: create `to-do item`
-  model = this
+Can view -> create `to-do item`
+  Model = this
 
 ```
 
