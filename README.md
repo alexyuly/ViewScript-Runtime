@@ -170,7 +170,7 @@ Create <form> of `to-do item`
       content =
       - "New To-do:"
       - <input>
-          type = "text"
+          type = text
           name = "text"
   - <button>
       content = "Add to list"
