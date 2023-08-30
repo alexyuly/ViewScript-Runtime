@@ -216,7 +216,7 @@ Can complete
   Set completed to true
 
 Can view
-  Create `to-do item`
+  Return create `to-do item`
     Model = this
 
 ```
