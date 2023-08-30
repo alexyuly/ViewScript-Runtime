@@ -2,7 +2,7 @@
 
 **Welcome to the Compendium!**
 
-From here, you will embark on an enchanted journey, _building apps for web browsers_, in a fenced garden of HTML and CSS components.
+From here, you will embark on an enchanted journey, _building apps for web browsers_, in a magical garden of HTML and CSS sorcery.
 
 🧙🪄✨💖🌺
 
