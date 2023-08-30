@@ -47,7 +47,7 @@ export default class ListConcept extends GenericConcept {
   // Methods:
 
   /**
-   * @returns the first item in a queue (that is, the one that shift will next return)
+   * @returns the first item in a queue (that is, the one that shift will return next)
    */
   first() {
     return this.value[0];
@@ -68,7 +68,7 @@ export default class ListConcept extends GenericConcept {
   }
 
   /**
-   * @returns the last (next out) item in a stack (that is, the one that pop will next return)
+   * @returns the last item in a stack (that is, the one that pop will return next)
    */
   last() {
     return this.value[this.value.length - 1];
