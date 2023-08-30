@@ -118,89 +118,84 @@ Viewer has three modes:
 ```
 Component `Hello World`
 
-Has hovered condition
+Store hovered = false
 
-New main
-  Content = new paragraph
-    Content = new text
-      Content = "Hello, world!"
-    Border = "1px dashed gray"
-    Color = if hovered then "blue"
-    Cursor = "pointer"
-    Font-size = "24px"
-    Font-weight = "bold"
-    Padding = "48px"
-    Pointer-enter => hovered.set true
-    Pointer-leave => hovered.set false
-  Align-items = "center"
-  Display = "flex"
-  Height = "100%"
-  Justify-content = "center"
-  Position = "fixed"
-  Width = "100%"
+Create <main>
+  content = <p>
+    content = "Hello, world!"
+    border = 1px dashed gray
+    color = if hovered then blue
+    cursor = pointer
+    font = 24px sans-serif bold
+    padding = 48px
+    on pointerenter: hovered = true
+    on pointerleave: hovered = false
+  align-items = center
+  display = flex
+  height = 100%
+  justify-content = center
+  position = fixed
+  width = 100%
 
 ```
 
 ```
 Component Counter
 
-Has count
+Store count = 0
 
-New paragraph
-  Content = new text
-    Content = "The count is {count}."
+Create <p>
+  content = "The count is {count}."
 
-New button
-  Content = "Click me!"
-  Click => count.add 1
+Create <button>
+  content = "Click me!"
+  on click: count.add 1
 
-New timer
-  Loops = true
-  Paused = count.`is at least` 100
-  Period = 1000
-  Time => count.add 1
+Create timer
+  loops = true
+  paused = count.`is less than` 100
+  period = 1000
+  on time: count.add 1
 
 ```
 
 ```
 Component `To-do List`
 
-Has list of `to-do item`
+Store list of `to-do item`
 
-New form of `to-do item`
-  Content =
-  - New label
-      Content =
-      - New text
-          Content = "New To-do:"
-      - New input
-          Name = "text"
-  - New button
-      Content = new text
-        Content = "Add to list"
-      Type = "submit"
-  Submit => list.push data `to-do item`
-    Text = it.values.text
+Create <form> of `to-do item`
+  content =
+  - <label>
+      content =
+      - "New To-do:"
+      - <input>
+          type = "text"
+          name = "text"
+  - <button>
+      content = "Add to list"
+      type = submit
+  on submit: list.push new `to-do item`
+    text = it.values.text
 
-New list
-  Content = list.map to view
+Create <ul>
+  content = list.map to view
 
 ```
 
 ```
 Component `To-do Item`
 
-Takes model `to-do item`
+Take model `to-do item`
 
-New list-item
-  Content = new label
-    Content =
-    - New input
-        Type = "checkbox"
-        Checked = model.completed
-    - New text
-        Content = Model.text
-    Click => model.complete
+Create <li>
+  content = <label>
+    content =
+    - <input>
+        type = checkbox
+        checked = model.completed
+    - model.text
+    on click: model.complete
 
 ```
 
@@ -209,12 +204,12 @@ Concept `To-do Item`
 
 Has text
 
-Has completed condition
+Has completed = false
 
-Can complete -> completed.set true
+Can complete: completed = true
 
-Can view -> new `to-do item`
-  Model = this
+Can view: create `to-do item`
+  model = this
 
 ```
 
@@ -226,96 +221,5 @@ App `Hello World`
 App Counter
 
 App `To-do List`
-
-```
-
-Lower level
-
-```
-Alias `List Or One`
-
-Knows type
-
-As any
-- Type
-- List of type
-
-```
-
-```
-Alias `Phrasing Content`
-
-As `list or one` of any
-- Span
-- Text
-
-```
-
-```
-Natural Component Text
-
-Takes content text
-
-Naturally will create
-
-```
-
-```
-Natural Component Span
-
-Implements element
-
-Handles content `phrasing content`
-
-Naturally will create
-
-```
-
-```
-Natural Component Paragraph
-
-Implements element
-
-Handles content `phrasing content`
-
-Naturally will create
-
-```
-
-```
-Abstract Component Element
-
-Takes align-items
-Takes background
-Takes border
-Takes color
-Takes cursor
-Takes display
-Takes flex
-Takes flex-flow
-Takes font
-Takes font-family
-Takes font-size
-Takes font-weight
-Takes gap
-Takes grid-template
-Takes height
-Takes justify-content
-Takes margin
-Takes outline
-Takes padding
-Takes position
-Takes text-decoration
-Takes width
-
-Will blur
-Will click pointer
-Will focus
-Will pointer-cancel pointer
-Will pointer-down pointer
-Will pointer-enter pointer
-Will pointer-leave pointer
-Will pointer-move pointer
-Will pointer-up pointer
 
 ```
