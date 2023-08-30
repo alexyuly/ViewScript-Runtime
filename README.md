@@ -191,7 +191,7 @@ Create <ul>
 ```
 Component `To-do Item`
 
-Take model : `to-do item`
+Take model of `to-do item`
 
 Create <li>
   content = <label>
@@ -208,7 +208,7 @@ Create <li>
 ```
 Concept `To-do Item`
 
-Take text : string
+Take text of string
 
 Let completed = false
 
