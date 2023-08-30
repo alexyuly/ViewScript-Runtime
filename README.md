@@ -71,6 +71,8 @@ Each environment may have these declarations:
 
 ## Code Examples
 
+### "Hello, World!"
+
 ```
 Component `Hello World`
 
@@ -97,6 +99,8 @@ Create <main>
 
 ```
 
+### Counter With Button And Timer
+
 ```
 Component Counter
 
@@ -118,6 +122,8 @@ Create timer
     Count: add 1
 
 ```
+
+### To-do List (Rudimentary)
 
 ```
 Component `To-do List`
@@ -176,6 +182,8 @@ Can view
     Model = this
 
 ```
+
+### Build These Apps!
 
 ```
 Environment Local
