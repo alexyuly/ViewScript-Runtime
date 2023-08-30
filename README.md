@@ -24,14 +24,23 @@ Components are the building blocks of apps.
 
 - `Component [identifier]`
 
-Each component may have these declarations:
+Each component may declare these items:
 
 - Data (input and storage)
   - 🔻 **Parameters**
+    - `Take [identifier] of [concept]`
+    - `Take optional [identifier] of [concept]`
+    - `Handle [identifier] of [component]`
+    - `Handle optional [identifier] of [component]`
   - 🟨 **Stores**
+    - `Let [identifier] be [expression]`
 - Operation (execution and output)
   - 🔵 **Units**
+    - `Create [identifier]`
   - 🔺 **Events**
+    - `Will [event identifier]`
+    - `Will [event identifier] [concept]`
+    - `Will [event identifier] optional [concept]`
 
 ## Concepts 📚
 
@@ -44,10 +53,19 @@ Each concept may have these declarations:
 
 - Data (input and storage)
   - 🔻 **Parameters**
+    - `Take [identifier] of [concept]`
+    - `Take optional [identifier] of [concept]`
   - 🟨 **Stores**
+    - `Let [identifier] be [value]`
 - Manipulation (transformation and production)
   - ⚡ **Actions**
+    - `Can [identifier]`
+    - `Can [identifier] [concept]`
+    - `Can [identifier] optional [concept]`
   - 🧪 **Methods**
+    - `Makes [event identifier] from [expression]`
+    - `Makes [event identifier] of [concept] from [expression]`
+    - `Makes [event identifier] of optional [concept] from [expression]`
 
 ## Environments 🌎
 
@@ -61,7 +79,7 @@ Each environment may have these declarations:
 
 ## Finder
 
-**Finder** shows a searchable tree of your open files, with a summary of the elements within each one.
+**Finder** shows a searchable tree of your open files, with a summary of the items within each one.
 
 ## Editor
 
@@ -183,9 +201,8 @@ Let completed be false
 Can complete
   Completed: enable
 
-Can view
-  Return create `to-do item`
-    Model = this
+Makes view from creating `to-do item`
+  Model = this
 
 ```
 
