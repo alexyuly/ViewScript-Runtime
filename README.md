@@ -179,8 +179,9 @@ Create <form> of `to-do item`
   - <button>
       content = "Add to list"
       type = "submit"
-  submit => to-dos push new `to-do item`
-    Text = it.values.text
+  submit =>
+    To-dos push new `to-do item`
+      Text = it.values.text
 
 Create <ul>
   content = to-dos map to view
@@ -199,7 +200,8 @@ Create <li>
         checked = model.completed
         type = "checkbox"
     - Model.text
-    click => model.complete
+    click =>
+      Model.complete
 
 ```
 
@@ -210,10 +212,12 @@ Has text : string
 
 Has completed = false
 
-Can complete -> completed = true
+Can complete ->
+  Completed = true
 
-Can view -> create `to-do item`
-  Model = this
+Can view ->
+  Create `to-do item`
+    Model = this
 
 ```
 
