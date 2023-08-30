@@ -1,11 +1,11 @@
-import GenericBoxedValue from "./GenericBoxedValue.mjs";
+import GenericConcept from "./GenericConcept.mjs";
 
 /**
  * Boxes a boolean value
  */
-export default class BooleanBoxedValue extends GenericBoxedValue {
+export default class BooleanConcept extends GenericConcept {
   constructor(value) {
-    super(value, "boolean");
+    super(value);
   }
 
   // Actions:
@@ -25,6 +25,6 @@ export default class BooleanBoxedValue extends GenericBoxedValue {
   // Methods:
 
   inverse() {
-    return !this.value;
+    return new BooleanConcept(!this.value);
   }
 }

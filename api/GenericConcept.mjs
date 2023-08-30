@@ -1,14 +1,12 @@
 import assert from "assert";
-
 import GenericListener from "./GenericListener.mjs";
 
 /**
  * Boxes any value for publishing and subscribing
  */
-export default class GenericBoxedValue {
-  constructor(value, type) {
+export default class GenericConcept {
+  constructor(value) {
     this.listeners = [];
-    this.type = type;
     this.value = value;
   }
 
@@ -23,7 +21,7 @@ export default class GenericBoxedValue {
   subscribe(listener) {
     assert(
       listener instanceof GenericListener,
-      "You must provide an instance of GenericListener to subscribe a GenericBoxedValue"
+      "You must provide an instance of GenericListener to subscribe to a GenericConcept"
     );
 
     this.listeners.push(listener);
