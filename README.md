@@ -14,7 +14,7 @@ _But the web has a problem. An elephant in the room, maybe._
 
 That elephant is JavaScript. 🐘
 
-For a decade or so, web app developers have increasingly embraced JavaScript as the cornerstone of their process, above HTML and CSS. It's natural, right? Apps have complex logic. Apps do things and have side effects. HTML and CSS fall far short of providing all the tools to build standalone apps for web browsers. They were designed for a world where web apps were thin shells, fully controlled by servers. They were designed to present static content once to a user, and only to update upon navigation or reload.
+For a decade or so, web app developers have embraced JavaScript increasingly as the cornerstone of their process, above HTML and CSS. It's natural, right? Apps have complex logic. Apps do things and have side effects. HTML and CSS fall far short of providing all the tools to build standalone apps for web browsers. They were designed for a world where web apps were thin shells, fully controlled by servers. They were designed to present static content to a user, and only to update upon navigation or reload.
 
 Now, JavaScript's gains in capability and performance have made HTML and CSS tools in a dynamic runtime toolkit for app development. Technically, the DOM, CSSOM, and JavaScript fit together well. But elements and styles need continual maintenance to keep them updated when parameters change. Moreover, logic and requirements need similar care to keep them fresh as a business evolves. JavaScript provides insufficient assistance in these critical areas.
 
