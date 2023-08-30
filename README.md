@@ -20,6 +20,8 @@ Now, JavaScript's gains in capability and performance have made HTML and CSS too
 
 In fact, vanilla JavaScript fails resoundingly at the task of maintaining large web apps over long time periods by unstable development teams. Unfortunately, this is a common situation in software development. First Angular, then React, now Svelte, have stepped up to fill the gaps left by JavaScript. The advent of TypeScript has eased considerable pain. But, it all feels just a bit incoherent, stitched together, too chaotic, inefficient, and unproductive... Maybe you feel this, too?
 
+The Compendium provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is _NOT_ intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Many or most web-based content would never need the Compendium. Only dynamic web apps can benefit from it, and even then probably only greenfield apps with limited external integration requirements.
+
 _TODO more... ✏️_
 
 ## High-Level
