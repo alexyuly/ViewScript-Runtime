@@ -190,7 +190,7 @@ Create <ul>
 ```
 Component `To-do Item`
 
-Take model `to-do item`
+Take model : `to-do item`
 
 Create <li>
   content = <label>
@@ -206,7 +206,7 @@ Create <li>
 ```
 Concept `To-do Item`
 
-Has text = new string
+Has text : string
 
 Has completed = false
 
