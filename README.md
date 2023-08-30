@@ -8,7 +8,17 @@ From here, you will embark on a magical journey, _building apps for web browsers
 
 ## Motivation
 
-TODO
+HTML, CSS, and JavaScript are amazing tools, and web browsers are a viable platform for building and distributing apps worldwide.
+
+_But the web has a problem. An elephant in the room, maybe._
+
+That elephant is JavaScript. 🐘
+
+For a decade or so, web app developers have increasingly embraced JavaScript as the cornerstone of their process, above HTML and CSS. It's natural, right? Apps may have really complex logic. Apps need to do things and have side effects. HTML and CSS, as languages, fall far short of providing the tools needed to build standalone apps for web browsers. HTML and CSS were designed for a world where all web apps were thin shells, fully controlled by servers. They were designed to present static content once to a user, and only to update upon navigation or reload.
+
+Now, JavaScript's continual gains in capability and performance have made HTML and CSS tools in a dynamic runtime toolkit for web-based application development. Technically, the DOM, CSSOM, and JavaScript fit together like perfect puzzle pieces. But JavaScript, as a language, is unwieldly for wrangling the elements and styles of an app. These elements and styles need continual babysitting, to keep them updated when parameters change. Vanilla JavaScript fails resoundingly at the task of maintaining large web apps over long time periods by evolving development teams. It's where consistent business logic and fast performance go to die.
+
+_TODO more... ✏️_
 
 ## High-Level
 
