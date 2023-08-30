@@ -1,7 +1,9 @@
+import GenericBoxedValue from "./GenericBoxedValue.mjs";
+
 /**
  * Boxes a number value
  */
-export default class NumberBoxedValue {
+export default class NumberBoxedValue extends GenericBoxedValue {
   constructor(value) {
     super(value, "number");
   }

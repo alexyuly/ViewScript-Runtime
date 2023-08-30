@@ -28,10 +28,4 @@ export default class GenericBoxedValue {
 
     this.listeners.push(listener);
   }
-
-  // Methods
-
-  is(value) {
-    return Object.is(this.value, value);
-  }
 }
