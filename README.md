@@ -118,7 +118,7 @@ Viewer has three modes:
 ```
 Component `Hello World`
 
-Store hovered condition
+Store hovered = false
 
 Create <main>
   content = <p>
