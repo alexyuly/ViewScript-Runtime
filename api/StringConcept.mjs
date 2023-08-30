@@ -22,13 +22,12 @@ export default class StringConcept extends GenericConcept {
   }
 
   split(boxed) {
-    const listWithBoxedValues = [];
     const list = this.value.split(boxed.value);
 
-    for (const item of list) {
-      listWithBoxedValues.push(new StringConcept(item));
+    for (let i = 0; i < list.length; i++) {
+      list[i] = new StringConcept(list[i]);
     }
 
-    return new ListConcept(listWithBoxedValues);
+    return new ListConcept(list);
   }
 }
