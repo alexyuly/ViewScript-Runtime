@@ -121,21 +121,23 @@ Component `Hello World`
 Let hovered = false
 
 Create <main>
-  Content = <p>
-    Content = "Hello, world!"
-    Border = "1px dashed gray"
-    Color = if hovered then "blue"
-    Cursor = "pointer"
-    Font = "24px sans-serif bold"
-    Padding = "48px"
-    Pointerenter => hovered = true
-    Pointerleave => hovered = false
-  Align-items = "center"
-  Display = "flex"
-  Height = "100%"
-  Justify-content = "center"
-  Position = "fixed"
-  Width = "100%"
+  content = <p>
+    content = "Hello, world!"
+    border = "1px dashed gray"
+    color = if hovered then "blue"
+    cursor = "pointer"
+    font = "24px sans-serif bold"
+    padding = "48px"
+    pointerenter =>
+      Set hovered = true
+    pointerleave =>
+      Set hovered = false
+  align-items = "center"
+  display = "flex"
+  height = "100%"
+  justify-content = "center"
+  position = "fixed"
+  width = "100%"
 
 ```
 
@@ -145,17 +147,19 @@ Component Counter
 Let count = 0
 
 Create <p>
-  Content = "The count is {count}."
+  content = "The count is {count}."
 
 Create <button>
-  Content = "Click me!"
-  Click => count.add 1
+  content = "Click me!"
+  click =>
+    Count add 1
 
 Create timer
   Loops = true
-  Paused = count.`is less than` 100
+  Paused = count `is less than` 100
   Period = 1000
-  Time => count.add 1
+  Time =>
+    Count add 1
 
 ```
 
@@ -165,21 +169,21 @@ Component `To-do List`
 Let to-dos = new list of `to-do item`
 
 Create <form> of `to-do item`
-  Content =
+  content =
   - <label>
-      Content =
+      content =
       - "New To-do:"
       - <input>
-          Name = "text"
-          Type = "text"
+          name = "text"
+          type = "text"
   - <button>
-      Content = "Add to list"
-      Type = "submit"
-  Submit => to-dos.push new `to-do item`
+      content = "Add to list"
+      type = "submit"
+  submit => to-dos push new `to-do item`
     Text = it.values.text
 
 Create <ul>
-  content = to-dos.map to view
+  content = to-dos map to view
 
 ```
 
@@ -189,13 +193,13 @@ Component `To-do Item`
 Take model `to-do item`
 
 Create <li>
-  Content = <label>
-    Content =
+  content = <label>
+    content =
     - <input>
-        Checked = model.completed
-        Type = "checkbox"
+        checked = model.completed
+        type = "checkbox"
     - Model.text
-    Click => model.complete
+    click => model.complete
 
 ```
 
