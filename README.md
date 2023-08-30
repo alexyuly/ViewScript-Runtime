@@ -208,9 +208,9 @@ Create <li>
 ```
 Concept `To-do Item`
 
-Has text : string
+Take text : string
 
-Has completed = false
+Let completed = false
 
 Can complete ->
   Completed = true
