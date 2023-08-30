@@ -156,7 +156,7 @@ Create <button>
 
 Create timer
   Loops = true
-  Paused = count `is less than` 100
+  Paused = count: `is less than` 100
   Period = 1000
   On time
     Count: add 1
