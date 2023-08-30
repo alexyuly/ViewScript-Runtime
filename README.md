@@ -118,7 +118,7 @@ Viewer has three modes:
 ```
 Component `Hello World`
 
-Hovered = false
+Let hovered = false
 
 Create <main>
   Content = <p>
@@ -142,7 +142,7 @@ Create <main>
 ```
 Component Counter
 
-Store count = 0
+Let count = 0
 
 Create <p>
   Content = "The count is {count}."
@@ -162,7 +162,7 @@ Create timer
 ```
 Component `To-do List`
 
-Store list of `to-do item`
+Let to-dos = new list of `to-do item`
 
 Create <form> of `to-do item`
   Content =
@@ -175,11 +175,11 @@ Create <form> of `to-do item`
   - <button>
       Content = "Add to list"
       Type = "submit"
-  Submit => list.push new `to-do item`
+  Submit => to-dos.push new `to-do item`
     Text = it.values.text
 
 Create <ul>
-  content = list.map to view
+  content = to-dos.map to view
 
 ```
 
@@ -202,7 +202,7 @@ Create <li>
 ```
 Concept `To-do Item`
 
-Has text
+Has text = new string
 
 Has completed = false
 
