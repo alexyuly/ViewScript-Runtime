@@ -2,7 +2,7 @@
 
 **Welcome to the Compendium!**
 
-From here, you will embark on a magical journey, _building apps for web browsers_, in an integrated tool with everything you need for victory. 
+From here, you will embark on an enchanted journey, _building apps for web browsers_, using a powerful, integrated tool to seize victory. 
 
 🧙🪄✨💖🌺
 
