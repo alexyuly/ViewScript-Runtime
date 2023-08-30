@@ -213,7 +213,7 @@ Take text : string
 Let completed = false
 
 Can complete ->
-  Completed = true
+  Set completed = true
 
 Can view ->
   Create `to-do item`
