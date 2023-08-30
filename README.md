@@ -1,8 +1,10 @@
 # The Compendium
 
-Welcome to the Compendium! From here, you will embark on a magical journey, building apps for web browsers, in an integrated tool with everything you need for victory. 
+**Welcome to the Compendium!**
 
-🪄✨💖🌺
+From here, you will embark on a magical journey, _building apps for web browsers_, in an integrated tool with everything you need for victory. 
+
+🧙🪄✨💖🌺
 
 ## Motivation
 
@@ -49,7 +51,7 @@ Each concept may have these declarations:
 
 ## Environments 🌎
 
-Environments hold sets of variables you can pass down to apps when you build and deploy.
+Environments pass down variables to apps when they build.
 
 - `Environment [identifier]`
 
@@ -71,7 +73,7 @@ Each environment may have these declarations:
 
 ## Code Examples
 
-### "Hello, World!"
+### "Hello, World!" (Stylish Version)
 
 ```
 Component `Hello World`
@@ -123,7 +125,7 @@ Create timer
 
 ```
 
-### To-do List (Rudimentary)
+### To-do List (Rudimentary Version)
 
 ```
 Component `To-do List`
