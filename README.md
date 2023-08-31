@@ -150,8 +150,8 @@ Component `Hello World`
 
 Let hovered be false
 
-Create <main>
-  content = Create <p>
+New <main>
+  content = <p>
     content = "Hello, world!"
     background = if hovered "white" else "black"
     border-color = "currentcolor"
@@ -182,15 +182,15 @@ Component Counter
 
 Let count be 0
 
-Create <p>
+New <p>
   content = "The count is {count}."
 
-Create <button>
+New <button>
   content = "Click me!"
   On click
     Count: add 1
 
-Create timer
+New (timer)
   loops = true
   paused = count: `is less than` 100
   period = 1000
@@ -206,22 +206,22 @@ Component `To-do List`
 
 Let to-dos be new list of `to-do item`
 
-Create <form> of `to-do item`
+New <form> of `to-do item`
   content =
-  - Create <label>
+  - <label>
       content =
       - "New To-do:"
-      - Create <input>
+      - <input>
           name = "text"
           type = "text"
-  - Create <button>
+  - <button>
       content = "Add to list"
       type = "submit"
   On submit
     To-dos: push new `to-do item`
       text = it.data.text
 
-Create <ul>
+New <ul>
   content = to-dos: map to view
 
 ```
@@ -231,10 +231,10 @@ Component `To-do Item`
 
 Take model of `to-do item`
 
-Create <li>
-  content = Create <label>
+New <li>
+  content = <label>
     content =
-    - Create <input>
+    - <input>
         checked = model.completed
         type = "checkbox"
     - Model.text
@@ -253,7 +253,7 @@ Let completed be false
 Can complete
   Completed: enable
 
-Makes view from creating `to-do item`
+Makes view from new (`to-do item`)
   Model = this
 
 ```
