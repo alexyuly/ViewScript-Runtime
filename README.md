@@ -145,6 +145,17 @@ Each environment may have these declarations:
 
 - `App [component]`
 
+### Other Syntax
+
+- `new [concept]`
+
+- `if [expression] then [expression]
+- `if [expression] then [expression] else [expression]`
+
+- `on [event]`
+
+- `[value]: [action or method]`
+
 ## Compendium Code Examples
 
 ### "Hello, World!" (Simple Version)
