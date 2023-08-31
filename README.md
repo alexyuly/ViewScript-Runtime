@@ -87,6 +87,7 @@ Each component may declare these items:
 
 🔵 **Units**
 
+- `<element>`
 - `New [identifier]`
 
 🔺 **Events**
@@ -153,7 +154,7 @@ Component `Hello World`
 
 Let hovered be false
 
-New <main>
+<main>
   content = <p>
     content = "Hello, world!"
     background = if hovered "white" else "black"
@@ -185,10 +186,10 @@ Component Counter
 
 Let count be 0
 
-New <p>
+<p>
   content = "The count is {count}."
 
-New <button>
+<button>
   content = "Click me!"
   On click
     Count: add 1
@@ -209,7 +210,7 @@ Component `To-do List`
 
 Let to-dos be new list of `to-do item`
 
-New <form>
+<form>
   content =
   - <label>
       content =
@@ -224,7 +225,7 @@ New <form>
     To-dos: push new `to-do item`
       text = event.data: get "text"
 
-New <ul>
+<ul>
   content = to-dos: map to view
 
 ```
@@ -234,15 +235,15 @@ Component `To-do Item`
 
 Take model of `to-do item`
 
-New <li>
+<li>
   content = <label>
     content =
     - <input>
         checked = model.completed
         type = "checkbox"
     - Model.text
-    On click
-      Model: complete
+  On click
+    Model: complete
 
 ```
 
