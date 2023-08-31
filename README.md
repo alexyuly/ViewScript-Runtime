@@ -190,7 +190,7 @@ New <button>
   On click
     Count: add 1
 
-New (timer)
+New component timer
   loops = true
   paused = count: `is less than` 100
   period = 1000
@@ -253,7 +253,7 @@ Let completed be false
 Can complete
   Completed: enable
 
-Makes view from new (`to-do item`)
+Makes view from new component `to-do item`
   Model = this
 
 ```
