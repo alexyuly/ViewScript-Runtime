@@ -205,7 +205,7 @@ Let hovered be false
 
 <main>
   align-items = "center"
-  background = "white"
+  background = "navy"
   display = "flex"
   height = "100%"
   justify-content = "center"
@@ -216,9 +216,9 @@ Let hovered be false
     on pointerenter => hovered: enable
     on pointerleave => hovered: disable
 
-    background = if hovered "red" else "white"
+    background = if hovered then "olive" else "navy"
     border = "24px solid currentcolor"
-    color = if hovered "white" else "red"
+    color = if hovered then "navy" else "olive"
     cursor = "pointer"
     font = "24px sans-serif bold"
     padding = "48px"
