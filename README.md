@@ -24,12 +24,11 @@ In fact, vanilla JavaScript fails resoundingly at the task of maintaining large 
 
 I have three key design goals:
 
-- **To dramatically reduce the bloat** of frontend web apps,
-  - in terms of dependency quality and quantity, file size, and runtime performance.
-- **To eliminate boilerplate code** for frontend web apps,
-  - by requiring consistent, predictable design patterns for components and systems.
-- **To elevate ubiquitous technical terminology** in apps and products,
-  - shared across R&D by frontend engineers, designers, and managers.
+**To dramatically reduce the bloat** of frontend web apps, in terms of dependency quality and quantity, file size, and runtime performance.
+
+**To eliminate boilerplate code** for frontend web apps, by requiring consistent, predictable design patterns for components and systems.
+
+**To elevate ubiquitous technical terminology** in apps and products, shared across R&D by frontend engineers, designers, and managers.
 
 _TODO anything else to say? ✏️_
 
