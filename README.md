@@ -71,21 +71,30 @@ Components are the building blocks of apps.
 
 Each component may declare these items:
 
-- Data (input and storage)
-  - 🔻 **Parameters**
-    - `Take [identifier] of [concept]`
-    - `Take optional [identifier] of [concept]`
-    - `Handle [identifier] of [component]`
-    - `Handle optional [identifier] of [component]`
-  - 🟨 **Stores**
-    - `Let [identifier] be [expression]`
-- Operation (execution and output)
-  - 🔵 **Units**
-    - `Create [identifier]`
-  - 🔺 **Events**
-    - `Will [identifier]`
-    - `Will [identifier] [concept]`
-    - `Will [identifier] optional [concept]`
+#### Data (input and storage)
+
+🔻 **Parameters**
+
+- `Take [identifier] of [concept]`
+- `Take optional [identifier] of [concept]`
+- `Handle [identifier] of [component]`
+- `Handle optional [identifier] of [component]`
+
+🟨 **Stores**
+
+- `Let [identifier] be [expression]`
+
+#### Operation (execution and output)
+
+🔵 **Units**
+
+- `Create [identifier]`
+
+🔺 **Events**
+
+- `Will [identifier]`
+- `Will [identifier] [concept]`
+- `Will [identifier] optional [concept]`
 
 ### Concepts 📚
 
@@ -96,21 +105,30 @@ Concepts are the building blocks of data in apps.
 
 Each concept may have these declarations:
 
-- Data (input and storage)
-  - 🔻 **Parameters**
-    - `Take [identifier] of [concept]`
-    - `Take optional [identifier] of [concept]`
-  - 🟨 **Stores**
-    - `Let [identifier] be [value]`
-- Manipulation (transformation and production)
-  - ⚡ **Actions**
-    - `Can [identifier]`
-    - `Can [identifier] [concept]`
-    - `Can [identifier] optional [concept]`
-  - 🧪 **Methods**
-    - `Makes [identifier] from [expression]`
-    - `Makes [identifier] [concept] from [expression]`
-    - `Makes [identifier] optional [concept] from [expression]`
+#### Data (input and storage)
+
+🔻 **Parameters**
+
+- `Take [identifier] of [concept]`
+- `Take optional [identifier] of [concept]`
+
+🟨 **Stores**
+
+- `Let [identifier] be [value]`
+
+#### Manipulation (transformation and production)
+
+⚡ **Actions**
+
+- `Can [identifier]`
+- `Can [identifier] [concept]`
+- `Can [identifier] optional [concept]`
+
+🧪 **Methods**
+
+- `Makes [identifier] from [expression]`
+- `Makes [identifier] [concept] from [expression]`
+- `Makes [identifier] optional [concept] from [expression]`
 
 ### Environments 🌎
 
@@ -120,7 +138,9 @@ Environments pass down variables to apps when they build.
 
 Each environment may have these declarations:
 
-- 📦 **Builds**
+📦 **Builds**
+
+- `App [identifier]`
 
 ## Compendium Code Examples
 
