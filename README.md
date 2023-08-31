@@ -88,7 +88,7 @@ Each component may declare these items:
 🔵 **Units**
 
 - `<element>`
-- `New [identifier]`
+- `New [component]`
 
 🔺 **Events**
 
@@ -147,7 +147,7 @@ Each environment may have these declarations:
 
 ## Compendium Code Examples
 
-### "Hello, World!" (Stylish Version)
+### "Hello, World!" (Simple Version)
 
 ```
 Component `Hello World`
@@ -262,7 +262,7 @@ Renders view from new `to-do item`
 
 ```
 
-### Build These Apps!
+### Build Those Apps!
 
 ```
 Environment Local
