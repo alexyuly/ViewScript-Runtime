@@ -207,7 +207,7 @@ Component `To-do List`
 
 Let to-dos be new list of `to-do item`
 
-New <form> of `to-do item`
+New <form>
   content =
   - <label>
       content =
@@ -220,7 +220,7 @@ New <form> of `to-do item`
       type = "submit"
   On submit
     To-dos: push new `to-do item`
-      text = it.data.text
+      text = event.data: get "text"
 
 New <ul>
   content = to-dos: map to view
