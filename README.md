@@ -126,9 +126,9 @@ Each concept may have these declarations:
 
 🧪 **Methods**
 
-- `Can [identifier] yields [expression]`
-- `Can [identifier] [concept] yields [expression]`
-- `Can [identifier] optional [concept] yields [expression]`
+- `Makes [identifier] from [expression]`
+- `Makes [identifier] [concept] from [expression]`
+- `Makes [identifier] optional [concept] from [expression]`
 
 ### Environments 🌎
 
@@ -254,7 +254,7 @@ Let completed be false
 Can complete
   Completed: enable
 
-Can view yields new component `to-do item`
+Makes view from new component `to-do item`
   Model = this
 
 ```
