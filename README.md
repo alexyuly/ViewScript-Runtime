@@ -147,14 +147,41 @@ Each environment may have these declarations:
 
 ### Other Syntax
 
+#### Conditional expressions
+
 - `if [expression] then [expression]`
 - `if [expression] then [expression] else [expression]`
 
+#### Creating a new data object
+
 - `new [concept]`
+
+#### Handling an event in a unit
 
 - `on [event]`
 
-- `[value]: [action or method]`
+#### Calling actions and methods
+
+- `[Value]: [action]`
+- `[Value]: [action] [expression]`
+- `[value]: [method]`
+- `[value]: [method] [expression]`
+
+### Multi-line chained method calls
+
+```
+[value] (
+: [method]
+: [method] [expression]
+: [method] [value2]: [method2]
+: [method] (
+  : [method]
+  : [method] [expression]
+  : [method] [value2]: [method2]
+)
+
+[and so on...]
+```
 
 ## Compendium Code Examples
 
