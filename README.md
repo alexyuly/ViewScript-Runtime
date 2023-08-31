@@ -151,7 +151,7 @@ Component `Hello World`
 Let hovered be false
 
 Create <main>
-  content = <p>
+  content = Create <p>
     content = "Hello, world!"
     background = if hovered "white" else "black"
     border-color = "currentcolor"
@@ -208,13 +208,13 @@ Let to-dos be new list of `to-do item`
 
 Create <form> of `to-do item`
   content =
-  - <label>
+  - Create <label>
       content =
       - "New To-do:"
-      - <input>
+      - Create <input>
           name = "text"
           type = "text"
-  - <button>
+  - Create <button>
       content = "Add to list"
       type = "submit"
   On submit
@@ -232,9 +232,9 @@ Component `To-do Item`
 Take model of `to-do item`
 
 Create <li>
-  content = <label>
+  content = Create <label>
     content =
-    - <input>
+    - Create <input>
         checked = model.completed
         type = "checkbox"
     - Model.text
