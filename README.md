@@ -87,7 +87,7 @@ Each component may declare these items:
 
 🔵 **Units**
 
-- `Create [identifier]`
+- `New component [identifier]`
 
 🔺 **Events**
 
