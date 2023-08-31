@@ -204,16 +204,6 @@ Component `Hello World`
 Let hovered be false
 
 <main>
-  content = <p>
-    content = "Hello, world!"
-    background = if hovered "red" else "white"
-    border = "24px solid currentcolor"
-    color = if hovered "white" else "red"
-    cursor = "pointer"
-    font = "24px sans-serif bold"
-    padding = "48px"
-    on pointerenter => hovered: enable
-    on pointerleave => hovered: disable
   align-items = "center"
   background = "white"
   display = "flex"
@@ -221,6 +211,19 @@ Let hovered be false
   justify-content = "center"
   position = "fixed"
   width = "100%"
+
+  content = <p>
+    on pointerenter => hovered: enable
+    on pointerleave => hovered: disable
+
+    background = if hovered "red" else "white"
+    border = "24px solid currentcolor"
+    color = if hovered "white" else "red"
+    cursor = "pointer"
+    font = "24px sans-serif bold"
+    padding = "48px"
+
+    content = "Hello, world!"
 
 ```
 
@@ -235,14 +238,16 @@ Let count be 0
   content = "The count is {count}."
 
 <button>
-  content = "Click me!"
   on click => count: add 1
 
+  content = "Click me!"
+
 New timer
+  on time => count: add 1
+
   loops = true
   paused = count: `is less than` 100
   period = 1000
-  on time => count: add 1
 
 ```
 
@@ -254,6 +259,9 @@ Component `To-do List`
 Let to-dos be new list of `to-do item`
 
 <form>
+  on submit => to-dos: push new `to-do item`
+    text = event.data: get "text"
+
   content =
   - <label>
       content =
@@ -261,11 +269,11 @@ Let to-dos be new list of `to-do item`
       - <input>
           name = "text"
           type = "text"
+
   - <button>
-      content = "Add to list"
       type = "submit"
-  on submit => to-dos: push new `to-do item`
-    text = event.data: get "text"
+
+      content = "Add to list"
 
 <ul>
   content = to-dos: map to view
@@ -283,7 +291,9 @@ Take model of `to-do item`
     - <input>
         checked = model.completed
         type = "checkbox"
+
     - Model.text
+
   on click => model: complete
 
 ```
