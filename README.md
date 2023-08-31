@@ -87,8 +87,7 @@ Each component may declare these items:
 
 🔵 **Units**
 
-- `New <element>`
-- `New component [identifier]`
+- `New [identifier]`
 
 🔺 **Events**
 
@@ -129,6 +128,9 @@ Each concept may have these declarations:
 - `Makes [identifier] from [expression]`
 - `Makes [identifier] [concept] from [expression]`
 - `Makes [identifier] optional [concept] from [expression]`
+- `Renders [identifier] from [unit]`
+- `Renders [identifier] [concept] from [unit]`
+- `Renders [identifier] optional [concept] from [unit]`
 
 ### Environments 🌎
 
@@ -191,7 +193,7 @@ New <button>
   On click
     Count: add 1
 
-New [timer]
+New timer
   loops = true
   paused = count: `is less than` 100
   period = 1000
@@ -254,7 +256,7 @@ Let completed be false
 Can complete
   Completed: enable
 
-Makes view from new [`to-do item`]
+Renders view from new `to-do item`
   Model = this
 
 ```
