@@ -22,13 +22,13 @@ In fact, vanilla JavaScript fails resoundingly at the task of maintaining large 
 
 **The Compendium** provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is _NOT_ intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Many or most web-based content will never need the Compendium. Only dynamic web apps will benefit from it, and even then probably only greenfield apps with limited external integrations.
 
-I have three key design goals:
+The Compendium has three main goals:
 
-🏃 **To dramatically reduce the bloat** of frontend web apps, in terms of dependency quality and quantity, file size, and runtime performance.
+🏃 **Reduce the bloat** of frontend web apps, in terms of dependency quality and quantity, bundle file sizes, and runtime performance.
 
-⚙️ **To eliminate boilerplate code** for frontend web apps, by requiring consistent, predictable design patterns for components and systems.
+⚙️ **Eliminate boilerplate code** for frontend web apps, by requiring consistent, predictable design patterns for components and systems.
 
-🙌 **To elevate ubiquitous technical terminology** in apps and products, shared across R&D by frontend engineers, designers, and managers.
+🙌 **Elevate ubiquitous technical terminology** in apps and products, shared across R&D by frontend engineers, designers, and managers.
 
 _TODO anything else to say? ✏️_
 
