@@ -292,7 +292,7 @@ Take model of `to-do item`
         checked = model.completed
         type = "checkbox"
 
-    - Model.text
+    - model.text
 
   on click => model: complete
 
