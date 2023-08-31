@@ -120,9 +120,9 @@ Each concept may have these declarations:
 
 ⚡ **Actions**
 
-- `Can [identifier]`
-- `Can [identifier] [concept]`
-- `Can [identifier] optional [concept]`
+- `Can [identifier] -> [side effects]`
+- `Can [identifier] [concept] -> [side effects]`
+- `Can [identifier] optional [concept] -> [side effects]`
 
 🧪 **Methods**
 
@@ -156,9 +156,19 @@ Each environment may have these declarations:
 
 - `new [concept]`
 
-#### Handling an event in a unit
+#### Handling an event
 
-- `on [event]`
+- `on [event] => [action call]`
+
+```
+on [event] => {
+  [action call]
+  [action call]
+  [action call]
+}
+
+[and so on...]
+```
 
 #### Calling one action or method
 
@@ -196,18 +206,14 @@ Let hovered be false
 <main>
   content = <p>
     content = "Hello, world!"
-    background = if hovered "white" else "black"
-    border-color = "currentcolor"
-    border-style = "solid"
-    border-width = "1px"
-    color = if hovered "black" else "white"
+    background = if hovered "red" else "white"
+    border = "24px solid currentcolor"
+    color = if hovered "white" else "red"
     cursor = "pointer"
     font = "24px sans-serif bold"
     padding = "48px"
-    On pointerenter
-      Hovered: enable
-    On pointerleave
-      Hovered: disable
+    on pointerenter => hovered: enable
+    on pointerleave => hovered: disable
   align-items = "center"
   background = "white"
   display = "flex"
@@ -230,15 +236,13 @@ Let count be 0
 
 <button>
   content = "Click me!"
-  On click
-    Count: add 1
+  on click => count: add 1
 
 New timer
   loops = true
   paused = count: `is less than` 100
   period = 1000
-  On time
-    Count: add 1
+  on time => count: add 1
 
 ```
 
@@ -260,9 +264,8 @@ Let to-dos be new list of `to-do item`
   - <button>
       content = "Add to list"
       type = "submit"
-  On submit
-    To-dos: push new `to-do item`
-      text = event.data: get "text"
+  on submit => to-dos: push new `to-do item`
+    text = event.data: get "text"
 
 <ul>
   content = to-dos: map to view
@@ -281,8 +284,7 @@ Take model of `to-do item`
         checked = model.completed
         type = "checkbox"
     - Model.text
-  On click
-    Model: complete
+  on click => model: complete
 
 ```
 
@@ -293,11 +295,10 @@ Take text of string
 
 Let completed be false
 
-Can complete
-  Completed: enable
+Can complete -> completed: enable
 
 Renders view from new `to-do item`
-  Model = this
+  model = this
 
 ```
 
