@@ -171,13 +171,14 @@ Each environment may have these declarations:
 
 ```
 [value] (
-| [method]
-| [method] [expression]
-| [method] [value2]: [method2]
-| [method] (
-  | [method]
-  | [method] [expression]
-  | [method] [value2]: [method2]
+  [method]
+  [method] [expression]
+  [method] [value2]: [method2]
+  [method] (
+    [method]
+    [method] [expression]
+    [method] [value2]: [method2]
+  )
 )
 
 [and so on...]
