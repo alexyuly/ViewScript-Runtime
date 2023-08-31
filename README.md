@@ -81,7 +81,7 @@ Each component may declare these items:
 
 🟨 **Stores**
 
-- `Let [identifier] be [expression]`
+- `Let [identifier] be [value]`
 
 #### Operation (execution and output)
 
@@ -126,9 +126,9 @@ Each concept may have these declarations:
 
 🧪 **Methods**
 
-- `Makes [identifier] from [expression]`
-- `Makes [identifier] [concept] from [expression]`
-- `Makes [identifier] optional [concept] from [expression]`
+- `Can [identifier] yields [expression]`
+- `Can [identifier] [concept] yields [expression]`
+- `Can [identifier] optional [concept] yields [expression]`
 
 ### Environments 🌎
 
@@ -254,7 +254,7 @@ Let completed be false
 Can complete
   Completed: enable
 
-Makes view from new component `to-do item`
+Can view yields new component `to-do item`
   Model = this
 
 ```
