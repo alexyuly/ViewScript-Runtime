@@ -160,14 +160,14 @@ Each environment may have these declarations:
 
 - `on [event]`
 
-#### Calling actions and methods
+#### Calling one action or method
 
 - `[Value]: [action]`
 - `[Value]: [action] [expression]`
 - `[value]: [method]`
 - `[value]: [method] [expression]`
 
-### Multi-line chained method calls
+#### Calling multiple chained methods
 
 ```
 [value] (
