@@ -147,10 +147,10 @@ Each environment may have these declarations:
 
 ### Other Syntax
 
-- `new [concept]`
-
-- `if [expression] then [expression]
+- `if [expression] then [expression]`
 - `if [expression] then [expression] else [expression]`
+
+- `new [concept]`
 
 - `on [event]`
 
