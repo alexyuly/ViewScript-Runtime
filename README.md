@@ -59,7 +59,7 @@ _TODO expand this section as the core is developed..._
 
 Each `[identifier]` is delimited by whitespace, case insensitive, and:
 
-- if enclosed by backticks, then any characters except line breaks and backticks;
+- if enclosed by backticks, then any characters except line breaks, angle brackets, and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
 ### Components 🧱
@@ -87,6 +87,7 @@ Each component may declare these items:
 
 🔵 **Units**
 
+- `New <element>`
 - `New component [identifier]`
 
 🔺 **Events**
