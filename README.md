@@ -139,7 +139,7 @@ Each environment may have these declarations:
 
 📦 **Builds**
 
-- `App [identifier]`
+- `App [component]`
 
 ## Compendium Code Examples
 
