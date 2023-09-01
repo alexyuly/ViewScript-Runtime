@@ -93,9 +93,9 @@ Each component may declare these items:
 
 🔻 **Parameters**
 
-Parameters are bindings created by a component and shared with its children.
+A parameter is a port for a component to receive bindings from its parent.
 
-To receive a parameter named `id` holding an instance of the given `concept`:
+To declare a parameter named `id` holding a binding of the given `concept`:
 ```
 Take [id] of [concept]
 ```
@@ -105,7 +105,7 @@ To allow the parameter to hold nothing:
 Take [id] of optional [concept]
 ```
 
-To receive a parameter named `id` holding an instance of the given `component`:
+To receive a parameter named `id` holding a binding of the given `component`:
 ```
 Handle [id] of [component]
 ```
@@ -117,13 +117,13 @@ Handle [id] of optional [component]
 
 🟨 **Stores**
 
-Stores are bindings created by a component  
+A store is a constant reference for a component to save a binding which it can pass to its own children.
 
-- `Let [id] be [value]`
+```
+Let [id] be [value]
+```
 
 🔵 **Units**
-
-
 
 - `<element>`
 - `New [component]`
