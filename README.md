@@ -54,7 +54,7 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 
 A field is an instance of a concept. It is an object that holds data, which units can read, update, or use to produce new objects.
 
-Moreover, each time its data changes, a field notifies the objects that reference it. This leads to efficient, reactive behavior in apps.
+Moreover, each time its data changes, a field tells the objects that reference it to perform the resulting side effects. This leads to efficient reactive behavior in apps.
 
 ### 🧱 Components 
 
