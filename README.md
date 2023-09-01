@@ -70,27 +70,27 @@ Components are the building blocks of apps.
 
 Each component may declare these items:
 
-#### Data (input and storage)
+#### Data
 
-🔻 **Parameters**
+🔻 **Parameters** (provisioned data)
 
 - `Take [identifier] of [concept]`
 - `Take optional [identifier] of [concept]`
 - `Handle [identifier] of [component]`
 - `Handle optional [identifier] of [component]`
 
-🟨 **Stores**
+🟨 **Stores** (managed data)
 
 - `Let [identifier] be [value]`
 
-#### Operation (execution and output)
+#### Operation
 
-🔵 **Units**
+🔵 **Units** (automatic execution)
 
 - `<element>`
 - `New [component]`
 
-🔺 **Events**
+🔺 **Streams** (automatic production)
 
 - `Will [identifier]`
 - `Will [identifier] [concept]`
@@ -105,26 +105,26 @@ Concepts are the building blocks of data in apps.
 
 Each concept may have these declarations:
 
-#### Data (input and storage)
+#### Data
 
-🔻 **Parameters**
+🔻 **Parameters** (provisioned data)
 
 - `Take [identifier] of [concept]`
 - `Take optional [identifier] of [concept]`
 
-🟨 **Stores**
+🟨 **Stores** (managed data)
 
 - `Let [identifier] be [value]`
 
-#### Manipulation (transformation and production)
+#### Operation
 
-⚡ **Actions**
+⚡ **Actions** (manual execution)
 
 - `Can [identifier] -> [side effects]`
 - `Can [identifier] [concept] -> [side effects]`
 - `Can [identifier] optional [concept] -> [side effects]`
 
-🧪 **Methods**
+🧪 **Methods** (manual production)
 
 - `Makes [identifier] from [expression]`
 - `Makes [identifier] [concept] from [expression]`
