@@ -258,14 +258,20 @@ Each environment may have these declarations:
 
 ### Plugins 🧩
 
-TODO
+A plugin is an interface from your app to an external system.
+
+Technically, a function has the combined capability of a component and a concept. It is a general-purpose singleton object. While undesirable in applications, this tight coupling of encapsulated and exposed functionality is useful in situations where the underlying separation of concerns is unclear or unimportant.
 
 ```
 Use [plugin]
+  # Add listeners and properties, just like a unit
 ```
 
 ```
 [plugin]: [action]
+[plugin].[property]
+
+# etc...
 ```
 
 ### Other Syntax
