@@ -89,7 +89,7 @@ Component Example
 
 By convention, the first line is written in title case, capitalizing the first letter of each word. In fact though, Compendium code is case-insensitive.
 
-Each component spec file contains declarations which 
+Each component spec file contains declarations which determine its behavior.
 
 #### 🔻 **Parameters**
 
@@ -131,8 +131,15 @@ Let [id] be [binding]
 
 A unit is an instance of a component (a "child") created by another (its "parent").
 
-- `<element>`
-- `New [component]`
+To create an element in the Document Object Model with the given `tag`:
+```
+<tag>
+```
+
+To create an instance of a component that is outside the DOM:
+```
+New [component]
+```
 
 #### 🔺 **Streams**
 
