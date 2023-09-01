@@ -145,11 +145,11 @@ New geolocation
   on change => console: log "{event.coords.lat}, {event.coords.lon}"
 ```
 
-**Properties**: bindings assigned to the unit's parameters
+**Properties**: fields assigned to the unit's parameters
 
 ```
 <ul>
-  font = "28pt serif"
+  font = "2rem serif"
   content =
   - <li>
       content = "1"
