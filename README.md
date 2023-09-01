@@ -72,7 +72,7 @@ Moreover, each time its data changes, a binding notifies the objects that refere
 
 Components are the building blocks of apps.
 
-The first line in a .component.spec file should declare a component with an id that matches the file name, excluding its extensions.
+The first line in a .component.spec file should declare a component with an `id` that matches the file name, excluding its extensions.
 ```
 Component [id]
 ```
@@ -137,7 +137,7 @@ This may be a natural component that is part of the Compendium API, or it may be
 
 A stream is a channel which broadcasts events from a component to its parent.
 
-To declare a stream named `id` which broadcasts empty events:
+To declare a stream named `id` which broadcasts just empty events:
 ```
 Will [id]
 ```
@@ -156,8 +156,25 @@ Will [id] optional [concept]
 
 Concepts are the building blocks of data in apps.
 
-- `Concept [identifier]`
-- `Concept [identifier] extends [concept]`
+The first line in a .concept.spec file should declare a concept with an `id` that matches the file name, excluding its extensions.
+```
+Concept [id]
+```
+
+For example:
+
+`Example.concept.spec`
+
+```
+Concept Example
+
+# to be continued...
+```
+
+A concept may share an identical `id` as a component in its same directory. A component and a concept with the same name are identified in code via context.
+
+- `Concept [id]`
+- `Concept [id] extends [concept]`
 
 Each concept may have these declarations:
 
