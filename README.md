@@ -50,6 +50,54 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 - if enclosed by backticks, then any characters except line breaks, angle brackets, and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
+### Concepts 📚
+
+Concepts are the building blocks of data in apps.
+
+The first line in a .concept.spec file should declare a concept with an `id` that matches the file name, excluding its extensions.
+```
+Concept [id]
+```
+
+For example:
+
+`Example.concept.spec`
+
+```
+Concept Example
+
+# to be continued...
+```
+
+Although Compendium code is case insensitive, conventionally, the first line is written in title case.
+
+Each concept spec file contains declarations that determine its behavior.
+
+#### 🔻 **Parameters**
+
+- `Take [identifier] of [concept]`
+- `Take optional [identifier] of [concept]`
+
+#### 🟨 **Stores**
+
+- `Let [identifier] be [value]`
+
+#### ⚡ **Actions**
+
+- `Can [identifier] -> [side effects]`
+- `Can [identifier] [concept] -> [side effects]`
+- `Can [identifier] optional [concept] -> [side effects]`
+
+#### 🧪 **Methods**
+
+- `Makes [identifier] from [expression]`
+- `Makes [identifier] [concept] from [expression]`
+- `Makes [identifier] optional [concept] from [expression]`
+
+- `Renders [identifier] from [unit]`
+- `Renders [identifier] [concept] from [unit]`
+- `Renders [identifier] optional [concept] from [unit]`
+
 ### ⛳️ Fields
 
 A field is an instance of a concept. It is an object that holds data, which units can read, update, or use to produce new objects.
@@ -76,11 +124,13 @@ Component Example
 # to be continued...
 ```
 
-Although Compendium code is case insensitive, conventionally, the first line is written in title case.
+A component may share an identical `id` as a concept in its same directory. A component and a concept with the same name are identified in code by how they are used.
 
 Each component spec file contains declarations that determine its behavior.
 
 #### 🔻 **Parameters**
+
+Like concepts, components have parameters.
 
 A parameter is a reference for a component to receive a field from its parent, which it can pass to its children.
 
@@ -159,7 +209,7 @@ New geolocation
 
 #### 🔺 **Streams**
 
-A stream is a channel which broadcasts fields from a component to its parent.
+A stream is a channel which broadcasts events, which may contain fields, from a component to its parent.
 
 To declare a stream named `id` which broadcasts just empty events:
 ```
@@ -175,60 +225,6 @@ To allow the stream to optionally broadcast empty fields of the given `concept`:
 ```
 Will [id] optional [concept]
 ```
-
-### Concepts 📚
-
-Concepts are the building blocks of data in apps.
-
-The first line in a .concept.spec file should declare a concept with an `id` that matches the file name, excluding its extensions.
-```
-Concept [id]
-```
-
-For example:
-
-`Example.concept.spec`
-
-```
-Concept Example
-
-# to be continued...
-```
-
-A concept may share an identical `id` as a component in its same directory. A component and a concept with the same name are identified in code via context.
-
-- `Concept [id]`
-- `Concept [id] extends [concept]`
-
-Each concept may have these declarations:
-
-#### Data
-
-🔻 **Parameters** (provisioned data)
-
-- `Take [identifier] of [concept]`
-- `Take optional [identifier] of [concept]`
-
-🟨 **Stores** (managed data)
-
-- `Let [identifier] be [value]`
-
-#### Operation
-
-⚡ **Actions** (manual execution)
-
-- `Can [identifier] -> [side effects]`
-- `Can [identifier] [concept] -> [side effects]`
-- `Can [identifier] optional [concept] -> [side effects]`
-
-🧪 **Methods** (manual production)
-
-- `Makes [identifier] from [expression]`
-- `Makes [identifier] [concept] from [expression]`
-- `Makes [identifier] optional [concept] from [expression]`
-- `Renders [identifier] from [unit]`
-- `Renders [identifier] [concept] from [unit]`
-- `Renders [identifier] optional [concept] from [unit]`
 
 ### Environments 🌎
 
