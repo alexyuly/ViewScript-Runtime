@@ -57,31 +57,52 @@ _TODO expand this section as the core is developed..._
 
 ### Identifiers
 
-Each `[identifier]` is delimited by whitespace, case insensitive, and:
+Each identifier, represented as `[id]` in the examples below, is delimited by whitespace, case insensitive, and:
 
 - if enclosed by backticks, then any characters except line breaks, angle brackets, and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
+
+### Bindings 
 
 ### Components 🧱
 
 Components are the building blocks of apps.
 
-- `Component [identifier]`
+- `Component [id]`
 
 Each component may declare these items:
 
 #### Data
 
-🔻 **Parameters** (provisioned data)
+🔻 **Parameters**
 
-- `Take [identifier] of [concept]`
-- `Take optional [identifier] of [concept]`
-- `Handle [identifier] of [component]`
-- `Handle optional [identifier] of [component]`
+Parameters are bindings created by a component and shared with its children.
 
-🟨 **Stores** (managed data)
+To receive a parameter named `id` holding an instance of the given `concept`:
+```
+Take [id] of [concept]
+```
 
-- `Let [identifier] be [value]`
+To allow the parameter to hold nothing:
+```
+Take [id] of optional [concept]
+```
+
+To receive a parameter named `id` holding an instance of the given `component`:
+```
+Handle [id] of [component]
+```
+
+To allow the parameter to hold nothing:
+```
+Handle [id] of optional [component]
+```
+
+🟨 **Stores**
+
+Stores are dynamic variables 
+
+- `Let [id] be [value]`
 
 #### Operation
 
