@@ -30,28 +30,16 @@ The Compendium has three main goals:
 
 🙌 **Elevate ubiquitous technical terminology** in apps and products, shared across R&D by frontend engineers, designers, and managers.
 
-_TODO anything else to say? ✏️_
+_TODO ✏️ Finish this section..._
 
 - HTML and CSS are almost entirely user-facing; JavaScript is not, mostly
 - striving for parity between GUI and code development experiences within an IDE
 
 ## Compendium Studio
 
-_TODO expand this section as studio is developed..._
+_TODO Write this section as studio is developed..._
 
-### Finder
-
-**Finder** shows a searchable tree of your open files, with a summary of the items within each one.
-
-### Editor
-
-**Editor** shows editable content for the items selected in Finder.
-
-### Viewer
-
-**Viewer** shows a preview of the items selected in Finder, which may be edited and manipulated.
-
-## Compendium Core Spec
+## Compendium Code Spec
 
 _TODO expand this section as the core is developed..._
 
@@ -62,11 +50,11 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 - if enclosed by backticks, then any characters except line breaks, angle brackets, and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
-### Bindings
+### ⛳️ Fields
 
-A binding is an instance of a concept. It is an object that holds data, which units can read, use actions to update, or use methods to produce new objects.
+A field is an instance of a concept. It is an object that holds data, which units can read, update, or use to produce new objects.
 
-Moreover, each time its data changes, a binding notifies the objects that reference it. This leads to efficient, reactive behavior in your apps.
+Moreover, each time its data changes, a field notifies the objects that reference it. This leads to efficient, reactive behavior in apps.
 
 ### 🧱 Components 
 
@@ -93,29 +81,29 @@ Each component spec file contains declarations which determine its behavior.
 
 #### 🔻 **Parameters**
 
-A parameter is a reference for a component to receive a binding from its parent.
+A parameter is a reference for a component to receive a field from its parent.
 
-To declare a parameter named `id` holding a binding of the given `concept`:
+To declare a parameter named `id` holding a field of the given `concept`:
 ```
 Take [id] of [concept]
 ```
 
-To allow the parameter's binding to be empty:
+To allow the parameter's field to be empty:
 ```
 Take [id] of optional [concept]
 ```
 
 #### 🟨 **Stores**
 
-A store is a reference for a component to save a binding, which it can pass to its children.
+A store is a reference for a component to save a field, which it can pass to its children.
 
 ```
-Let [id] be [binding]
+Let [id] be [field]
 ```
 
 To allow the store's binding to be empty:
 ```
-Let [id] be optional [binding]
+Let [id] be optional [field]
 ```
 
 #### 🔵 **Units**
@@ -138,19 +126,19 @@ This may be
 
 #### 🔺 **Streams**
 
-A stream is a channel which broadcasts bindings from a component to its parent.
+A stream is a channel which broadcasts fields from a component to its parent.
 
 To declare a stream named `id` which broadcasts just empty events:
 ```
 Will [id]
 ```
 
-To declare a stream which broadcasts events with bindings of the given `concept`:
+To declare a stream which broadcasts events with fields of the given `concept`:
 ```
 Will [id] [concept]
 ```
 
-To allow the stream to optionally broadcast empty bindings of the given `concept`:
+To allow the stream to optionally broadcast empty fields of the given `concept`:
 ```
 Will [id] optional [concept]
 ```
