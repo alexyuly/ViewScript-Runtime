@@ -75,8 +75,21 @@ Each concept spec file contains declarations that determine its behavior.
 
 #### 🔻 **Parameters**
 
-- `Take [identifier] of [concept]`
-- `Take optional [identifier] of [concept]`
+A parameter is a reference for a concept to receive a field from the object that created it.
+
+A concept may update its own parameters, by calling actions on them from within its own actions.
+
+Any object may read the values of a concept's parameters.
+
+To declare a parameter named `id` holding a field of the given `concept`:
+```
+Take [id] of [concept]
+```
+
+To allow the parameter's field to be empty:
+```
+Take [id] of optional [concept]
+```
 
 #### 🟨 **Stores**
 
@@ -177,7 +190,7 @@ This may be
 
 Each unit also has
 
-**Listeners**: subroutines to handle events from the unit's streams
+**Listeners**: event handlers for the unit's streams
 
 ```
 <div>
