@@ -200,7 +200,7 @@ Each unit also has
     console: log "Context menu prevented!"
   }
   on keydown => {
-    exit if event.key: `is not` "Enter"
+    prevent event.key: `is not` "Enter"
     console: log "You pressed Enter!"
   }
 
