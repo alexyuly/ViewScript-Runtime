@@ -54,13 +54,14 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 
 A field is an instance of a concept. It is an object that holds data, which units can read, update, or use to produce new objects.
 
-Moreover, each time its data changes, a field tells the objects that reference it to perform the resulting side effects. This leads to efficient reactive behavior in apps.
+Moreover, each time its data changes, a field notifies the objects that reference it. This leads to efficient, reactive behavior in apps.
 
 ### 🧱 Components 
 
 Components are the building blocks of apps.
 
 The first line in a .component.spec file should declare a component with an `id` that matches the file name, excluding its extensions.
+
 ```
 Component [id]
 ```
@@ -75,13 +76,13 @@ Component Example
 # to be continued...
 ```
 
-By convention, the first line is written in title case, capitalizing the first letter of each word. In fact though, Compendium code is case-insensitive.
+Although Compendium code is case insensitive, conventionally, the first line is written in title case.
 
-Each component spec file contains declarations which determine its behavior.
+Each component spec file contains declarations that determine its behavior.
 
 #### 🔻 **Parameters**
 
-A parameter is a reference for a component to receive a field from its parent.
+A parameter is a reference for a component to receive a field from its parent, which it can pass to its children.
 
 To declare a parameter named `id` holding a field of the given `concept`:
 ```
@@ -123,6 +124,34 @@ New [component]
 This may be
 - either a natural component that is part of the Compendium API,
 - or a custom component that you or someone else has built with Compendium code.
+
+Each unit also has
+
+**Listeners**: subroutines to handle events from the unit's streams
+
+```
+<div>
+  on click => window: alert "You clicked!"
+  on contextmenu => {
+    event: prevent-default
+    console: log "Context menu prevented!"
+  }
+
+New geolocation
+  on change => console: log "{event.coords.lat}, {event.coords.lon}"
+```
+
+**Properties**: bindings assigned to the unit's parameters
+
+```
+<ul>
+  font = "28pt serif"
+  content =
+  - <li>
+      content = "1"
+  - <li>
+      content = "2"
+```
 
 #### 🔺 **Streams**
 
