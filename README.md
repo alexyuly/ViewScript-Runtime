@@ -62,13 +62,30 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 - if enclosed by backticks, then any characters except line breaks, angle brackets, and backticks;
 - else, a case-insensitive sequence of characters including a-z and hyphens.
 
-### Bindings 
+### Bindings
 
-### Components 🧱
+TODO
+
+### 🧱 Components 
 
 Components are the building blocks of apps.
 
-- `Component [id]`
+The first line in a .component.spec file should declare a component with an id that matches the file name, excluding its extensions.
+```
+Component [id]
+```
+
+For example:
+
+`Example.component.spec`
+
+```
+Component Example
+
+# to be continued...
+```
+
+By convention, the first line is written in title case, capitalizing the first letter of each word. In fact though, Compendium code is case-insensitive.
 
 Each component may declare these items:
 
@@ -100,13 +117,13 @@ Handle [id] of optional [component]
 
 🟨 **Stores**
 
-Stores are dynamic variables 
+Stores are bindings created by a component  
 
 - `Let [id] be [value]`
 
-#### Operation
+🔵 **Units**
 
-🔵 **Units** (automatic execution)
+
 
 - `<element>`
 - `New [component]`
