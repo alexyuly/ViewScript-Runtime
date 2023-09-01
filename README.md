@@ -131,7 +131,7 @@ Let [id] be [binding]
 
 A unit is an instance of a component (a "child") created by another (its "parent").
 
-To create an element in the Document Object Model with the given `tag`:
+To create an element in the Document Object Model with the given `tag` name:
 ```
 <tag>
 ```
@@ -140,6 +140,8 @@ To create an instance of a component that is outside the DOM:
 ```
 New [component]
 ```
+
+This may be a natural component that is part of the Compendium API, or it may be a custom component that you or someone else has built with Compendium code.
 
 #### 🔺 **Streams**
 
