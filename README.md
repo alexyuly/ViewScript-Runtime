@@ -200,9 +200,9 @@ Each unit also has
     console: log "Context menu prevented!"
   }
   on keydown => {
-    prevent event.key: `is` "Escape"
-    prevent event.key: `is` "Enter" => console: log "You pressed Enter!"
-    prevent event.key: `is` "Shift" => {
+    prevent event.key: is "Escape"
+    prevent event.key: is "Enter" => console: log "You pressed Enter!"
+    prevent event.key: is "Shift" => {
       console: log "You pressed Shift!"
       console: log "Time to shift into gear."
     }
