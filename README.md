@@ -93,28 +93,29 @@ Each component spec file contains declarations which determine its behavior.
 
 #### 🔻 **Parameters**
 
-A parameter is a dynamic reference for a component to receive bindings from its parent.
-
-The reference is mutable by the parent (using conditional expressions), but it is immutable by the component that created it.
+A parameter is a reference for a component to receive a binding from its parent.
 
 To declare a parameter named `id` holding a binding of the given `concept`:
 ```
 Take [id] of [concept]
 ```
 
-To allow the parameter to hold nothing:
+To allow the parameter's binding to be empty:
 ```
 Take [id] of optional [concept]
 ```
 
 #### 🟨 **Stores**
 
-A store is a static reference for a component to save a binding, which it can pass to its children.
-
-The reference is immutable, so one store always refers to the one same binding.
+A store is a reference for a component to save a binding, which it can pass to its children.
 
 ```
 Let [id] be [binding]
+```
+
+To allow the store's binding to be empty:
+```
+Let [id] be optional [binding]
 ```
 
 #### 🔵 **Units**
@@ -131,23 +132,25 @@ To create an instance of a component that is outside the DOM:
 New [component]
 ```
 
-This may be a natural component that is part of the Compendium API, or it may be a custom component that you or someone else has built with Compendium code.
+This may be
+- either a natural component that is part of the Compendium API,
+- or a custom component that you or someone else has built with Compendium code.
 
 #### 🔺 **Streams**
 
-A stream is a channel which broadcasts events from a component to its parent.
+A stream is a channel which broadcasts bindings from a component to its parent.
 
 To declare a stream named `id` which broadcasts just empty events:
 ```
 Will [id]
 ```
 
-To declare a stream which broadcasts events which are bindings of the given `concept`:
+To declare a stream which broadcasts events with bindings of the given `concept`:
 ```
 Will [id] [concept]
 ```
 
-To allow the stream to optionally broadcast empty events, too:
+To allow the stream to optionally broadcast empty bindings of the given `concept`:
 ```
 Will [id] optional [concept]
 ```
