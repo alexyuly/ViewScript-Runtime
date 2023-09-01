@@ -266,6 +266,7 @@ Use [plugin]
 
 ```
 [plugin]: [action]
+```
 
 ### Other Syntax
 
