@@ -256,6 +256,17 @@ Each environment may have these declarations:
 
 - `App [component]`
 
+### Plugins 🧩
+
+TODO
+
+```
+Use [plugin]
+```
+
+```
+[plugin]: [action]
+
 ### Other Syntax
 
 #### Conditional expressions
