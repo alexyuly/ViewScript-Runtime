@@ -209,7 +209,7 @@ Each unit also has
     window: alert "You pressed an unsupported key. Sorry."
   }
 
-New geolocation
+Use geolocation
   on change => console: log "{event.coords.lat}, {event.coords.lon}"
 ```
 
