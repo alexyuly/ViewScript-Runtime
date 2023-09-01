@@ -225,7 +225,7 @@ New geolocation
       content = "2"
 ```
 
-#### 🔺 **Streams**
+#### 💧 **Streams**
 
 A stream is a channel which broadcasts events, which may contain fields, from a component to its parent.
 
