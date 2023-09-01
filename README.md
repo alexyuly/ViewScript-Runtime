@@ -136,6 +136,10 @@ Each unit also has
     event: prevent-default
     console: log "Context menu prevented!"
   }
+  on keydown => {
+    exit if event.key: `is not` "Enter"
+    console: log "You pressed Enter!"
+  }
 
 New geolocation
   on change => console: log "{event.coords.lat}, {event.coords.lon}"
