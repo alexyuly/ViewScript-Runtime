@@ -93,7 +93,7 @@ Each component spec file contains declarations which determine its behavior.
 
 #### 🔻 **Parameters**
 
-A parameter is a reference for a component to receive bindings from its parent.
+A parameter is a dynamic reference for a component to receive bindings from its parent.
 
 The reference is mutable by the parent (using conditional expressions), but it is immutable by the component that created it.
 
@@ -107,19 +107,9 @@ To allow the parameter to hold nothing:
 Take [id] of optional [concept]
 ```
 
-To receive a parameter named `id` holding a unit of the given `component`:
-```
-Handle [id] of [component]
-```
-
-To allow the parameter to hold nothing:
-```
-Handle [id] of optional [component]
-```
-
 #### 🟨 **Stores**
 
-A store is a reference for a component to save a binding, which it can pass to its children.
+A store is a static reference for a component to save a binding, which it can pass to its children.
 
 The reference is immutable, so one store always refers to the one same binding.
 
@@ -145,9 +135,22 @@ This may be a natural component that is part of the Compendium API, or it may be
 
 #### 🔺 **Streams**
 
-- `Will [identifier]`
-- `Will [identifier] [concept]`
-- `Will [identifier] optional [concept]`
+A stream is a channel which broadcasts events from a component to its parent.
+
+To declare a stream named `id` which broadcasts empty events:
+```
+Will [id]
+```
+
+To declare a stream which broadcasts events which are bindings of the given `concept`:
+```
+Will [id] [concept]
+```
+
+To allow the stream to optionally broadcast empty events, too:
+```
+Will [id] optional [concept]
+```
 
 ### Concepts 📚
 
