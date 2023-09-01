@@ -64,7 +64,9 @@ Each identifier, represented as `[id]` in the examples below, is delimited by wh
 
 ### Bindings
 
-TODO
+A binding is an instance of a concept. It is an object that holds data, which units can read, use actions to update, or use methods to produce new objects.
+
+Moreover, each time its data changes, a binding notifies the objects that reference it. This leads to efficient, reactive behavior in your apps.
 
 ### 🧱 Components 
 
@@ -87,13 +89,13 @@ Component Example
 
 By convention, the first line is written in title case, capitalizing the first letter of each word. In fact though, Compendium code is case-insensitive.
 
-Each component may declare these items:
+Each component spec file contains declarations which 
 
-#### Data
+#### 🔻 **Parameters**
 
-🔻 **Parameters**
+A parameter is a reference for a component to receive bindings from its parent.
 
-A parameter is a port for a component to receive bindings from its parent.
+The reference is mutable by the parent (using conditional expressions), but it is immutable by the component that created it.
 
 To declare a parameter named `id` holding a binding of the given `concept`:
 ```
@@ -105,7 +107,7 @@ To allow the parameter to hold nothing:
 Take [id] of optional [concept]
 ```
 
-To receive a parameter named `id` holding a binding of the given `component`:
+To receive a parameter named `id` holding a unit of the given `component`:
 ```
 Handle [id] of [component]
 ```
@@ -115,20 +117,24 @@ To allow the parameter to hold nothing:
 Handle [id] of optional [component]
 ```
 
-🟨 **Stores**
+#### 🟨 **Stores**
 
-A store is a constant reference for a component to save a binding which it can pass to its own children.
+A store is a reference for a component to save a binding, which it can pass to its children.
+
+The reference is immutable, so one store always refers to the one same binding.
 
 ```
-Let [id] be [value]
+Let [id] be [binding]
 ```
 
-🔵 **Units**
+#### 🔵 **Units**
+
+A unit is an instance of a component (a "child") created by another (its "parent").
 
 - `<element>`
 - `New [component]`
 
-🔺 **Streams** (automatic production)
+#### 🔺 **Streams**
 
 - `Will [identifier]`
 - `Will [identifier] [concept]`
