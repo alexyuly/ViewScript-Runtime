@@ -1,4 +1,4 @@
-# The Compendium 📗
+# 📗 The Compendium
 
 ## Compilation Drip for the Hello-World app
 
