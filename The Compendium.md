@@ -1,6 +1,18 @@
 # 📗 The Compendium
 
-## Compilation Drip for the Hello-World app
+## End-to-end flow for Compendium source code
+
+1. **Entry point** (`[NAME].component.spec`)
+1. Source code (`[NAME.TYPE].spec`)
+1. Source tokens _(in memory)_
+1. **Compiled object** (`[NAME.TYPE].json`)
+1. Dependency resolution
+    1. For each dependency, repeat steps 2-5
+1. **Linked app** (`[NAME].app.json`)
+
+_Where and how does type checking happen?_
+
+## Compilation drip for the Hello-World app
 
 💧 Source Code (`Hello-World.component.spec`)
 ```
