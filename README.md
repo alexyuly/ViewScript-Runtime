@@ -200,9 +200,9 @@ Each unit also has
     console: log "Context menu prevented!"
   }
   on keydown => {
-    preempt event.key: is "Escape"
-    preempt event.key: is "Enter" => console: log "You pressed Enter!"
-    preempt event.key: is "Shift" => {
+    exit when event.key: is "Escape"
+    exit when event.key: is "Enter" => console: log "You pressed Enter!"
+    exit when event.key: is "Shift" => {
       console: log "You pressed Shift!"
       console: log "Time to shift into gear."
     }
@@ -260,7 +260,7 @@ Each environment may have these declarations:
 
 A plugin is an interface from your app to an external system.
 
-Technically, a function has the combined capability of a component and a concept. It is a general-purpose singleton object. While undesirable in applications, this tight coupling of encapsulated and exposed functionality is useful in situations where the underlying separation of concerns is unclear or unimportant.
+Technically, a plugin has the combined capability of a component and a concept. It is a general-purpose singleton object. While undesirable in applications, this tight coupling of encapsulated and exposed functionality is useful in situations where the underlying separation of concerns is unclear or unimportant.
 
 ```
 Use [plugin]
