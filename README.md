@@ -194,16 +194,14 @@ Each unit also has
 
 ```
 <div>
-  on click => window: alert "You clicked!"
-  on contextmenu => {
+  on click -> window: alert "You clicked!"
+  on contextmenu {
     event: prevent-default
     console: log "Context menu prevented!"
   }
-  on keydown => {
+  on keydown {
     catch event.key: is "Escape"
-    catch event.key: is "Enter" {
-      console: log "You pressed Enter!"
-    }
+    catch event.key: is "Enter" -> console: log "You pressed Enter!"
     catch event.key: is "Shift" {
       console: log "You pressed Shift!"
       console: log "Time to shift into gear."
@@ -273,7 +271,7 @@ Use [plugin]
 # etc...
 
 Use geolocation
-  on change => console: log "{event.coords.lat}, {event.coords.lon}"
+  on change -> console: log "{event.coords.lat}, {event.coords.lon}"
 ```
 
 ### Other Syntax
@@ -289,10 +287,10 @@ Use geolocation
 
 #### Handling an event
 
-- `on [event] => [action call]`
+- `on [event] -> [action call]`
 
 ```
-on [event] => {
+on [event] {
   [action call]
   [action call]
   [action call]
@@ -344,8 +342,8 @@ Let hovered be false
   width = "100%"
 
   content = <p>
-    on pointerenter => hovered: enable
-    on pointerleave => hovered: disable
+    on pointerenter -> hovered: enable
+    on pointerleave -> hovered: disable
 
     background = if hovered then "olive" else "navy"
     border = "24px solid currentcolor"
@@ -369,12 +367,12 @@ Let count be 0
   content = "The count is {count}."
 
 <button>
-  on click => count: add 1
+  on click -> count: add 1
 
   content = "Click me!"
 
 New timer
-  on time => count: add 1
+  on time -> count: add 1
 
   loops = true
   paused = count: `is less than` 100
@@ -390,7 +388,7 @@ Component `To-do List`
 Let to-dos be new list of `to-do item`
 
 <form>
-  on submit => to-dos: push new `to-do item`
+  on submit -> to-dos: push new `to-do item`
     text = event.data: get "text"
 
   content =
