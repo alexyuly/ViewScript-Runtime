@@ -210,9 +210,6 @@ Each unit also has
     }
     window: alert "You pressed an unsupported key. Sorry."
   }
-
-Use geolocation
-  on change => console: log "{event.coords.lat}, {event.coords.lon}"
 ```
 
 **Properties**: fields assigned to the unit's parameters
@@ -274,6 +271,9 @@ Use [plugin]
 [plugin].[property]
 
 # etc...
+
+Use geolocation
+  on change => console: log "{event.coords.lat}, {event.coords.lon}"
 ```
 
 ### Other Syntax
