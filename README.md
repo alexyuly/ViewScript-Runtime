@@ -200,9 +200,11 @@ Each unit also has
     console: log "Context menu prevented!"
   }
   on keydown => {
-    exit when event.key: is "Escape"
-    exit when event.key: is "Enter" => console: log "You pressed Enter!"
-    exit when event.key: is "Shift" => {
+    when event.key: is "Escape" return
+    when event.key: is "Enter" return {
+      console: log "You pressed Enter!"
+    }
+    when event.key: is "Shift" return {
       console: log "You pressed Shift!"
       console: log "Time to shift into gear."
     }
