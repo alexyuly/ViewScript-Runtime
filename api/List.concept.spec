@@ -2,6 +2,7 @@ Natural Concept List
 
 Knows type
 
+Can map to type
 Can pop
 Can push type
 Can shift

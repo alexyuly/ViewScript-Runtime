@@ -1,5 +1,5 @@
 /**
- * Boxes any value for publishing and subscribing
+ * The base class for data building blocks
  */
 export default class GenericConcept {
   constructor(value) {
@@ -7,6 +7,7 @@ export default class GenericConcept {
     this.value = value;
   }
 
+  // protected
   publish(value) {
     this.value = value;
 

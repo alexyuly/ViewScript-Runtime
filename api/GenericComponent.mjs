@@ -1,14 +1,16 @@
 /**
- * Manipulates data and manages events and side effects
+ * The base class for app building blocks
  */
 export default class GenericComponent {
   constructor(parameters, handlers) {
-    this.parameters = parameters;
     this.handlers = handlers;
+    this.parameters = parameters;
   }
 
-  fire(eventName, boxedValue) {
-    const eventHandlers = this.handlers.get(eventName);
+  // protected
+  reportEvent(eventName, boxedValue) {
+    const eventHandlers = this.handlers[eventName];
+
     for (const eventHandler of eventHandlers) {
       eventHandler.handle(boxedValue);
     }

@@ -12,6 +12,17 @@ export default class ListConcept extends GenericConcept {
 
   // Actions:
 
+  map(methodName, boxed) {
+    const result = [];
+
+    for (const item in this.value) {
+      const mappedItem = item[methodName](boxed);
+      result.push(mappedItem);
+    }
+
+    return result;
+  }
+
   /**
    * Removes the last item from a stack
    */

@@ -7,7 +7,19 @@ export default class TimerComponent extends GenericComponent {
   constructor(parameters, handlers) {
     super(parameters, handlers);
 
-    // TODO set up setTimeout or setInterval based on initial parameters
-    // TODO subscribe to parameters changing, and update things accordingly
+    const restartTimer = (newParameters) => {
+      const cancelToken = (newParameters.loops ? setInterval : setTimeout)(
+        () => {
+          this.reportEvent("time");
+        },
+        newParameters.period
+      );
+    };
+
+    restartTimer({
+      loops: parameters.loops.value,
+      paused: parameters.paused.value,
+      period: parameters.period.value,
+    });
   }
 }
