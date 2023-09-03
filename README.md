@@ -2,30 +2,34 @@
 
 ## End-to-end flow for Compendium source code
 
-1. **Entry point** (`[NAME].component.spec`)
-1. Source code (`[NAME.TYPE].spec`)
-1. Source tokens _(in memory)_
-1. **Compiled object** (`[NAME.TYPE].json`)
-1. Dependency resolution
-    1. For each dependency, repeat steps 2-5
-1. **Linked app** (`[NAME].app.json`)
+1. Entry Point (`[NAME].component.spec`)
+1. Source Code (`[NAME.TYPE].spec`)
+1. Parsed Tokens _(in memory)_
+1. Compiled Object (`[NAME.TYPE].json`)
+1. Dependency Resolution
+   1. For each dependency, repeat steps 2-5
+1. Linked App Object (`[NAME].app.json`)
 
 _Where and how does type checking happen?_
 
 ## Compilation drip for the Hello-World app
 
 💧 Source Code (`Hello-World.component.spec`)
+
 ```
-Component Hello-World
+View Component Hello-World
 
 <main>
   content = "Hello, world!"
 
 ```
+
 💧 Parsed Tokens
+
 ```
 [
   [
+    "View",
     "Component",
     "Hello-World"
   ],
@@ -43,20 +47,20 @@ Component Hello-World
 ]
 
 ```
-💧 Compiled Object At Buildtime
+
+💧 Compiled Object / Linked App Object
+
 ```
 {
-  "type": "component",
+  "type": "view-unit",
   "name": "Hello-World",
   "units": [
     {
-      "type": "unit",
-      "class": "element",
+      "type": "element-unit",
       "tagName": "main",
       "parameters": {
         "content": {
-          "type": "field",
-          "class": "string",
+          "type": "string-field",
           "value": "Hello, world!"
         }
       }
@@ -65,24 +69,36 @@ Component Hello-World
 }
 
 ```
-💧 Created Object At Runtime
-```
-new class extends Component {
-  name = "Hello-World";
 
-  units() {
-    return [
-      ElementComponent.unit({
-        tagName: "main",
-        parameters: {
-          content: StringValue.field({
-            value: "Hello, world!"
-          })
-        }
-      })
-    ]
-  }
-}
+💧 Created Objects At Runtime
 
 ```
+new ViewUnit({
+  name: "Hello-World",
+  units: [
+    {
+      "type": "element-unit",
+      "tagName": "main",
+      "parameters": {
+        "content": {
+          "type": "string-field",
+          "value": "Hello, world!",
+        },
+      },
+    },
+  ],
+})
 
+new ElementUnit({
+  "tagName": "main",
+  "parameters": {
+    "content": {
+      "type": "string-field",
+      "value": "Hello, world!",
+    },
+  },
+})
+
+new StringField("Hello, world!")
+
+```
