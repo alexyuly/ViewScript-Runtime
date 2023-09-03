@@ -77,12 +77,12 @@ new ViewUnit({
   name: "Hello-World",
   units: [
     {
-      "type": "element-unit",
-      "tagName": "main",
-      "parameters": {
-        "content": {
-          "type": "string-field",
-          "value": "Hello, world!",
+      type: "element-unit",
+      tagName: "main",
+      parameters: {
+        content: {
+          type: "string-field",
+          value: "Hello, world!",
         },
       },
     },
@@ -90,15 +90,21 @@ new ViewUnit({
 })
 
 new ElementUnit({
-  "tagName": "main",
-  "parameters": {
-    "content": {
-      "type": "string-field",
-      "value": "Hello, world!",
+  tagName: "main",
+  parameters: {
+    content: {
+      type: "string-field",
+      value: "Hello, world!",
     },
   },
 })
 
 new StringField("Hello, world!")
+
+// Here's the equivalent Ergonomic API call:
+
+view("Hello-World")(main({
+  content: "Hello, world!",
+}))
 
 ```
