@@ -101,7 +101,7 @@ new ElementUnit({
 
 new StringField("Hello, world!")
 
-// Here's the equivalent Ergonomic API call:
+// Here's the equivalent Ergonomic API:
 
 view("Hello-World")(main({
   content: "Hello, world!",
