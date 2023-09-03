@@ -55,7 +55,7 @@ Component Hello-World
       "tagName": "main",
       "parameters": {
         "content": {
-          "type": "data",
+          "type": "field",
           "class": "string",
           "value": "Hello, world!"
         }
@@ -70,16 +70,14 @@ Component Hello-World
 new Component({
   name: "Hello-World",
   units: [
-    {
-      ElementComponent.unit({
-        tagName: "main",
-        parameters: {
-          content: StringValue.data({
-            value: "Hello, world!"
-          })
-        }
-      })
-    }
+    ElementComponent.unit({
+      tagName: "main",
+      parameters: {
+        content: StringValue.field({
+          value: "Hello, world!"
+        })
+      }
+    })
   ]
 })
 
