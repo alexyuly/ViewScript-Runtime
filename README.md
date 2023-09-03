@@ -67,19 +67,22 @@ Component Hello-World
 ```
 💧 Created Object At Runtime
 ```
-new Component({
-  name: "Hello-World",
-  units: [
-    ElementComponent.unit({
-      tagName: "main",
-      parameters: {
-        content: StringValue.field({
-          value: "Hello, world!"
-        })
-      }
-    })
-  ]
-})
+new class extends Component {
+  name = "Hello-World";
+
+  units() {
+    return [
+      ElementComponent.unit({
+        tagName: "main",
+        parameters: {
+          content: StringValue.field({
+            value: "Hello, world!"
+          })
+        }
+      })
+    ]
+  }
+}
 
 ```
 
