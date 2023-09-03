@@ -112,7 +112,7 @@ view(
 
 ```
 
-## Examples of Compendium Code versus Ergonomic TypeScript API
+## Examples of Compendium Code versus the Compendium Ergonomic TypeScript API (CEnTAPIde)
 
 ```
 View Component Counter
