@@ -142,11 +142,14 @@ or, as JSON:
 {
   "type": "view",
   "name": "Counter",
-  "stores": {
+  "references": {
     "count": {
-      "type": "field",
-      "name": "number",
-      "value": 0
+      "type": "store",
+      "binding": {
+        "type": "field",
+        "name": "number",
+        "value": 0
+      }
     }
   },
   "units": [
