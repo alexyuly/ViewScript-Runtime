@@ -120,7 +120,7 @@ versus
 ```ts
 view(
   "Counter",
-  field("count", 0),
+  store("count", 0),
   main({
     padding: "24px",
     content: [
@@ -142,15 +142,17 @@ or, as JSON:
 {
   "t": "view-unit",
   "n": "Count",
-  "s": {
-    "t": "store",
-    "n": "count",
-    "b": {
-      "type": "field",
-      "name": "number",
-      "value": 0
+  "s": [
+    {
+      "t": "store",
+      "n": "count",
+      "b": {
+        "type": "field",
+        "name": "number",
+        "value": 0
+      }
     }
-  },
+  ],
   "u": [
     {
       "t": "element-unit",
