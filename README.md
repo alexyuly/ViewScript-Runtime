@@ -170,6 +170,13 @@ or, as JSON:
               }
             },
             "parameters": {
+              "content": "Click me to add 1"
+            }
+          },
+          {
+            "type": "element-unit",
+            "name": "p",
+            "parameters": {
               "content": [
                 "Count is ",
                 {
