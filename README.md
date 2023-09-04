@@ -94,7 +94,7 @@ view(
 );
 ```
 
-## Examples of Compendium Code versus the Compendium Ergonomic TypeScript API (CEnTAPIde)
+## Examples of Compendium Code versus the Compendium Ergonomic TypeScript API (CEnTA) 🐛
 
 ```
 View Component Counter
