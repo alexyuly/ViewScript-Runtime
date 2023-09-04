@@ -144,12 +144,9 @@ or, as JSON:
   "name": "Counter",
   "references": {
     "count": {
-      "type": "store",
-      "binding": {
-        "type": "field",
-        "name": "number",
-        "value": 0
-      }
+      "type": "field",
+      "name": "number",
+      "value": 0
     }
   },
   "units": [
