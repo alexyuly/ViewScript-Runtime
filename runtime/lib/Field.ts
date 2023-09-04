@@ -1,6 +1,10 @@
-import FieldSerialized from "./FieldSerialized";
+import {
+  FieldSerialized,
+  isBooleanFieldSerialized,
+  isNumberFieldSerialized,
+  isStringFieldSerialized,
+} from "./Serialized";
 import type Listener from "./Listener";
-import StringField from "./StringField";
 
 export default class Field<T = unknown> {
   private value: T;
@@ -11,12 +15,12 @@ export default class Field<T = unknown> {
     this.value = value;
   }
 
-  getValue() {
-    return this.value;
-  }
-
   attach(listener: Listener<T>) {
     this.listeners.push(listener);
+  }
+
+  getValue() {
+    return this.value;
   }
 
   update(value: T) {
@@ -28,13 +32,49 @@ export default class Field<T = unknown> {
   }
 
   static deserialize(field: FieldSerialized) {
-    switch (field.name) {
-      case "string":
-        return new StringField(field.value);
-      default:
-        throw new Error(
-          `The given FieldSerialized had unrecognized name: ${field.name}`
-        );
+    if (isBooleanFieldSerialized(field)) {
+      return new BooleanField(field.value);
     }
+    if (isNumberFieldSerialized(field)) {
+      return new NumberField(field.value);
+    }
+    if (isStringFieldSerialized(field)) {
+      return new StringField(field.value);
+    }
+    throw new Error(
+      `The given FieldSerialized had unrecognized name: ${
+        (field as unknown as any).name
+      }`
+    );
+  }
+}
+
+export class BooleanField extends Field<boolean> {
+  disable() {
+    this.update(false);
+  }
+
+  enable() {
+    this.update(true);
+  }
+
+  toggle() {
+    return this.update(!this.getValue());
+  }
+}
+
+export class NumberField extends Field<number> {
+  add(value: number) {
+    this.update(this.getValue() + value);
+  }
+
+  sign() {
+    return Math.sign(this.getValue());
+  }
+}
+
+export class StringField extends Field<string> {
+  length() {
+    return this.getValue().length;
   }
 }

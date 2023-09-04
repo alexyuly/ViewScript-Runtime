@@ -1,6 +1,5 @@
 import Field from "./Field";
-import type FieldSerialized from "./FieldSerialized";
-import type { UnitSerialized } from "./UnitSerialized";
+import type { FieldSerialized, UnitSerialized } from "./Serialized";
 
 // TODO Should this extend Unit?
 export default class ViewUnit {

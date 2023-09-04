@@ -26,7 +26,7 @@ view(
   form({
     onSubmit: action("to-dos").push(
       fieldOf("To-do Item", {
-        text: event().get("data").get("text"),
+        text: event().get("data", "text"),
       })
     ),
     content: [],

@@ -163,8 +163,12 @@ or, as JSON:
               "onClick": {
                 "type": "action",
                 "name": "count",
-                "operand": "add",
-                "expression": 1
+                "operator": "add",
+                "operand": {
+                  "type": "field",
+                  "name": "number",
+                  "value": 1
+                }
               }
             },
             "properties": {
