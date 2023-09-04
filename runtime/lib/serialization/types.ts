@@ -22,13 +22,13 @@ namespace Serialized {
 
   export type ConditionalCatch = {
     type: "conditional-catch";
-    condition: Expression<DataField>;
+    condition: Expression<BooleanField>;
     handler?: Handler;
   };
 
   export type ConditionalYield<T extends AbstractField> = {
     type: "conditional-yield";
-    condition: Expression<DataField>;
+    condition: Expression<BooleanField>;
     result: T;
     inverse?: T;
   };
