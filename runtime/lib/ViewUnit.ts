@@ -6,23 +6,23 @@ import type { UnitSerialized } from "./UnitSerialized";
 export default class ViewUnit {
   readonly name: string;
 
-  private readonly parameters: Record<string, Field>;
+  private readonly properties: Record<string, Field>;
 
   private readonly stores: Record<string, Field> = {};
 
   constructor({
     name,
-    parameters,
+    properties,
     stores,
     units,
   }: {
     name: string;
-    parameters: Record<string, Field>;
+    properties: Record<string, Field>;
     stores: Record<string, FieldSerialized>;
     units: Array<UnitSerialized>;
   }) {
     this.name = name;
-    this.parameters = parameters;
+    this.properties = properties;
 
     for (const name in stores) {
       const store = stores[name];
