@@ -55,26 +55,26 @@ namespace Serialized {
   export type Handler = Action | Array<Action | ConditionalCatch>;
 
   export type ListField<
-    T extends ListFieldItemRecursive = ListFieldItemRecursive,
+    T extends ListFieldItem = ListFieldItem,
   > = AbstractField<"list", Array<T>> & {
     of: ListFieldItemName<T>;
   };
 
   export type ListFieldItem =
+    | ListFieldItemLeaf
+    | Array<ListFieldItem>;
+
+  export type ListFieldItemLeaf =
     | BooleanField
     | ComplexField
     | NumberField
     | StringField;
 
-  export type ListFieldItemName<T> = T extends Array<ListFieldItem>
-    ? { name: "list"; of: ListFieldItemName<T> }
-    : T extends ListFieldItem
+  export type ListFieldItemName<T> = T extends Array<ListFieldItemLeaf>
+    ? { name: "list"; of: ListFieldItemName<T[number]> }
+    : T extends ListFieldItemLeaf
     ? T["name"]
     : never;
-
-  export type ListFieldItemRecursive =
-    | ListFieldItem
-    | Array<ListFieldItemRecursive>;
 
   export type Method = MethodCall | MethodPipe;
 
