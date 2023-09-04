@@ -2,7 +2,7 @@ import {
   action,
   can,
   event,
-  field,
+  fieldOf,
   form,
   input,
   instance,
@@ -25,7 +25,7 @@ view(
   store("to-dos", listOf(instanceOf("To-do Item"))),
   form({
     onSubmit: action("to-dos").push(
-      field("To-do Item", {
+      fieldOf("To-do Item", {
         text: event().get("data").get("text"),
       })
     ),
