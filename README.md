@@ -45,13 +45,13 @@ View Component Hello-World
 
 ```json
 {
-  "type": "view-unit",
-  "name": "Hello-World",
-  "units": [
+  "t": "view-unit",
+  "n": "Hello-World",
+  "u": [
     {
-      "type": "element-unit",
-      "name": "main",
-      "parameters": {
+      "t": "element-unit",
+      "n": "main",
+      "p": {
         "content": "Hello, world!"
       }
     }
@@ -140,48 +140,48 @@ or, as JSON:
 
 ```json
 {
-  "type": "view-unit",
-  "name": "Count",
-  "stores": {
-    "type": "store",
-    "name": "count",
-    "binding": {
+  "t": "view-unit",
+  "n": "Count",
+  "s": {
+    "t": "store",
+    "n": "count",
+    "b": {
       "type": "field",
       "name": "number",
       "value": 0
     }
   },
-  "units": [
+  "u": [
     {
-      "type": "element-unit",
-      "name": "main",
-      "parameters": {
+      "t": "element-unit",
+      "n": "main",
+      "p": {
         "padding": "24px",
         "content": [
           {
-            "type": "element-unit",
-            "name": "button",
-            "handlers": {
+            "t": "element-unit",
+            "n": "button",
+            "h": {
               "onClick": {
-                "type": "action",
-                "name": "count",
-                "operator": "add",
-                "operand": 1
+                "t": "action",
+                "n": "count",
+                "v": "add",
+                "o": 1
               }
             },
-            "parameters": {
+            "p": {
               "content": "Click me to add 1"
             }
           },
           {
-            "type": "element-unit",
-            "name": "p",
-            "parameters": {
+            "t": "element-unit",
+            "n": "p",
+            "p": {
               "content": [
                 "Count is ",
                 {
-                  "type": "value",
-                  "name": "count"
+                  "t": "value",
+                  "n": "count"
                 },
                 "!"
               ]
