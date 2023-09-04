@@ -143,7 +143,7 @@ or, as JSON:
   "type": "view-unit",
   "name": "Count",
   "stores": {
-    "type": "reference",
+    "type": "store",
     "name": "count",
     "binding": {
       "type": "field",
