@@ -26,16 +26,10 @@ View Component Hello-World
 
 💧 Parsed Tokens
 
-```
+```json
 [
-  [
-    "View",
-    "Component",
-    "Hello-World"
-  ],
-  [
-    "<main>"
-  ],
+  ["View", "Component", "Hello-World"],
+  ["<main>"],
   [
     {
       "indent": 1
@@ -45,19 +39,18 @@ View Component Hello-World
     "\"Hello, world!\""
   ]
 ]
-
 ```
 
 💧 Compiled Object / Linked App Object
 
-```
+```json
 {
   "type": "view-unit",
   "name": "Hello-World",
   "units": [
     {
       "type": "element-unit",
-      "tagName": "main",
+      "name": "main",
       "parameters": {
         "content": {
           "type": "field",
@@ -68,12 +61,11 @@ View Component Hello-World
     }
   ]
 }
-
 ```
 
 💧 Created Objects At Runtime
 
-```
+```ts
 new ViewUnit({
   name: "Hello-World",
   units: [
@@ -89,7 +81,7 @@ new ViewUnit({
       },
     },
   ],
-})
+});
 
 new ElementUnit({
   name: "main",
@@ -100,9 +92,9 @@ new ElementUnit({
       value: "Hello, world!",
     },
   },
-})
+});
 
-new StringField("Hello, world!")
+new StringField("Hello, world!");
 
 // Here's the equivalent Ergonomic API:
 
@@ -110,9 +102,8 @@ view(
   "Hello-World",
   main({
     content: "Hello, world!",
-  }),
-)
-
+  })
+);
 ```
 
 ## Examples of Compendium Code versus the Compendium Ergonomic TypeScript API (CEnTAPIde)
@@ -138,7 +129,7 @@ Let count be 0
 
 versus
 
-```
+```ts
 view(
   "Counter",
   field("count", 0),
@@ -153,7 +144,73 @@ view(
         content: ["Count is ", valueOf("count"), "!"],
       }),
     ],
-  }),
-)
+  })
+);
+```
 
+or, as JSON:
+
+```json
+{
+  "type": "view-unit",
+  "name": "Count",
+  "stores": {
+    "type": "reference",
+    "name": "count",
+    "binding": {
+      "type": "field",
+      "name": "number",
+      "value": 0
+    }
+  },
+  "units": [
+    {
+      "type": "element-unit",
+      "name": "main",
+      "parameters": {
+        "padding": {
+          "type": "field",
+          "name": "string",
+          "value": "24px"
+        },
+        "content": [
+          {
+            "type": "element-unit",
+            "name": "button",
+            "handlers": {
+              "onClick": {
+                "type": "action",
+                "name": "count",
+                "verb": "add",
+                "object": {
+                  "type": "field",
+                  "name": "number",
+                  "value": 1
+                }
+              }
+            },
+            "parameters": {
+              "content": [
+                {
+                  "type": "field",
+                  "name": "string",
+                  "value": "Count is "
+                },
+                {
+                  "type": "value",
+                  "name": "count"
+                },
+                {
+                  "type": "field",
+                  "name": "string",
+                  "value": "!"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
 ```
