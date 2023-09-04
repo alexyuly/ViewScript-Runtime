@@ -10,7 +10,7 @@ namespace Serialized {
     type: "action";
     name: string;
     operator: string;
-    operand: Expression;
+    operand: DataExpression;
   };
 
   export type BooleanField = AbstractField<"boolean", boolean>;
@@ -22,35 +22,39 @@ namespace Serialized {
 
   export type ConditionalCatch = {
     type: "conditional-catch";
-    condition: Expression;
+    condition: DataExpression;
     handler?: Handler;
-  };
-
-  export type ConditionalYield = {
-    type: "conditional-yield";
-    condition: Expression;
-    result: Expression;
-    inverse?: Expression;
   };
 
   export type Content = number | string | ReferenceValue | ViewInstance;
 
+  export type ConditionalYield<T> = {
+    type: "conditional-yield";
+    condition: DataExpression;
+    result: T;
+    inverse?: T;
+  };
+
   export type ContentField = AbstractField<"content", Content | Array<Content>>;
 
-  export type Expression =
-    | ConditionalYield
-    | Field
-    | Method
-    | MethodPipe
-    | ReferenceValue;
+  export type DataExpression = DataField | Method | MethodPipe | ReferenceValue;
 
-  export type Field =
+  export type DataField =
     | BooleanField
     | ComplexField
-    | ContentField
     | ListField
     | NumberField
     | StringField;
+
+  export type DataReference = DataField | Port<DataField>;
+
+  export type Expression =
+    | ConditionalYield<ContentField>
+    | ConditionalYield<DataExpression>
+    | ContentField
+    | DataExpression;
+
+  export type Field = ContentField | DataField;
 
   export type Handler = Action | Array<Action | ConditionalCatch>;
 
@@ -80,7 +84,7 @@ namespace Serialized {
     type: "method";
     name: string;
     operator: string;
-    operand: Expression | MethodChain;
+    operand: DataExpression | MethodChain;
   };
 
   export type MethodChain = {
@@ -96,9 +100,9 @@ namespace Serialized {
 
   export type NumberField = AbstractField<"number", number>;
 
-  export type Port = {
+  export type Port<T extends Field = Field> = {
     type: "port";
-  } & Omit<Field, "type" | "value">;
+  } & Omit<T, "type" | "value">;
 
   export type Reference = Field | Port;
 
@@ -118,7 +122,7 @@ namespace Serialized {
     type: "task";
     name: string;
     streams?: Record<string, Stream>;
-    references?: Record<string, Reference>;
+    references?: Record<string, DataReference>;
     components: Array<TaskInstance>;
   };
 
@@ -126,7 +130,7 @@ namespace Serialized {
     type: "task-instance";
     name: string;
     handlers?: Record<string, Handler>;
-    properties?: Record<string, Expression>;
+    properties?: Record<string, DataExpression>;
   };
 
   export type View = {
@@ -134,7 +138,7 @@ namespace Serialized {
     name: string;
     streams?: Record<string, Stream>;
     references?: Record<string, Reference>;
-    components: Array<Content | TaskInstance>;
+    components: Array<TaskInstance | ViewInstance>;
   };
 
   export type ViewInstance = {
@@ -142,6 +146,6 @@ namespace Serialized {
     element?: true;
     name: string;
     handlers?: Record<string, Handler>;
-    properties?: Record<string, Expression | ViewInstance>;
+    properties?: Record<string, Expression>;
   };
 }
