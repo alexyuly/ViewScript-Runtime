@@ -98,8 +98,7 @@ namespace Serialized {
 
   export type Port = {
     type: "port";
-    field: Omit<Field, "value">;
-  };
+  } & Omit<Field, "type" | "value">;
 
   export type Reference = Field | Port;
 
