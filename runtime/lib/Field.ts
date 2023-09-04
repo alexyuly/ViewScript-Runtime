@@ -1,9 +1,9 @@
 import {
-  FieldSerialized,
   isBooleanFieldSerialized,
   isNumberFieldSerialized,
   isStringFieldSerialized,
-} from "./Serialized";
+} from "./serialization/guards";
+import type { FieldSerialized } from "./serialization/types";
 import type Listener from "./Listener";
 
 export default class Field<T = unknown> {
