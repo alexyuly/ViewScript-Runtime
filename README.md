@@ -52,11 +52,7 @@ View Component Hello-World
       "type": "element-unit",
       "name": "main",
       "parameters": {
-        "content": {
-          "type": "field",
-          "name": "string",
-          "value": "Hello, world!"
-        }
+        "content": "Hello, world!"
       }
     }
   ]
@@ -73,11 +69,7 @@ new ViewUnit({
       type: "element-unit",
       name: "main",
       parameters: {
-        content: {
-          type: "field",
-          name: "string",
-          value: "Hello, world!",
-        },
+        content: "Hello, world!",
       },
     },
   ],
@@ -86,11 +78,7 @@ new ViewUnit({
 new ElementUnit({
   name: "main",
   parameters: {
-    content: {
-      type: "field",
-      name: "string",
-      value: "Hello, world!",
-    },
+    content: "Hello, world!",
   },
 });
 
@@ -168,11 +156,7 @@ or, as JSON:
       "type": "element-unit",
       "name": "main",
       "parameters": {
-        "padding": {
-          "type": "field",
-          "name": "string",
-          "value": "24px"
-        },
+        "padding": "24px",
         "content": [
           {
             "type": "element-unit",
@@ -182,29 +166,17 @@ or, as JSON:
                 "type": "action",
                 "name": "count",
                 "verb": "add",
-                "object": {
-                  "type": "field",
-                  "name": "number",
-                  "value": 1
-                }
+                "operand": 1
               }
             },
             "parameters": {
               "content": [
-                {
-                  "type": "field",
-                  "name": "string",
-                  "value": "Count is "
-                },
+                "Count is ",
                 {
                   "type": "value",
                   "name": "count"
                 },
-                {
-                  "type": "field",
-                  "name": "string",
-                  "value": "!"
-                }
+                "!"
               ]
             }
           }
