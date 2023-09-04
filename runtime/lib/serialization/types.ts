@@ -26,14 +26,14 @@ namespace Serialized {
     handler?: Handler;
   };
 
-  export type Content = number | string | ReferenceValue | ViewInstance;
-
   export type ConditionalYield<T extends AbstractField> = {
     type: "conditional-yield";
     condition: Expression<BooleanField>;
     result: T;
     inverse?: T;
   };
+
+  export type Content = number | string | ReferenceValue | ViewInstance;
 
   export type ContentField = AbstractField<"content", Content | Array<Content>>;
 
