@@ -68,7 +68,7 @@ new ViewUnit({
     {
       type: "element",
       name: "main",
-      parameters: {
+      properties: {
         content: "Hello, world!",
       },
     },
@@ -77,7 +77,7 @@ new ViewUnit({
 
 new ElementUnit({
   name: "main",
-  parameters: {
+  properties: {
     content: "Hello, world!",
   },
 });
