@@ -33,25 +33,15 @@ namespace Serialized {
     inverse?: Expression;
   };
 
-  export type ContentField = AbstractField<
-    "content",
-    ContentValue | Array<ContentValue>
-  >;
+  export type Content = number | string | ReferenceValue | ViewInstance;
 
-  export type Content = {
-    type: "view-instance" | "element";
-    name: string;
-    handlers?: Record<string, Handler>;
-    properties?: Record<string, Expression | Content>;
-  };
-
-  export type ContentValue = number | string | Content | ReferenceValue;
+  export type ContentField = AbstractField<"content", Content | Array<Content>>;
 
   export type Expression =
     | ConditionalYield
     | Field
-    | MethodPipe
     | Method
+    | MethodPipe
     | ReferenceValue;
 
   export type Field =
@@ -64,14 +54,34 @@ namespace Serialized {
 
   export type Handler = Action | Array<Action | ConditionalCatch>;
 
+  export type ListField<
+    T extends ListFieldItemRecursive = ListFieldItemRecursive,
+  > = AbstractField<"list", Array<T>> & {
+    of: ListFieldItemName<T>;
+  };
+
   export type ListFieldItem =
     | BooleanField
     | ComplexField
     | NumberField
     | StringField;
 
-  export type ListField<T extends ListFieldItem = ListFieldItem> =
-    AbstractField<"list", Array<T>> & { of: T["name"] };
+  export type ListFieldItemName<T> = T extends Array<ListFieldItem>
+    ? { name: "list"; of: ListFieldItemName<T> }
+    : T extends ListFieldItem
+    ? T["name"]
+    : never;
+
+  export type ListFieldItemRecursive =
+    | ListFieldItem
+    | Array<ListFieldItemRecursive>;
+
+  export type Method = {
+    type: "method";
+    name: string;
+    operator: string;
+    operand: Expression | MethodChain;
+  };
 
   export type MethodChain = {
     type: "method-chain";
@@ -82,13 +92,6 @@ namespace Serialized {
     type: "method-pipe";
     name: string;
     methods: Array<Method>;
-  };
-
-  export type Method = {
-    type: "method";
-    name: string;
-    operator: string;
-    operand: Expression | MethodChain;
   };
 
   export type NumberField = AbstractField<"number", number>;
@@ -112,13 +115,6 @@ namespace Serialized {
 
   export type StringField = AbstractField<"string", string>;
 
-  export type TaskInstance = {
-    type: "task-instance";
-    name: string;
-    handlers?: Record<string, Handler>;
-    properties?: Record<string, Expression>;
-  };
-
   export type Task = {
     type: "task";
     name: string;
@@ -127,11 +123,26 @@ namespace Serialized {
     components: Array<TaskInstance>;
   };
 
+  export type TaskInstance = {
+    type: "task-instance";
+    name: string;
+    handlers?: Record<string, Handler>;
+    properties?: Record<string, Expression>;
+  };
+
   export type View = {
     type: "view";
     name: string;
     streams?: Record<string, Stream>;
     references?: Record<string, Reference>;
     components: Array<Content | TaskInstance>;
+  };
+
+  export type ViewInstance = {
+    type: "view-instance";
+    element?: true;
+    name: string;
+    handlers?: Record<string, Handler>;
+    properties?: Record<string, Expression | ViewInstance>;
   };
 }
