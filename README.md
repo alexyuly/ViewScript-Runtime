@@ -60,7 +60,8 @@ View Component Hello-World
       "tagName": "main",
       "parameters": {
         "content": {
-          "type": "string-field",
+          "type": "field",
+          "name": "string",
           "value": "Hello, world!"
         }
       }
@@ -78,10 +79,11 @@ new ViewUnit({
   units: [
     {
       type: "element-unit",
-      tagName: "main",
+      name: "main",
       parameters: {
         content: {
-          type: "string-field",
+          type: "field",
+          name: "string",
           value: "Hello, world!",
         },
       },
@@ -90,10 +92,11 @@ new ViewUnit({
 })
 
 new ElementUnit({
-  tagName: "main",
+  name: "main",
   parameters: {
     content: {
-      type: "string-field",
+      type: "field",
+      name: "string",
       value: "Hello, world!",
     },
   },
