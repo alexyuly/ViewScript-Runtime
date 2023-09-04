@@ -106,7 +106,8 @@ namespace Serialized {
 
   export type ReferenceValue = {
     type: "reference-value";
-    name: string | Array<string>;
+    name: string;
+    path?: Array<string>;
   };
 
   export type Stream = {
