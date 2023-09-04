@@ -165,7 +165,7 @@ or, as JSON:
               "onClick": {
                 "type": "action",
                 "name": "count",
-                "verb": "add",
+                "operator": "add",
                 "operand": 1
               }
             },
