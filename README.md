@@ -54,7 +54,7 @@ View Component Hello-World
       "properties": {
         "content": {
           "type": "field",
-          "name": "string",
+          "name": "content",
           "value": "Hello, world!"
         }
       }
@@ -182,7 +182,7 @@ or, as JSON:
             "properties": {
               "content": {
                 "type": "field",
-                "name": "string",
+                "name": "content",
                 "value": "Click me to add 1"
               }
             }
@@ -191,22 +191,18 @@ or, as JSON:
             "type": "element",
             "name": "p",
             "properties": {
-              "content": [
-                {
-                  "type": "field",
-                  "name": "string",
-                  "value": "Count is "
-                },
-                {
-                  "type": "value",
-                  "name": "count"
-                },
-                {
-                  "type": "field",
-                  "name": "string",
-                  "value": "!"
-                }
-              ]
+              "content": {
+                "type": "field",
+                "name": "content",
+                "value": [
+                  "Count is ",
+                  {
+                    "type": "reference-value",
+                    "name": "count"
+                  },
+                  "!"
+                ]
+              }
             }
           }
         ]

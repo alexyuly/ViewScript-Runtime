@@ -31,9 +31,15 @@ export interface ComplexFieldSerialized extends AbstractFieldSerialized {
   value: {};
 }
 
+export type ContentValue =
+  | number
+  | string
+  | ReferenceValueSerialized
+  | ContentSerialized;
+
 export interface ContentFieldSerialized extends AbstractFieldSerialized {
   name: "content";
-  value: number | string | ContentSerialized | Array<ContentFieldSerialized>;
+  value: ContentValue | Array<ContentValue>;
 }
 
 export type FieldSerialized =
@@ -48,6 +54,13 @@ export type FieldSerialized =
 export interface PortSerialized<T extends FieldSerialized = FieldSerialized> {
   type: "port";
   field: Omit<T, "value">;
+}
+
+export type ReferenceSerialized = PortSerialized | FieldSerialized;
+
+interface ReferenceValueSerialized {
+  type: "reference-value";
+  name: string;
 }
 
 export interface MethodSerialized {
@@ -66,6 +79,7 @@ export interface ConditionalYieldSerialized {
 
 export type ExpressionSerialized =
   | FieldSerialized
+  | ReferenceValueSerialized
   | MethodSerialized
   | ConditionalYieldSerialized;
 
@@ -90,8 +104,6 @@ export interface StreamSerialized {
   type: "stream";
   name: string;
 }
-
-export type ReferenceSerialized = PortSerialized | FieldSerialized;
 
 export interface UnitInstanceSerialized {
   type: "unit-instance";
