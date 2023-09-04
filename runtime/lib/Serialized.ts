@@ -43,7 +43,7 @@ interface ComplexFieldSerialized extends AbstractFieldSerialized {
 }
 
 interface ContentSerialized {
-  type: "element" | "view";
+  type: "element" | "view-instance";
   name: string;
   handlers?: Record<string, HandlerSerialized>;
   properties?: Record<string, ExpressionSerialized | ContentSerialized>;
@@ -108,15 +108,15 @@ type HandlerSerialized =
   | ActionSerialized
   | Array<ActionSerialized | ConditionalCatchSerialized>;
 
-type ReferenceSerialized = PortSerialized | FieldSerialized;
-
 interface StreamSerialized {
   type: "stream";
   name: string;
 }
 
+type ReferenceSerialized = PortSerialized | FieldSerialized;
+
 interface UnitInstanceSerialized {
-  type: "unit";
+  type: "unit-instance";
   name: string;
   handlers?: Record<string, HandlerSerialized>;
   properties?: Record<string, ExpressionSerialized>;
