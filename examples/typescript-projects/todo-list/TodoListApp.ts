@@ -1,40 +1,55 @@
+import { Model } from "../../../runtime/lib/Model";
 import {
-  can,
-  event,
-  fieldOf,
+  action,
+  button,
+  chain,
   form,
   input,
-  instance,
-  instanceOf,
   label,
   li,
-  listOf,
   main,
-  methodOf,
+  method,
   model,
-  prop,
-  renders,
+  set,
   store,
-  string,
-  to,
+  take,
   ul,
-  update,
   valueOf,
   view,
-  viewOf,
-} from "compendium";
+} from "../../../runtime/lib/ergonomic";
 
-view(
-  "To-do List",
-  store("to-dos", listOf(instanceOf("To-do Item"))),
+interface TodoItem extends Model {
+  text: string;
+  completed: boolean;
+  complete(): void;
+  view(): typeof TodoItemView;
+}
+
+const TodoItemModel = model<TodoItem>({
+  completed: false,
+  complete: set<TodoItem["completed"]>(true),
+});
+
+const TodoItemView = view(
+  take<TodoItem>("model"),
+  li({
+    content: label({
+      content: [
+        input({
+          type: "checkbox",
+          checked: valueOf("model"),
+        }),
+        valueOf("model", "text"),
+      ],
+    }),
+  })
+);
+
+export const TodoListApp = view(
+  store<Array<TodoItem>>("to-dos"),
   main({
     content: [
       form({
-        onSubmit: update("to-dos").push(
-          fieldOf("To-do Item", {
-            text: event().get("data", "text"),
-          })
-        ),
         content: [
           label({
             content: [
@@ -45,42 +60,21 @@ view(
               }),
             ],
           }),
+          button({
+            onClick: action(
+              "to-dos",
+              "push",
+              TodoItemModel.new({
+                text: valueOf("event", "data", "text"),
+              })
+            ),
+            type: "submit",
+          }),
         ],
       }),
       ul({
-        content: methodOf("to-dos").map(to("view")),
+        content: method("to-dos", "map", chain("view")),
       }),
     ],
   })
-);
-
-view(
-  "To-do Item",
-  prop("model", instanceOf("To-do Item")),
-  li({
-    content: [
-      label({
-        content: [
-          input({
-            checked: valueOf("model").get("completed"),
-            type: "checkbox",
-          }),
-          valueOf("model").get("text"),
-        ],
-      }),
-    ],
-  })
-);
-
-model(
-  "To-do Item",
-  prop("text", string()),
-  store("completed", false),
-  can("complete", update("completed").enable()),
-  renders(
-    "view",
-    viewOf("To-do Item", {
-      model: instance(),
-    })
-  )
 );
