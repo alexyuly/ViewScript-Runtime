@@ -87,7 +87,7 @@ namespace Serialized {
 
   export type MethodChain = {
     type: "method-chain";
-    name: string;
+    operator: string;
   };
 
   export type MethodPipe = {
