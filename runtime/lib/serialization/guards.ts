@@ -1,18 +1,11 @@
-import type {
-  BooleanFieldSerialized,
-  FieldSerialized,
-  NumberFieldSerialized,
-  StringFieldSerialized,
-} from "./types";
-
 export const isBooleanFieldSerialized = (
-  x: FieldSerialized
-): x is BooleanFieldSerialized => x.name === "boolean";
+  x: Serialized.Field
+): x is Serialized.BooleanField => x.name === "boolean";
 
 export const isNumberFieldSerialized = (
-  x: FieldSerialized
-): x is NumberFieldSerialized => x.name === "number";
+  x: Serialized.Field
+): x is Serialized.NumberField => x.name === "number";
 
 export const isStringFieldSerialized = (
-  x: FieldSerialized
-): x is StringFieldSerialized => x.name === "string";
+  x: Serialized.Field
+): x is Serialized.StringField => x.name === "string";

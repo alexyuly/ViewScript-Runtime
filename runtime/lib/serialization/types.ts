@@ -1,150 +1,137 @@
-export interface AbstractFieldSerialized {
-  type: "field";
-  name: string;
-  optional?: true;
+namespace Serialized {
+  export type AbstractField<Name extends string, Value> = {
+    type: "field";
+    name: Name;
+    optional?: true;
+    value: Value;
+  };
+
+  export type Action = {
+    type: "action";
+    name: string;
+    operator: string;
+    operand: Expression;
+  };
+
+  export type BooleanField = AbstractField<"boolean", boolean>;
+
+  export type ComplexField<
+    Name extends string = string,
+    Value extends {} = {},
+  > = AbstractField<Name, Value>;
+
+  export type ConditionalCatch = {
+    type: "catch";
+    condition: Expression;
+    handler?: Handler;
+  };
+
+  export type ConditionalYield = {
+    type: "yield";
+    condition: Expression;
+    result: Expression;
+    inverse?: Expression;
+  };
+
+  export type ContentField = AbstractField<
+    "content",
+    ContentValue | Array<ContentValue>
+  >;
+
+  export type Content = {
+    type: "view-instance" | "element";
+    name: string;
+    handlers?: Record<string, Handler>;
+    properties?: Record<string, Expression | Content>;
+  };
+
+  export type ContentValue = number | string | Content | ReferenceValue;
+
+  export type Expression =
+    | ConditionalYield
+    | Field
+    | MethodPipe
+    | Method
+    | ReferenceValue;
+
+  export type Field =
+    | BooleanField
+    | ComplexField
+    | ContentField
+    | ListField
+    | NumberField
+    | StringField;
+
+  export type Handler = Action | Array<Action | ConditionalCatch>;
+
+  export type ListFieldItem =
+    | BooleanField
+    | ComplexField
+    | NumberField
+    | StringField;
+
+  export type ListField<T extends ListFieldItem = ListFieldItem> =
+    AbstractField<"list", Array<T>> & { of: T["name"] };
+
+  export type MethodChain = {
+    type: "method-chain";
+    name: string;
+  };
+
+  export type MethodPipe = {
+    type: "method-pipe";
+    name: string;
+    methods: Array<Method>;
+  };
+
+  export type Method = {
+    type: "method";
+    name: string;
+    operator: string;
+    operand: Expression | MethodChain;
+  };
+
+  export type NumberField = AbstractField<"number", number>;
+
+  export type Port = {
+    type: "port";
+    field: Omit<Field, "value">;
+  };
+
+  export type Reference = Field | Port;
+
+  export type ReferenceValue = {
+    type: "reference-value";
+    name: string;
+  };
+
+  export type Stream = {
+    type: "stream";
+    name: string;
+  };
+
+  export type StringField = AbstractField<"string", string>;
+
+  export type TaskInstance = {
+    type: "task-instance";
+    name: string;
+    handlers?: Record<string, Handler>;
+    properties?: Record<string, Expression>;
+  };
+
+  export type Task = {
+    type: "task";
+    name: string;
+    streams?: Record<string, Stream>;
+    references?: Record<string, Reference>;
+    components: Array<TaskInstance>;
+  };
+
+  export type View = {
+    type: "view";
+    name: string;
+    streams?: Record<string, Stream>;
+    references?: Record<string, Reference>;
+    components: Array<Content | TaskInstance>;
+  };
 }
-
-export interface AbstractUnitSerialized {
-  type: "unit";
-  name: string;
-  streams?: Record<string, StreamSerialized>;
-  references?: Record<string, ReferenceSerialized>;
-  units: Array<UnitInstanceSerialized>;
-}
-
-export interface ActionSerialized {
-  type: "action";
-  name: string;
-  operator: string;
-  operand: ExpressionSerialized;
-}
-
-export interface BooleanFieldSerialized extends AbstractFieldSerialized {
-  name: "boolean";
-  value: boolean;
-}
-
-export interface ComplexFieldSerialized extends AbstractFieldSerialized {
-  value: {};
-}
-
-export interface ConditionalCatchSerialized {
-  type: "catch";
-  condition: ExpressionSerialized;
-  handler?: HandlerSerialized;
-}
-
-export interface ConditionalYieldSerialized {
-  type: "yield";
-  condition: ExpressionSerialized;
-  result: ExpressionSerialized;
-  inverse?: ExpressionSerialized;
-}
-
-export interface ContentFieldSerialized extends AbstractFieldSerialized {
-  name: "content";
-  value: ContentValueSerialized | Array<ContentValueSerialized>;
-}
-
-export interface ContentSerialized {
-  type: "view-instance" | "element";
-  name: string;
-  handlers?: Record<string, HandlerSerialized>;
-  properties?: Record<string, ExpressionSerialized | ContentSerialized>;
-}
-
-export interface ListFieldSerialized<
-  T extends FieldSerialized = FieldSerialized,
-> extends AbstractFieldSerialized {
-  name: "list";
-  of: T;
-  value: Array<T>;
-}
-
-export interface MethodChainSerialized {
-  type: "method-chain";
-  name: string;
-}
-
-export interface MethodPipeSerialized {
-  type: "method-pipe";
-  name: string;
-  methods: Array<MethodSerialized>;
-}
-
-export interface MethodSerialized {
-  type: "method";
-  name: string;
-  operator: string;
-  operand: ExpressionSerialized | MethodChainSerialized;
-}
-
-export interface NumberFieldSerialized extends AbstractFieldSerialized {
-  name: "number";
-  value: number;
-}
-
-export interface PortSerialized<T extends FieldSerialized = FieldSerialized> {
-  type: "port";
-  field: Omit<T, "value">;
-}
-
-export interface ReferenceValueSerialized {
-  type: "reference-value";
-  name: string;
-}
-
-export interface StreamSerialized {
-  type: "stream";
-  name: string;
-}
-
-export interface StringFieldSerialized extends AbstractFieldSerialized {
-  name: "string";
-  value: string;
-}
-
-export interface UnitInstanceSerialized {
-  type: "unit-instance";
-  name: string;
-  handlers?: Record<string, HandlerSerialized>;
-  properties?: Record<string, ExpressionSerialized>;
-}
-
-export interface ViewUnitSerialized {
-  type: "view";
-  name: string;
-  streams?: Record<string, StreamSerialized>;
-  references?: Record<string, ReferenceSerialized>;
-  units: Array<UnitInstanceSerialized | ContentSerialized>;
-}
-
-export type ContentValueSerialized =
-  | number
-  | string
-  | ContentSerialized
-  | ReferenceValueSerialized;
-
-export type ExpressionSerialized =
-  | ConditionalYieldSerialized
-  | FieldSerialized
-  | MethodPipeSerialized
-  | MethodSerialized
-  | ReferenceValueSerialized;
-
-export type FieldSerialized =
-  | AbstractFieldSerialized
-  | BooleanFieldSerialized
-  | ComplexFieldSerialized
-  | ContentFieldSerialized
-  | ListFieldSerialized
-  | NumberFieldSerialized
-  | StringFieldSerialized;
-
-export type HandlerSerialized =
-  | ActionSerialized
-  | Array<ActionSerialized | ConditionalCatchSerialized>;
-
-export type ReferenceSerialized = FieldSerialized | PortSerialized;
-
-export type UnitSerialized = AbstractUnitSerialized | ViewUnitSerialized;
