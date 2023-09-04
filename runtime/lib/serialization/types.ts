@@ -10,7 +10,7 @@ namespace Serialized {
     type: "action";
     name: string;
     operator: string;
-    operand: Expression<DataField>;
+    operand?: Expression<DataField>;
   };
 
   export type BooleanField = AbstractField<"boolean", boolean>;
@@ -82,7 +82,7 @@ namespace Serialized {
     type: "method-call";
     name: string;
     operator: string;
-    operand: Expression<DataField> | MethodChain;
+    operand?: Expression<DataField> | MethodChain;
   };
 
   export type MethodChain = {
