@@ -45,11 +45,11 @@ View Component Hello-World
 
 ```json
 {
-  "t": "view-unit",
+  "t": "view",
   "n": "Hello-World",
   "u": [
     {
-      "t": "element-unit",
+      "t": "element",
       "n": "main",
       "p": {
         "content": "Hello, world!"
@@ -66,7 +66,7 @@ new ViewUnit({
   name: "Hello-World",
   units: [
     {
-      type: "element-unit",
+      type: "element",
       name: "main",
       parameters: {
         content: "Hello, world!",
@@ -140,7 +140,7 @@ or, as JSON:
 
 ```json
 {
-  "t": "view-unit",
+  "t": "view",
   "n": "Count",
   "s": [
     {
@@ -155,13 +155,13 @@ or, as JSON:
   ],
   "u": [
     {
-      "t": "element-unit",
+      "t": "element",
       "n": "main",
       "p": {
         "padding": "24px",
         "content": [
           {
-            "t": "element-unit",
+            "t": "element",
             "n": "button",
             "h": {
               "onClick": {
@@ -176,7 +176,7 @@ or, as JSON:
             }
           },
           {
-            "t": "element-unit",
+            "t": "element",
             "n": "p",
             "p": {
               "content": [
