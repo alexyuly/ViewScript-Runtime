@@ -28,7 +28,7 @@ namespace Serialized {
 
   export type ConditionalYield<T extends AbstractField> = {
     type: "conditional-yield";
-    condition: Expression<BooleanField>;
+    condition: Expression<DataField>;
     result: T;
     inverse?: T;
   };
