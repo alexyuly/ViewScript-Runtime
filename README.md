@@ -45,13 +45,13 @@ View Component Hello-World
 
 ```json
 {
-  "t": "view",
-  "n": "Hello-World",
-  "u": [
+  "type": "view",
+  "name": "Hello-World",
+  "units": [
     {
-      "t": "element",
-      "n": "main",
-      "p": {
+      "type": "element",
+      "name": "main",
+      "properties": {
         "content": "Hello, world!"
       }
     }
@@ -140,50 +140,50 @@ or, as JSON:
 
 ```json
 {
-  "t": "view",
-  "n": "Count",
-  "s": [
+  "type": "view",
+  "name": "Count",
+  "stores": [
     {
-      "t": "store",
-      "n": "count",
-      "b": {
+      "type": "store",
+      "name": "count",
+      "binding": {
         "type": "field",
         "name": "number",
         "value": 0
       }
     }
   ],
-  "u": [
+  "units": [
     {
-      "t": "element",
-      "n": "main",
-      "p": {
+      "type": "element",
+      "name": "main",
+      "properties": {
         "padding": "24px",
         "content": [
           {
-            "t": "element",
-            "n": "button",
-            "h": {
+            "type": "element",
+            "name": "button",
+            "handlers": {
               "onClick": {
-                "t": "action",
-                "n": "count",
-                "v": "add",
-                "o": 1
+                "type": "action",
+                "name": "count",
+                "operand": "add",
+                "expression": 1
               }
             },
-            "p": {
+            "properties": {
               "content": "Click me to add 1"
             }
           },
           {
-            "t": "element",
-            "n": "p",
-            "p": {
+            "type": "element",
+            "name": "p",
+            "properties": {
               "content": [
                 "Count is ",
                 {
-                  "t": "value",
-                  "n": "count"
+                  "type": "value",
+                  "name": "count"
                 },
                 "!"
               ]
