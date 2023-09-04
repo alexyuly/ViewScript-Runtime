@@ -44,7 +44,7 @@ namespace Serialized {
     | NumberField
     | StringField;
 
-  export type Expression<T extends AbstractField = Field>=
+  export type Expression<T extends AbstractField = Field> =
     | ConditionalYield<T>
     | Method
     | ReferenceValue
