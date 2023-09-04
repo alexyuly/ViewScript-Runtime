@@ -1,20 +1,17 @@
 import { Model } from "../../../runtime/lib/Model";
 import {
-  action,
   button,
-  chain,
+  event,
+  field,
   form,
   input,
   label,
   li,
   main,
-  method,
   model,
   set,
-  store,
   take,
   ul,
-  valueOf,
   view,
 } from "../../../runtime/lib/ergonomic";
 
@@ -30,51 +27,52 @@ const TodoItemModel = model<TodoItem>({
   complete: set<TodoItem["completed"]>(true),
 });
 
+const TodoItemViewModel = take<TodoItem>();
+
 const TodoItemView = view(
-  take<TodoItem>("model"),
-  li({
-    content: label({
-      content: [
+  TodoItemViewModel,
+  li(
+    label(
+      {
+        onClick: TodoItemViewModel.complete(),
+      },
+      [
         input({
           type: "checkbox",
-          checked: valueOf("model"),
+          checked: TodoItemViewModel.completed(),
         }),
-        valueOf("model", "text"),
-      ],
-    }),
-  })
+        TodoItemViewModel.text(),
+      ]
+    )
+  )
 );
 
+const TodoListAppModels = field<Array<TodoItem>>([]);
+
 export const TodoListApp = view(
-  store<Array<TodoItem>>("to-dos"),
-  main({
-    content: [
-      form({
-        content: [
-          label({
-            content: [
-              "Add a new to-do:",
-              input({
-                name: "text",
-                type: "text",
-              }),
-            ],
+  TodoListAppModels,
+  main([
+    form(
+      {
+        onSubmit: TodoListAppModels.push(
+          new TodoItemModel({
+            text: event().data().text(),
+          })
+        ),
+      },
+      [
+        label([
+          "Add a new to-do:",
+          input({
+            name: "text",
+            type: "text",
           }),
-          button({
-            onClick: action(
-              "to-dos",
-              "push",
-              TodoItemModel.new({
-                text: valueOf("event", "data", "text"),
-              })
-            ),
-            type: "submit",
-          }),
-        ],
-      }),
-      ul({
-        content: method("to-dos", "map", chain("view")),
-      }),
-    ],
-  })
+        ]),
+        button({
+          type: "submit",
+        }),
+      ]
+    ),
+    ul(TodoListAppModels.map().to().view()),
+  ])
 );
