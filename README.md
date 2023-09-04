@@ -141,18 +141,14 @@ or, as JSON:
 ```json
 {
   "type": "view",
-  "name": "Count",
-  "stores": [
-    {
-      "type": "store",
-      "name": "count",
-      "binding": {
-        "type": "field",
-        "name": "number",
-        "value": 0
-      }
+  "name": "Counter",
+  "stores": {
+    "count": {
+      "type": "field",
+      "name": "number",
+      "value": 0
     }
-  ],
+  },
   "units": [
     {
       "type": "element",
