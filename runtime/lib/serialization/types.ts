@@ -142,8 +142,8 @@ namespace Serialized {
 
   export type ViewInstance = {
     type: "view-instance";
-    element?: true;
     name: string;
+    element?: true;
     handlers?: Record<string, Handler>;
     properties?: Record<string, Expression>;
   };
