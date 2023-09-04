@@ -61,11 +61,22 @@ export interface ListFieldSerialized<
   value: Array<T>;
 }
 
+export interface MethodChainSerialized {
+  type: "method-chain";
+  name: string;
+}
+
+export interface MethodPipeSerialized {
+  type: "method-pipe";
+  name: string;
+  methods: Array<MethodSerialized>;
+}
+
 export interface MethodSerialized {
   type: "method";
   name: string;
   operator: string;
-  operand: ExpressionSerialized;
+  operand: ExpressionSerialized | MethodChainSerialized;
 }
 
 export interface NumberFieldSerialized extends AbstractFieldSerialized {
@@ -117,6 +128,7 @@ export type ContentValueSerialized =
 export type ExpressionSerialized =
   | ConditionalYieldSerialized
   | FieldSerialized
+  | MethodPipeSerialized
   | MethodSerialized
   | ReferenceValueSerialized;
 
