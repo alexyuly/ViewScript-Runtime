@@ -10,7 +10,7 @@ namespace Serialized {
     type: "action";
     name: string;
     operator: string;
-    operand: DataExpression;
+    operand: Expression<DataField>;
   };
 
   export type BooleanField = AbstractField<"boolean", boolean>;
@@ -22,22 +22,20 @@ namespace Serialized {
 
   export type ConditionalCatch = {
     type: "conditional-catch";
-    condition: BooleanExpression;
+    condition: Expression<DataField>;
     handler?: Handler;
   };
 
   export type Content = number | string | ReferenceValue | ViewInstance;
 
-  export type ConditionalYield<T> = {
+  export type ConditionalYield<T extends AbstractField> = {
     type: "conditional-yield";
-    condition: BooleanExpression;
+    condition: Expression<BooleanField>;
     result: T;
     inverse?: T;
   };
 
   export type ContentField = AbstractField<"content", Content | Array<Content>>;
-
-  export type DataExpression = DataField | Method | MethodPipe | ReferenceValue;
 
   export type DataField =
     | BooleanField
@@ -46,13 +44,11 @@ namespace Serialized {
     | NumberField
     | StringField;
 
-  export type DataReference = DataField | Port<DataField>;
-
-  export type Expression =
-    | ConditionalYield<ContentField>
-    | ConditionalYield<DataExpression>
-    | ContentField
-    | DataExpression;
+  export type Expression<T extends AbstractField = Field>=
+    | ConditionalYield<T>
+    | Method
+    | ReferenceValue
+    | T;
 
   export type Field = ContentField | DataField;
 
@@ -80,11 +76,13 @@ namespace Serialized {
     | ListFieldItem
     | Array<ListFieldItemRecursive>;
 
-  export type Method = {
-    type: "method";
+  export type Method = MethodCall | MethodPipe;
+
+  export type MethodCall = {
+    type: "method-call";
     name: string;
     operator: string;
-    operand: DataExpression | MethodChain;
+    operand: Expression<DataField> | MethodChain;
   };
 
   export type MethodChain = {
@@ -95,7 +93,7 @@ namespace Serialized {
   export type MethodPipe = {
     type: "method-pipe";
     name: string;
-    methods: Array<Method>;
+    methods: Array<MethodCall>;
   };
 
   export type NumberField = AbstractField<"number", number>;
@@ -104,8 +102,7 @@ namespace Serialized {
     type: "port";
   } & Omit<T, "type" | "value">;
 
-  export type Reference<T extends AbstractField = Field> =
-    T | Port<T>;
+  export type Reference<T extends AbstractField = Field> = T | Port<T>;
 
   export type ReferenceValue = {
     type: "reference-value";
