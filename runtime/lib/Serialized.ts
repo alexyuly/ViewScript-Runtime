@@ -26,7 +26,7 @@ namespace Serialized {
     handler?: Handler;
   };
 
-  export type ConditionalYield<T extends AbstractField> = {
+  export type ConditionalYield<T extends Field> = {
     type: "conditional-yield";
     condition: Expression<BooleanField>;
     positive: T;
@@ -44,7 +44,7 @@ namespace Serialized {
     | NumberField
     | StringField;
 
-  export type Expression<T extends AbstractField = Field> =
+  export type Expression<T extends Field = Field> =
     | ConditionalYield<T>
     | Method
     | ReferenceValue
@@ -54,15 +54,12 @@ namespace Serialized {
 
   export type Handler = Action | Array<Action | ConditionalCatch>;
 
-  export type ListField<
-    T extends ListFieldItem = ListFieldItem,
-  > = AbstractField<"list", Array<T>> & {
-    of: ListFieldItemName<T>;
-  };
+  export type ListField<T extends ListFieldItem = ListFieldItem> =
+    AbstractField<"list", Array<T>> & {
+      of: ListFieldItemName<T>;
+    };
 
-  export type ListFieldItem =
-    | ListFieldItemLeaf
-    | Array<ListFieldItem>;
+  export type ListFieldItem = ListFieldItemLeaf | Array<ListFieldItem>;
 
   export type ListFieldItemLeaf =
     | BooleanField
@@ -98,11 +95,11 @@ namespace Serialized {
 
   export type NumberField = AbstractField<"number", number>;
 
-  export type Port<T extends AbstractField = Field> = {
+  export type Port<T extends Field> = {
     type: "port";
   } & Omit<T, "type" | "value">;
 
-  export type Reference<T extends AbstractField = Field> = T | Port<T>;
+  export type Reference<T extends Field = Field> = T | Port<T>;
 
   export type ReferenceValue = {
     type: "reference-value";
@@ -147,4 +144,13 @@ namespace Serialized {
     handlers?: Record<string, Handler>;
     properties?: Record<string, Expression>;
   };
+
+  export const isBooleanField = (x: Field): x is BooleanField =>
+    x.name === "boolean";
+
+  export const isNumberField = (x: Field): x is NumberField =>
+    x.name === "number";
+
+  export const isStringField = (x: Field): x is StringField =>
+    x.name === "string";
 }
