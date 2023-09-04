@@ -22,7 +22,7 @@ namespace Serialized {
 
   export type ConditionalCatch = {
     type: "conditional-catch";
-    condition: DataExpression;
+    condition: BooleanExpression;
     handler?: Handler;
   };
 
@@ -30,7 +30,7 @@ namespace Serialized {
 
   export type ConditionalYield<T> = {
     type: "conditional-yield";
-    condition: DataExpression;
+    condition: BooleanExpression;
     result: T;
     inverse?: T;
   };
@@ -100,11 +100,12 @@ namespace Serialized {
 
   export type NumberField = AbstractField<"number", number>;
 
-  export type Port<T extends Field = Field> = {
+  export type Port<T extends AbstractField = Field> = {
     type: "port";
   } & Omit<T, "type" | "value">;
 
-  export type Reference = Field | Port;
+  export type Reference<T extends AbstractField = Field> =
+    T | Port<T>;
 
   export type ReferenceValue = {
     type: "reference-value";
@@ -122,7 +123,7 @@ namespace Serialized {
     type: "task";
     name: string;
     streams?: Record<string, Stream>;
-    references?: Record<string, DataReference>;
+    references?: Record<string, Reference<DataField>>;
     components: Array<TaskInstance>;
   };
 
@@ -130,7 +131,7 @@ namespace Serialized {
     type: "task-instance";
     name: string;
     handlers?: Record<string, Handler>;
-    properties?: Record<string, DataExpression>;
+    properties?: Record<string, Expression<DataField>>;
   };
 
   export type View = {
