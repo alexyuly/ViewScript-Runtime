@@ -31,10 +31,6 @@ export const isStringFieldSerialized = (
   x: FieldSerialized
 ): x is StringFieldSerialized => x.name === "string";
 
-interface ComplexFieldSerialized extends AbstractFieldSerialized {
-  value: {};
-}
-
 interface ListFieldSerialized<T extends FieldSerialized = FieldSerialized>
   extends AbstractFieldSerialized {
   name: "list";
@@ -42,13 +38,39 @@ interface ListFieldSerialized<T extends FieldSerialized = FieldSerialized>
   value: Array<T>;
 }
 
+interface ComplexFieldSerialized extends AbstractFieldSerialized {
+  value: {};
+}
+
+interface ContentSerialized {
+  type: "element" | "view";
+  name: string;
+  handlers?: Record<string, HandlerSerialized>;
+  properties?: Record<string, ExpressionSerialized | ContentSerialized>;
+}
+
+interface ContentFieldSerialized extends AbstractFieldSerialized {
+  name: "content";
+  value:
+    | NumberFieldSerialized
+    | StringFieldSerialized
+    | ContentSerialized
+    | Array<ContentFieldSerialized>;
+}
+
 export type FieldSerialized =
   | AbstractFieldSerialized
   | BooleanFieldSerialized
   | NumberFieldSerialized
   | StringFieldSerialized
+  | ListFieldSerialized
   | ComplexFieldSerialized
-  | ListFieldSerialized;
+  | ContentFieldSerialized;
+
+interface PortSerialized<T extends FieldSerialized = FieldSerialized> {
+  type: "port";
+  field: Omit<T, "value">;
+}
 
 interface MethodSerialized {
   type: "method";
@@ -57,8 +79,8 @@ interface MethodSerialized {
   operand: ExpressionSerialized;
 }
 
-interface ConditionalSerialized {
-  type: "conditional";
+interface ConditionalYieldSerialized {
+  type: "yield";
   condition: ExpressionSerialized;
   result: ExpressionSerialized;
   inverse?: ExpressionSerialized;
@@ -67,7 +89,7 @@ interface ConditionalSerialized {
 type ExpressionSerialized =
   | FieldSerialized
   | MethodSerialized
-  | ConditionalSerialized;
+  | ConditionalYieldSerialized;
 
 interface ActionSerialized {
   type: "action";
@@ -76,45 +98,44 @@ interface ActionSerialized {
   operand: ExpressionSerialized;
 }
 
-interface CatchSerialized {
+interface ConditionalCatchSerialized {
   type: "catch";
-  expression: ExpressionSerialized;
+  condition: ExpressionSerialized;
   handler?: HandlerSerialized;
 }
 
 type HandlerSerialized =
   | ActionSerialized
-  | Array<ActionSerialized | CatchSerialized>;
+  | Array<ActionSerialized | ConditionalCatchSerialized>;
+
+type ReferenceSerialized = PortSerialized | FieldSerialized;
 
 interface StreamSerialized {
   type: "stream";
   name: string;
 }
 
+interface UnitInstanceSerialized {
+  type: "unit";
+  name: string;
+  handlers?: Record<string, HandlerSerialized>;
+  properties?: Record<string, ExpressionSerialized>;
+}
+
 interface AbstractUnitSerialized {
   type: "unit";
   name: string;
-  references?: Record<string, FieldSerialized>;
   streams?: Record<string, StreamSerialized>;
-  units: Array<{
-    type: "unit";
-    name: string;
-    handlers?: Record<string, HandlerSerialized>;
-    properties?: Record<string, ExpressionSerialized>;
-  }>;
+  references?: Record<string, ReferenceSerialized>;
+  units: Array<UnitInstanceSerialized>;
 }
 
 interface ViewUnitSerialized {
   type: "view";
   name: string;
-  references?: Record<string, FieldSerialized>;
   streams?: Record<string, StreamSerialized>;
-  units: Array<{
-    type: "element" | "unit" | "view";
-    name: string;
-    handlers?: Record<string, HandlerSerialized>;
-    properties?: Record<string, ExpressionSerialized>;
-  }>;
+  references?: Record<string, ReferenceSerialized>;
+  units: Array<UnitInstanceSerialized | ContentSerialized>;
 }
 
 export type UnitSerialized = AbstractUnitSerialized | ViewUnitSerialized;
