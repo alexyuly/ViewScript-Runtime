@@ -1,6 +1,7 @@
 import type {
   BooleanModel,
   Dispatching,
+  Event,
   ForEach,
   Generate,
   Get,
@@ -9,7 +10,7 @@ import type {
   ListOf,
   Model,
   StringModel,
-  SubmitEventModel,
+  SubmitModel,
   Tag,
   View,
 } from "compendium-runtime"
@@ -53,9 +54,9 @@ export interface TodoListApp extends View {
       content: [
         Tag<"form", {
           submit: Handle<
-            SubmitEventModel,
+            SubmitModel,
             Dispatching<TodoListApp, "model", "push", {
-              text: Get<Get<SubmitEventModel, "data">, "text">
+              text: Get<Get<Event<SubmitModel>, "data">, "text">
             }>
           >
           content: [
