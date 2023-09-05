@@ -89,21 +89,27 @@ export interface TodoListApp extends View {
 
 /*
 {
-  "__type": "TodoItem",
+  "__name": "TodoItem",
   "text": {
-    "__type": "StringModel"
+    "__name": "StringModel"
   },
   "completed": {
-    "__type": "Let",
+    "__name": "Let"
+    "__args": ["BooleanModel", "false"],
     "model": {
-      "__type": "BooleanModel"
+      "__name": "BooleanModel"
     },
     "value": false
   },
   "complete": {
-    "__type": "Handle",
+    "__name": "Handle",
+    "__args": [
+      "Dispatching",
+      ["TodoItem", "\"completed\"", "\"enable\""]
+    ],
     "update": {
-      "__type": "Dispatching",
+      "__name": "Dispatching",
+      "__args": ["TodoItem", "\"completed\"", "\"enable\""],
       "property": "completed",
       "action": "enable"
     }
