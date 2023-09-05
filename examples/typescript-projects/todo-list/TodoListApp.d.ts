@@ -75,7 +75,10 @@ export interface TodoListApp extends View {
             Tag<"label", {
               content: [
                 "Add a new to-do:",
-                Tag<"input", { name: "text"; type: "text" }>
+                Tag<"input", {
+                  name: "text"
+                  type: "text"
+                }>
               ]
             }>,
             Tag<"button", {
