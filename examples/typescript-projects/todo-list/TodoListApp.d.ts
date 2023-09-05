@@ -1,11 +1,14 @@
 import type {
+  BooleanModel,
   Dispatch,
   Each,
   Event,
   Get,
   Let,
+  List,
   Model,
   Retrieve,
+  StringModel,
   Tag,
   View,
 } from "typescript-markup";
@@ -21,23 +24,27 @@ Can complete -> completed: enable
 
 /*
 {
-  "__interface": "TodoItem",
+  "__name": "TodoItem",
   "__extends": "Model",
-  "text": "string",
+  "text": {
+    "__of": "StringModel"
+  },
   "completed": {
-    "port": false
+    "__of": "Let",
+    "type": "BooleanModel",
+    "value": false
   },
   "complete": {
-    "__interface": "Dispatch",
-    "field": "completed",
+    "__of": "Dispatch",
+    "property": "completed",
     "operator": "enable"
   }
 }
 */
 
 interface TodoItem extends Model {
-  text: string
-  completed: Let<boolean, false>
+  text: StringModel
+  completed: Let<BooleanModel, false>
   complete(): Dispatch<TodoItem, "completed", "enable">
 }
 
@@ -63,10 +70,10 @@ Take model of TodoItem
 */
 
 interface TodoItemView extends View {
-  head: {
+  properties: {
     model: TodoItem
   }
-  body: [
+  components: [
     Tag<"li", {
       click: Dispatch<TodoItem, "model", "complete">
       content: Tag<"label", {
@@ -88,10 +95,10 @@ interface TodoItemView extends View {
 
 
 export interface TodoListApp extends View {
-  head: {
-    model: Let<Array<TodoItem>, []>
+  properties: {
+    model: Let<List<TodoItem>, []>
   }
-  body: [
+  components: [
     Tag<"main", {
       content: [
         Tag<"form", {
