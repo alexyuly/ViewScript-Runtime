@@ -6,8 +6,8 @@ import type {
   Get,
   Let,
   Model,
-  Render,
   Set,
+  Tag,
   Take,
   View,
 } from "typescript-markup";
@@ -19,16 +19,16 @@ interface TodoItem extends Model {
 }
 
 interface TodoItemView extends View {
-  props: {
+  head: {
     model: Take<TodoItem>
   }
-  components: [
-    Render<"li", {
+  body: [
+    Tag<"li", {
       click: Dispatch<TodoItem, "model", "complete">
       content: [
-        Render<"label", {
+        Tag<"label", {
           content: [
-            Render<"input", { type: "checkbox" }>,
+            Tag<"input", { type: "checkbox" }>,
             Get<Get<TodoItemView, "model">, "text">
           ]
         }>
@@ -38,32 +38,32 @@ interface TodoItemView extends View {
 }
 
 export interface TodoListApp extends View {
-  props: {
+  head: {
     model: Let<Array<TodoItem>, []>
   }
-  components: [
-    Render<"main", {
+  body: [
+    Tag<"main", {
       content: [
-        Render<"form", {
+        Tag<"form", {
           submit: Dispatch<TodoListApp, "model", "push", {
             text: Get<Get<Event<"submit">, "data">, "text">
           }>
           content: [
-            Render<"label", {
+            Tag<"label", {
               content: [
                 "Add a new to-do:",
-                Render<"input", { name: "text"; type: "text" }>
+                Tag<"input", { name: "text"; type: "text" }>
               ]
             }>,
-            Render<"button", { type: "submit" }>
+            Tag<"button", { type: "submit" }>
           ]
         }>,
-        Render<"ul", {
+        Tag<"ul", {
           content: Call<
             TodoListApp,
             "model",
             "map",
-            Render<TodoItemView, {
+            Tag<TodoItemView, {
               model: Each<TodoListApp, "model">
             }>
           >
