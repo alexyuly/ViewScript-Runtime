@@ -1,10 +1,9 @@
 import type {
   BooleanModel,
-  Dispatching,
+  Dispatch,
   EachOf,
   Event,
   Get,
-  Handle,
   Let,
   ListOf,
   Map,
@@ -19,7 +18,7 @@ import type {
 interface TodoItem extends Model {
   text: StringModel
   completed: Let<BooleanModel, false>
-  complete(): Handle<Dispatching<TodoItem, "completed", "enable">>
+  complete(): Dispatch<TodoItem, "completed", "enable">
 }
 
 interface TodoItemView extends View {
@@ -28,9 +27,7 @@ interface TodoItemView extends View {
   }
   components: [
     Tag<"li", {
-      click: Handle<
-        Dispatching<TodoItemView, "model", "complete">
-      >
+      click: Dispatch<TodoItemView, "model", "complete">
       content: Tag<"label", {
         content: [
           Tag<"input", {
@@ -41,7 +38,7 @@ interface TodoItemView extends View {
             padding: "8px"
             type: "checkbox"
           }>,
-          Get<Get<TodoItemView, "model">, "text">
+          Get<TodoItemView, ["model", "text"]>
         ]
       }>
     }>
@@ -56,12 +53,9 @@ export interface TodoListApp extends View {
     Tag<"main", {
       content: [
         Tag<"form", {
-          submit: Handle<
-            SubmitModel,
-            Dispatching<TodoListApp, "model", "push", {
-              text: Get<Get<Event<SubmitModel>, "data">, "text">
-            }>
-          >
+          submit: Dispatch<TodoListApp & SubmitModel, ["model", "push"], {
+            text: Get<SubmitModel, ["event", "data", "text"]>
+          }>
           content: [
             Tag<"label", {
               content: [
@@ -78,9 +72,13 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: Map<TodoListApp, "model", Tag<TodoItemView, {
-            model: EachOf<TodoListApp, "model">
-          }>
+          content: Map<
+            TodoListApp,
+            "model",
+            Tag<TodoItemView, {
+              model: EachOf<TodoListApp, "model">
+            }>
+          >
         }>
       ]
     }>
