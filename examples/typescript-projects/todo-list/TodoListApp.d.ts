@@ -27,11 +27,11 @@ interface TodoItemView extends View {
     model: TodoItem
   }
   components: [
-    Tag<"li", {
+    Tag<"li", TodoItemView, {
       click: Dispatch<TodoItemView, ["model", "complete"]>
-      content: Tag<"label", {
+      content: Tag<"label", TodoItemView, {
         content: [
-          Tag<"input", {
+          Tag<"input", TodoItemView, {
             border: "1px solid gray"
             "border-radius": "4px"
             font: "24px sans-serif"
@@ -51,32 +51,32 @@ export interface TodoListApp extends View {
     model: Let<ListOf<TodoItem>, []>
   }
   components: [
-    Tag<"main", {
+    Tag<"main", TodoListApp, {
       content: [
-        Tag<"form", {
+        Tag<"form", TodoListApp, {
           submit: Dispatch<TodoListApp | SubmitModel, ["model", "push"], {
             text: Get<SubmitModel, ["event", "data", "text"]>
           }>
           content: [
-            Tag<"label", {
+            Tag<"label", TodoListApp, {
               content: [
                 "Add a new to-do:",
-                Tag<"input", {
+                Tag<"input", TodoListApp, {
                   name: "text"
                   type: "text"
                 }>
               ]
             }>,
-            Tag<"button", {
+            Tag<"button", TodoListApp, {
               type: "submit"
             }>
           ]
         }>,
-        Tag<"ul", {
+        Tag<"ul", TodoListApp, {
           content: Map<
             TodoListApp | Iterator<TodoItem>
             "model",
-            Tag<TodoItemView, {
+            Tag<TodoItemView, TodoListApp, {
               model: Each<Iterator<TodoItem>>
             }>
           >
