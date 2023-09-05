@@ -49,7 +49,9 @@ interface TodoItemView extends View {
       click: Dispatch<TodoItem, "model", "complete">
       content: Tag<"label", {
         content: [
-          Tag<"input", { type: "checkbox" }>,
+          Tag<"input", {
+            type: "checkbox"
+          }>,
           Get<Get<TodoItemView, "model">, "text">
         ]
       }>
@@ -76,7 +78,9 @@ export interface TodoListApp extends View {
                 Tag<"input", { name: "text"; type: "text" }>
               ]
             }>,
-            Tag<"button", { type: "submit" }>
+            Tag<"button", {
+              type: "submit"
+            }>
           ]
         }>,
         Tag<"ul", {
