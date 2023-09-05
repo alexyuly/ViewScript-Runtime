@@ -27,15 +27,15 @@ Can complete -> completed: enable
   "__name": "TodoItem",
   "__extends": "Model",
   "text": {
-    "__of": "StringModel"
+    "__type": "StringModel"
   },
   "completed": {
-    "__of": "Let",
+    "__type": "Let",
     "type": "BooleanModel",
     "value": false
   },
   "complete": {
-    "__of": "Dispatch",
+    "__type": "Dispatch",
     "property": "completed",
     "operator": "enable"
   }
