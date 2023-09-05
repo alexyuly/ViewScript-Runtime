@@ -4,6 +4,7 @@ import type {
   EachOf,
   Event,
   Get,
+  Iterator,
   Let,
   ListOf,
   Map,
@@ -73,10 +74,10 @@ export interface TodoListApp extends View {
         }>,
         Tag<"ul", {
           content: Map<
-            TodoListApp,
+            TodoListApp | Iterator
             "model",
-            Tag<TodoItemView, {
-              model: EachOf<TodoListApp, "model">
+            Tag<Iterator, TodoItemView, {
+              model: Get<Iterator, "each">
             }>
           >
         }>
