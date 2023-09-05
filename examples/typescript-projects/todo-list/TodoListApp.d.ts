@@ -6,33 +6,52 @@ import type {
   Get,
   Let,
   Model,
-  Set,
   Tag,
-  Take,
   View,
 } from "typescript-markup";
+
+/*
+Model TodoItem
+
+Take text of string
+Let completed be false
+Can complete -> completed: enable
+*/
 
 interface TodoItem extends Model {
   text: string
   completed: Let<boolean, false>
-  complete(): Set<TodoItem, "completed", true>
+  complete(): Dispatch<TodoItem, "completed", "enable">
 }
+
+
+/*
+View TodoItemView
+
+Take model of TodoItem
+
+<li>
+  click -> model: complete
+  content = <label>
+    content =
+    - <input>
+        type = "checkbox"
+    - model.text
+*/
 
 interface TodoItemView extends View {
   head: {
-    model: Take<TodoItem>
+    model: TodoItem
   }
   body: [
     Tag<"li", {
       click: Dispatch<TodoItem, "model", "complete">
-      content: [
-        Tag<"label", {
-          content: [
-            Tag<"input", { type: "checkbox" }>,
-            Get<Get<TodoItemView, "model">, "text">
-          ]
-        }>
-      ]
+      content: Tag<"label", {
+        content: [
+          Tag<"input", { type: "checkbox" }>,
+          Get<Get<TodoItemView, "model">, "text">
+        ]
+      }>
     }>
   ]
 }
