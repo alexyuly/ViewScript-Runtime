@@ -17,6 +17,22 @@ Model TodoItem
 Take text of string
 Let completed be false
 Can complete -> completed: enable
+
+💧
+
+{
+  "__interface": "TodoItem",
+  "__extends": "Model",
+  "text": "string",
+  "completed": {
+    "port": false
+  },
+  "complete": {
+    "__interface": "Dispatch",
+    "field": "completed",
+    "operator": "enable"
+  }
+}
 */
 
 interface TodoItem extends Model {
