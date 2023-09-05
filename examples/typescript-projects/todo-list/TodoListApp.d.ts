@@ -29,7 +29,7 @@ interface TodoItemView extends View {
   components: [
     Tag<"li", {
       click: Handle<
-        Dispatching<TodoItem, "model", "complete">
+        Dispatching<TodoItemView, "model", "complete">
       >
       content: Tag<"label", {
         content: [
@@ -89,8 +89,7 @@ export interface TodoListApp extends View {
 
 /*
 {
-  "__name": "TodoItem",
-  "__extends": "Model",
+  "__type": "TodoItem",
   "text": {
     "__type": "StringModel"
   },
