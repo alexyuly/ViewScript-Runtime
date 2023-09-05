@@ -37,6 +37,12 @@ Take model of TodoItem
     content =
     - <input>
         type = "checkbox"
+        border = "1px solid gray"
+        border-radius = "4px"
+        font = "24px sans-serif"
+        margin-bottom = "8px"
+        padding = "8px"
+
     - model.text
 */
 
@@ -51,6 +57,11 @@ interface TodoItemView extends View {
         content: [
           Tag<"input", {
             type: "checkbox"
+            border: "1px solid gray"
+            "border-radius": "4px"
+            font: "24px sans-serif"
+            "margin-bottom": "8px"
+            padding: "8px"
           }>,
           Get<Get<TodoItemView, "model">, "text">
         ]
