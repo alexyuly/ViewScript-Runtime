@@ -6,9 +6,9 @@ import type {
   Get,
   Let,
   Model,
+  Render,
   Set,
   Take,
-  V,
   ValueOf,
   View,
 } from "compendium-ts";
@@ -24,12 +24,12 @@ interface TodoItemView extends View {
     model: Take<TodoItem>;
   };
   components: [
-    V<"li", {
+    Render<"li", {
       click: Dispatch<TodoItem, "model", "complete">;
       content: [
-        V<"label", {
+        Render<"label", {
           content: [
-            V<"input", { type: "checkbox" }>,
+            Render<"input", { type: "checkbox" }>,
             Get<ValueOf<TodoItemView, "model">, "text">,
           ];
         }>,
@@ -43,28 +43,28 @@ export interface TodoListApp extends View {
     model: Let<Array<TodoItem>, []>;
   };
   components: [
-    V<"main", {
+    Render<"main", {
       content: [
-        V<"form", {
+        Render<"form", {
           submit: Dispatch<TodoListApp, "model", "push", {
             text: Get<Get<Event<"submit">, "data">, "text">;
-          };
+          }>;
           content: [
-            V<"label", {
+            Render<"label", {
               content: [
                 "Add a new to-do:",
-                V<"input", { name: "text"; type: "text" }>,
+                Render<"input", { name: "text"; type: "text" }>,
               ];
             }>,
-            V<"button", { type: "submit" }>,
+            Render<"button", { type: "submit" }>,
           ];
         }>,
-        V<"ul", {
+        Render<"ul", {
           content: Call<
             TodoListApp,
             "model",
             "map",
-            V<TodoListItem, {
+            Render<TodoItemView, {
               model: Each<TodoListApp, "model">;
             }>,
           >;
