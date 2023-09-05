@@ -1,11 +1,11 @@
 import type {
-  Call,
   Dispatch,
   Each,
   Event,
   Get,
   Let,
   Model,
+  Retrieve,
   Tag,
   View,
 } from "typescript-markup";
@@ -80,7 +80,7 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: Call<
+          content: Retrieve<
             TodoListApp,
             "model",
             "map",
