@@ -7,8 +7,8 @@ import type {
   Handle,
   Let,
   ListOf,
+  MapList,
   Model,
-  Reduce,
   Result,
   StringModel,
   SubmitModel,
@@ -76,17 +76,12 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: Reduce<
+          content: MapList<
             TodoListApp,
             "model",
-            Let<ListOf<Tag<TodoItemView>>, []>,
-            Dispatching<
-              Result<ListOf<Tag<TodoItemView>>>,
-              "push",
-              Tag<TodoItemView, {
-                model: EachOf<TodoListApp, "model">
-              }>
-            >
+            Tag<TodoItemView, {
+              model: EachOf<TodoListApp, "model">
+            }>
           >
         }>
       ]
