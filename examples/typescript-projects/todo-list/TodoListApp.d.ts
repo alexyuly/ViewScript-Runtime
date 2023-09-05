@@ -11,63 +11,13 @@ import type {
   StringModel,
   Tag,
   View,
-} from "typescript-markup";
-
-
-/*
-Model TodoItem
-
-Take text of string
-Let completed be false
-Can complete -> completed: enable
-*/
-
-/*
-{
-  "__name": "TodoItem",
-  "__extends": "Model",
-  "text": {
-    "__type": "StringModel"
-  },
-  "completed": {
-    "__type": "Let",
-    "type": "BooleanModel",
-    "value": false
-  },
-  "complete": {
-    "__type": "Dispatch",
-    "property": "completed",
-    "operator": "enable"
-  }
-}
-*/
+} from "compendium-runtime"
 
 interface TodoItem extends Model {
   text: StringModel
   completed: Let<BooleanModel, false>
   complete(): Dispatch<TodoItem, "completed", "enable">
 }
-
-
-/*
-View TodoItemView
-
-Take model of TodoItem
-
-<li>
-  click -> model: complete
-  content = <label>
-    content =
-    - <input>
-        border = "1px solid gray"
-        border-radius = "4px"
-        font = "24px sans-serif"
-        margin-bottom = "8px"
-        padding = "8px"
-        type = "checkbox"
-
-    - model.text
-*/
 
 interface TodoItemView extends View {
   properties: {
@@ -92,7 +42,6 @@ interface TodoItemView extends View {
     }>
   ]
 }
-
 
 export interface TodoListApp extends View {
   properties: {
@@ -134,3 +83,51 @@ export interface TodoListApp extends View {
     }>
   ]
 }
+
+/*
+{
+  "__name": "TodoItem",
+  "__extends": "Model",
+  "text": {
+    "__type": "StringModel"
+  },
+  "completed": {
+    "__type": "Let",
+    "type": "BooleanModel",
+    "value": false
+  },
+  "complete": {
+    "__type": "Dispatch",
+    "property": "completed",
+    "operator": "enable"
+  }
+}
+*/
+
+/*
+Model TodoItem
+
+Take text of string
+Let completed be false
+Can complete -> completed: enable
+*/
+
+/*
+View TodoItemView
+
+Take model of TodoItem
+
+<li>
+  click -> model: complete
+  content = <label>
+    content =
+    - <input>
+        border = "1px solid gray"
+        border-radius = "4px"
+        font = "24px sans-serif"
+        margin-bottom = "8px"
+        padding = "8px"
+        type = "checkbox"
+
+    - model.text
+*/
