@@ -1,4 +1,4 @@
-import type { Dispatch, Let, Model, Set, Take, V, ValueOf, View } from "compendium-ts";
+import type { Dispatch, Get, Let, Model, Set, Take, V, ValueOf, View } from "compendium-ts";
 
 interface TodoItem extends Model {
   text: string;
@@ -17,7 +17,7 @@ interface TodoItemView extends View {
         V<"label", {
           content: [
             V<"input", { type: "checkbox" }>,
-            ValueOf<TodoItemView["model"]>,
+            Get<ValueOf<TodoItemView, "model">, "text">,
           ];
         }>,
       ];
