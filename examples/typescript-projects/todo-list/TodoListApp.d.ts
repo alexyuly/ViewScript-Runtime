@@ -53,7 +53,7 @@ export interface TodoListApp extends View {
     Tag<"main", {
       content: [
         Tag<"form", {
-          submit: Dispatch<TodoListApp & SubmitModel, ["model", "push"], {
+          submit: Dispatch<TodoListApp | SubmitModel, ["model", "push"], {
             text: Get<SubmitModel, ["event", "data", "text"]>
           }>
           content: [
@@ -101,17 +101,13 @@ export interface TodoListApp extends View {
     "value": false
   },
   "complete": {
-    "__name": "Handle",
-    "__args": [
-      "Dispatching",
-      ["TodoItem", "\"completed\"", "\"enable\""]
-    ],
-    "update": {
-      "__name": "Dispatching",
-      "__args": ["TodoItem", "\"completed\"", "\"enable\""],
-      "property": "completed",
-      "action": "enable"
-    }
+    "__name": "Dispatch",
+    "__args": ["TodoItem", "[\"completed\"", "\"enable\"]"],
+    "scope": {
+      "__name": "Model",
+      "__kind": "TodoItem"
+    },
+    "path": ["completed", "enable"]
   }
 }
 */
