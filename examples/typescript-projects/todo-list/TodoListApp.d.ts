@@ -7,7 +7,7 @@ interface TodoItem extends Model {
 }
 
 interface TodoItemView extends View {
-  properties: {
+  props: {
     model: Take<TodoItem>;
   };
   components: [
@@ -26,7 +26,7 @@ interface TodoItemView extends View {
 }
 
 export interface TodoListApp extends View {
-  properies: {
+  props: {
     model: Let<Array<TodoItem>, []>;
   };
   components: [
