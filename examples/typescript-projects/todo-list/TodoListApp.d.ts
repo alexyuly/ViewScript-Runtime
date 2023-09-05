@@ -1,4 +1,17 @@
-import type { Dispatch, Get, Let, Model, Set, Take, V, ValueOf, View } from "compendium-ts";
+import type {
+  Call,
+  Dispatch,
+  Each,
+  Event,
+  Get,
+  Let,
+  Model,
+  Set,
+  Take,
+  V,
+  ValueOf,
+  View,
+} from "compendium-ts";
 
 interface TodoItem extends Model {
   text: string;
@@ -12,7 +25,7 @@ interface TodoItemView extends View {
   };
   components: [
     V<"li", {
-      click: Dispatch<TodoItem, "complete">,
+      click: Dispatch<TodoItem, "model", "complete">;
       content: [
         V<"label", {
           content: [
@@ -30,12 +43,33 @@ export interface TodoListApp extends View {
     model: Let<Array<TodoItem>, []>;
   };
   components: [
-    V<"main", {}, {
+    V<"main", {
       content: [
-        V<"form">,
-        V<"ul">,
-        // TODO...
-      ],
+        V<"form", {
+          submit: Dispatch<TodoListApp, "model", "push", {
+            text: Get<Get<Event<"submit">, "data">, "text">;
+          };
+          content: [
+            V<"label", {
+              content: [
+                "Add a new to-do:",
+                V<"input", { name: "text"; type: "text" }>,
+              ];
+            }>,
+            V<"button", { type: "submit" }>,
+          ];
+        }>,
+        V<"ul", {
+          content: Call<
+            TodoListApp,
+            "model",
+            "map",
+            V<TodoListItem, {
+              model: Each<TodoListApp, "model">;
+            },
+          >;
+        }>,
+      ];
     }>,
   ];
 }
