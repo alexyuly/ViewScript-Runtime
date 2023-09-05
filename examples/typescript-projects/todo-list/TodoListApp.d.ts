@@ -3,11 +3,11 @@ import type {
   Dispatch,
   Each,
   Event,
+  Generate,
   Get,
   Let,
   List,
   Model,
-  Retrieve,
   StringModel,
   Tag,
   View,
@@ -121,7 +121,7 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: Retrieve<
+          content: Generate<
             TodoListApp,
             "model",
             "map",
