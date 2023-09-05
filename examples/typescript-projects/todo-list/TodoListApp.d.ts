@@ -9,7 +9,6 @@ import type {
   Render,
   Set,
   Take,
-  ValueOf,
   View,
 } from "compendium-ts";
 
@@ -30,7 +29,7 @@ interface TodoItemView extends View {
         Render<"label", {
           content: [
             Render<"input", { type: "checkbox" }>,
-            Get<ValueOf<TodoItemView, "model">, "text">,
+            Get<Get<TodoItemView, "model">, "text">,
           ];
         }>,
       ];
