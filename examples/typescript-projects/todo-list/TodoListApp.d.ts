@@ -18,7 +18,7 @@ import type {
 interface TodoItem extends Model {
   text: StringModel
   completed: Let<BooleanModel, false>
-  complete(): Dispatch<TodoItem, "completed", "enable">
+  complete(): Dispatch<TodoItem, ["completed", "enable"]>
 }
 
 interface TodoItemView extends View {
@@ -27,7 +27,7 @@ interface TodoItemView extends View {
   }
   components: [
     Tag<"li", {
-      click: Dispatch<TodoItemView, "model", "complete">
+      click: Dispatch<TodoItemView, ["model", "complete"]>
       content: Tag<"label", {
         content: [
           Tag<"input", {
