@@ -1,94 +1,116 @@
-namespace Contract {
-  export interface Model {
-    [property: string]: ModelAction | ModelField | ModelMethod;
-  }
+export interface Model {
+  [property: string]: ModelAction | ModelField | ModelMethod;
+}
 
-  export type ModelAction = (operand: ModelField) => ModelUpdate;
+type ModelAction<
+  Update extends ModelUpdate = ModelUpdate,
+  Operand extends ModelField = ModelField,
+> = (operand: Operand) => Update;
 
-  export interface ModelCatch<
-    Update extends ModelUpdate | null = null,
-    Condition extends boolean = false,
-  > {
-    __type: "ModelCatch";
-    condition: Condition;
-    update: Update;
-  }
+interface ModelActionDispatch<
+  Update extends ModelUpdate = ModelUpdate,
+  Operand extends ModelField = ModelField,
+  Method extends ModelAction<Update, Operand> = ModelAction<Update, Operand>,
+  Argument extends Operand = Operand,
+> {
+  __type: "ModelActionDispatch";
+  method: Method;
+  operand: Argument;
+}
 
-  export interface ModelConditional<
-    Field extends ModelField = ModelField,
-    Condition extends boolean = false,
-  > {
-    __type: "ModelConditional";
-    condition: Condition;
-    positive: ModelExpression<Field>;
-    negative?: ModelExpression<Field>;
-  }
+interface ModelCatch<
+  Condition extends boolean = false,
+  Update extends ModelUpdate | null = null,
+> {
+  __type: "ModelCatch";
+  condition: Condition;
+  update: Update;
+}
 
-  export type ModelExpression<Field extends ModelField = ModelField> =
-    | Field
-    | ModelConditional<Field>
-    | ModelMethodCall<Field>;
+interface ModelConditional<
+  Field extends ModelField = ModelField,
+  Condition extends boolean = false,
+> {
+  __type: "ModelConditional";
+  condition: Condition;
+  positive: ModelExpression<Field>;
+  negative?: ModelExpression<Field>;
+}
 
-  export type ModelField<T extends ModelFieldRequired = ModelFieldRequired> =
-    T | null;
+type ModelContent = number | string | ViewInstance | Array<ModelContent>;
 
-  export type ModelFieldRequired =
-    | boolean
-    | number
-    | string
-    | Model
-    | Array<ModelField>;
+type ModelExpression<Field extends ModelField = ModelField> =
+  | Field
+  | ModelConditional<Field>
+  | ModelMethodCall<Field>;
 
-  export type ModelMethod<
-    Result extends ModelField = ModelField,
-    Operand extends ModelField = ModelField,
-  > = (operand: Operand) => Result;
+type ModelField<T extends ModelFieldRequired = ModelFieldRequired> = T | null;
 
-  export interface ModelMethodCall<
-    Result extends ModelField = ModelField,
-    Operand extends ModelField = ModelField,
-    Method extends ModelMethod<Result, Operand> = ModelMethod<Result, Operand>,
-    Argument extends Operand = Operand,
-  > {
-    __type: "ModelMethodCall";
-    method: Method;
-    operand: Argument;
-  }
+type ModelFieldRequired = boolean | number | string | Model | Array<ModelField>;
 
-  export interface ModelSetState<
-    Field extends ModelField = ModelField,
-    Value extends Field = Field,
-  > {
-    __type: "ModelSetState";
-    field: Field;
-    value: Value;
-  }
+type ModelMethod<
+  Result extends ModelField = ModelField,
+  Operand extends ModelField = ModelField,
+> = (operand: Operand) => Result;
 
-  export type ModelUpdate = ModelCatch | ModelSetState | Array<ModelUpdate>;
+interface ModelMethodCall<
+  Result extends ModelField = ModelField,
+  Operand extends ModelField = ModelField,
+  Method extends ModelMethod<Result, Operand> = ModelMethod<Result, Operand>,
+  Argument extends Operand = Operand,
+> {
+  __type: "ModelMethodCall";
+  method: Method;
+  operand: Argument;
+}
 
-  export interface Task {
-    components: Record<string, TaskInstance>;
-    parameters: Record<string, ModelField>;
-    stores: Record<string, ModelField>;
-    streams: Record<string, ModelField>;
-  }
+export interface ModelSetState<
+  Field extends ModelField = ModelField,
+  Value extends Field = Field,
+> {
+  __type: "ModelSetState";
+  field: Field;
+  value: Value;
+}
 
-  export interface TaskInstance<T extends Task = Task> {
-    // handlers:
-    // properties:
-    task: T;
-  }
+type ModelUpdate =
+  | ModelActionDispatch
+  | ModelCatch
+  | ModelSetState
+  | Array<ModelUpdate>;
 
-  export interface View {
-    components: Record<string, TaskInstance | ViewInstance>;
-    parameters: Record<string, ModelField>;
-    stores: Record<string, ModelField>;
-    streams: Record<string, ModelField>;
-  }
+export interface Task {
+  __type: "Task";
+  components: Array<TaskInstance>;
+  references?: Record<string, ModelField>;
+  streams?: Record<string, ModelField>;
+}
 
-  export interface ViewInstance<T extends string | View = View> {
-    // handlers:
-    // properties:
-    view: T;
-  }
+export interface TaskInstance<
+  TaskType extends Task = Task,
+  Handlers extends Record<string, ModelUpdate> = {},
+  Properties extends Record<string, ModelField> = {},
+> {
+  __type: "TaskInstance";
+  handlers?: Handlers;
+  properties?: Properties;
+  task: TaskType;
+}
+
+export interface View {
+  __type: "View";
+  components: Array<TaskInstance | ViewInstance>;
+  references?: Record<string, ModelField>;
+  streams?: Record<string, ModelField>;
+}
+
+export interface ViewInstance<
+  ViewType extends View | string = View | string,
+  Handlers extends Record<string, ModelUpdate> = {},
+  Properties extends Record<string, ModelContent | ModelField> = {},
+> {
+  __type: "ViewInstance";
+  handlers?: Handlers;
+  properties?: Properties;
+  view: ViewType;
 }
