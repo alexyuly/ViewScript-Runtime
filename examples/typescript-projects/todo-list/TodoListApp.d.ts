@@ -66,7 +66,7 @@ export interface TodoListApp extends View {
             "map",
             V<TodoListItem, {
               model: Each<TodoListApp, "model">;
-            },
+            }>,
           >;
         }>,
       ];
