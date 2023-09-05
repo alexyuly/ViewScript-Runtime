@@ -1,14 +1,15 @@
 import type {
   BooleanModel,
-  Dispatch,
-  Each,
-  Event,
+  Dispatch
+  ForEach,
   Generate,
   Get,
+  Handle,
   Let,
-  List,
+  ListOf,
   Model,
   StringModel,
+  SubmitEventModel,
   Tag,
   View,
 } from "compendium-runtime"
@@ -45,15 +46,18 @@ interface TodoItemView extends View {
 
 export interface TodoListApp extends View {
   properties: {
-    model: Let<List<TodoItem>, []>
+    model: Let<ListOf<TodoItem>, []>
   }
   components: [
     Tag<"main", {
       content: [
         Tag<"form", {
-          submit: Dispatch<TodoListApp, "model", "push", {
-            text: Get<Get<Event<"submit">, "data">, "text">
-          }>
+          submit: Handle<
+            SubmitEventModel,
+            Dispatch<TodoListApp, "model", "push", {
+              text: Get<Get<SubmitEventModel, "data">, "text">
+            }>
+          >
           content: [
             Tag<"label", {
               content: [
@@ -75,7 +79,7 @@ export interface TodoListApp extends View {
             "model",
             "map",
             Tag<TodoItemView, {
-              model: Each<TodoListApp, "model">
+              model: ForEach<TodoListApp, "model">
             }>
           >
         }>
