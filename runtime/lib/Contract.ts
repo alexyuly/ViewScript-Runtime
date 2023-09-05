@@ -1,36 +1,70 @@
 namespace Contract {
   export interface Model {
-    [property: string]: ModelField | ModelMethod | ModelAction;
+    [property: string]: ModelAction | ModelField | ModelMethod;
   }
 
   export type ModelAction = (operand: ModelField) => ModelUpdate;
 
-  export type ModelField<T extends Model = Model> =
-    | ModelFieldOptional<T>
-    | ModelFieldRequired<T>;
+  export interface ModelCatch<
+    Update extends ModelUpdate | null = null,
+    Condition extends boolean = false,
+  > {
+    __type: "ModelCatch";
+    condition: Condition;
+    update: Update;
+  }
 
-  export type ModelFieldOptional<T extends Model> =
-    ModelFieldRequired<T> | null;
+  export interface ModelConditional<
+    Field extends ModelField = ModelField,
+    Condition extends boolean = false,
+  > {
+    __type: "ModelConditional";
+    condition: Condition;
+    positive: ModelExpression<Field>;
+    negative?: ModelExpression<Field>;
+  }
 
-  export type ModelFieldRequired<T extends Model> =
+  export type ModelExpression<Field extends ModelField = ModelField> =
+    | Field
+    | ModelConditional<Field>
+    | ModelMethodCall<Field>;
+
+  export type ModelField<T extends ModelFieldRequired = ModelFieldRequired> =
+    T | null;
+
+  export type ModelFieldRequired =
     | boolean
     | number
     | string
-    | T
-    | Array<ModelField<T>>;
+    | Model
+    | Array<ModelField>;
 
-  export type ModelMethod = (operand: ModelField) => ModelField;
+  export type ModelMethod<
+    Result extends ModelField = ModelField,
+    Operand extends ModelField = ModelField,
+  > = (operand: Operand) => Result;
 
-  export interface ModelSetState<
-    T extends ModelField = ModelField,
-    V extends T = T,
+  export interface ModelMethodCall<
+    Result extends ModelField = ModelField,
+    Operand extends ModelField = ModelField,
+    Method extends ModelMethod<Result, Operand> = ModelMethod<Result, Operand>,
+    Argument extends Operand = Operand,
   > {
-    __type: "ModelSetState";
-    field: T;
-    value: V;
+    __type: "ModelMethodCall";
+    method: Method;
+    operand: Argument;
   }
 
-  export type ModelUpdate = ModelSetState | Array<ModelSetState>;
+  export interface ModelSetState<
+    Field extends ModelField = ModelField,
+    Value extends Field = Field,
+  > {
+    __type: "ModelSetState";
+    field: Field;
+    value: Value;
+  }
+
+  export type ModelUpdate = ModelCatch | ModelSetState | Array<ModelUpdate>;
 
   export interface Task {
     components: Record<string, TaskInstance>;

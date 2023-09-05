@@ -9,3 +9,6 @@ interface TodoItemView extends Contract.View {
     model: TodoItem;
   };
 }
+
+interface X
+  extends Contract.ModelMethodCall<number, number, (x: number) => number, 2> {}
