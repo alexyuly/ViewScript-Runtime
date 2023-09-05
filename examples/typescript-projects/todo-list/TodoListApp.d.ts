@@ -3,12 +3,13 @@ import type {
   Dispatching,
   EachOf,
   Event,
-  Generate,
   Get,
   Handle,
   Let,
   ListOf,
   Model,
+  Reduce,
+  Result,
   StringModel,
   SubmitModel,
   Tag,
@@ -75,13 +76,17 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: Generate<
+          content: Reduce<
             TodoListApp,
             "model",
-            "map",
-            Tag<TodoItemView, {
-              model: EachOf<TodoListApp, "model">
-            }>
+            Let<ListOf<Tag<TodoItemView>>, []>,
+            Dispatching<
+              Result<ListOf<Tag<TodoItemView>>>,
+              "push",
+              Tag<TodoItemView, {
+                model: EachOf<TodoListApp, "model">
+              }>
+            >
           >
         }>
       ]
