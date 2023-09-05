@@ -98,13 +98,18 @@ export interface TodoListApp extends View {
   },
   "completed": {
     "__type": "Let",
-    "type": "BooleanModel",
+    "model": {
+      "__type": "BooleanModel"
+    },
     "value": false
   },
   "complete": {
-    "__type": "Dispatch",
-    "property": "completed",
-    "operator": "enable"
+    "__type": "Handle",
+    "update": {
+      "__type": "Dispatching",
+      "property": "completed",
+      "action": "enable"
+    }
   }
 }
 */
