@@ -1,22 +1,23 @@
-import type { Model, ModelSetState, View, ViewInstance } from "../../../runtime/lib/Contract";
+import type { Dispatch, Let, Model, Set, Take, V, ValueOf, View } from "compendium-ts";
 
 interface TodoItem extends Model {
   text: string;
-  completed: boolean;
-  complete(): ModelSetState<TodoItem["completed"], true>;
+  completed: Let<boolean, false>;
+  complete(): Set<TodoItem["completed"], true>;
 }
 
 interface TodoItemView extends View {
-  references: { model: TodoItem };
+  properties: {
+    model: Take<TodoItem>;
+  };
   components: [
-    ViewInstance<"li", {
-      click: ReturnType<TodoItem["complete"]>,
-    }, {
+    V<"li", {
+      click: Dispatch<TodoItem["complete"]>,
       content: [
-        ViewInstance<"label", {}, {
+        V<"label", {
           content: [
-            ViewInstance<"input", {}, { type: "checkbox" }>,
-            TodoItemView["references"]["model"]["text"],
+            V<"input", { type: "checkbox" }>,
+            ValueOf<TodoItemView["model"]>,
           ];
         }>,
       ];
@@ -25,15 +26,16 @@ interface TodoItemView extends View {
 }
 
 export interface TodoListApp extends View {
-  references: { model: TodoItem[] };
+  properies: {
+    model: Let<Array<TodoItem>, []>;
+  };
   components: [
-    ViewInstance<"main", {}, {
+    V<"main", {}, {
       content: [
-        ViewInstance<"form", {
-          // submit: 
-        }>,
-        ViewInstance<"ul">
-      ]
-    }>
+        V<"form">,
+        V<"ul">,
+        // TODO...
+      ],
+    }>,
   ];
 }
