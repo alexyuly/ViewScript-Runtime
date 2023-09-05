@@ -76,7 +76,7 @@ export interface TodoListApp extends View {
           content: Map<
             TodoListApp | Iterator<TodoItem>
             "model",
-            Tag<Iterator<TodoItem>, {
+            Tag<TodoItemView, {
               model: Each<Iterator<TodoItem>>
             }>
           >
