@@ -48,6 +48,8 @@ type ModelField<T extends ModelFieldRequired = ModelFieldRequired> = T | null;
 
 type ModelFieldRequired = boolean | number | string | Model | Array<ModelField>;
 
+// TODO type ModelList
+
 type ModelMethod<
   Result extends ModelField = ModelField,
   Operand extends ModelField = ModelField,

@@ -9,20 +9,18 @@ interface TodoItem extends Model {
 interface TodoItemView extends View {
   references: { model: TodoItem };
   components: [
-    ViewInstance<
-      "li",
-      { click: ReturnType<TodoItem["complete"]> },
-      {
-        content: [
-          ViewInstance<"label", {}, {
-            content: [
-              ViewInstance<"input", {}, { type: "checkbox" }>,
-              TodoItemView["references"]["model"]["text"],
-            ];
-          }>,
-        ];
-      }
-    >,
+    ViewInstance<"li", {
+      click: ReturnType<TodoItem["complete"]>,
+    }, {
+      content: [
+        ViewInstance<"label", {}, {
+          content: [
+            ViewInstance<"input", {}, { type: "checkbox" }>,
+            TodoItemView["references"]["model"]["text"],
+          ];
+        }>,
+      ];
+    }>,
   ];
 }
 
@@ -31,7 +29,9 @@ export interface TodoListApp extends View {
   components: [
     ViewInstance<"main", {}, {
       content: [
-        ViewInstance<"form">,
+        ViewInstance<"form", {
+          // submit: 
+        }>,
         ViewInstance<"ul">
       ]
     }>
