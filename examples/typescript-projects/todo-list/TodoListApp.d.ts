@@ -1,6 +1,6 @@
 import type {
   BooleanModel,
-  Dispatch
+  Dispatching,
   ForEach,
   Generate,
   Get,
@@ -17,7 +17,7 @@ import type {
 interface TodoItem extends Model {
   text: StringModel
   completed: Let<BooleanModel, false>
-  complete(): Dispatch<TodoItem, "completed", "enable">
+  complete(): Handle<Dispatching<TodoItem, "completed", "enable">>
 }
 
 interface TodoItemView extends View {
@@ -26,7 +26,7 @@ interface TodoItemView extends View {
   }
   components: [
     Tag<"li", {
-      click: Dispatch<TodoItem, "model", "complete">
+      click: Handle<Dispatching<TodoItem, "model", "complete">>
       content: Tag<"label", {
         content: [
           Tag<"input", {
@@ -54,7 +54,7 @@ export interface TodoListApp extends View {
         Tag<"form", {
           submit: Handle<
             SubmitEventModel,
-            Dispatch<TodoListApp, "model", "push", {
+            Dispatching<TodoListApp, "model", "push", {
               text: Get<Get<SubmitEventModel, "data">, "text">
             }>
           >
