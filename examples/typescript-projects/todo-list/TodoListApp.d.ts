@@ -1,8 +1,8 @@
 import type {
   BooleanModel,
   Dispatching,
+  EachOf,
   Event,
-  ForEach,
   Generate,
   Get,
   Handle,
@@ -80,7 +80,7 @@ export interface TodoListApp extends View {
             "model",
             "map",
             Tag<TodoItemView, {
-              model: ForEach<TodoListApp, "model">
+              model: EachOf<TodoListApp, "model">
             }>
           >
         }>
