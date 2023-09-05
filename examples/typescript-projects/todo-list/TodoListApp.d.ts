@@ -13,50 +13,50 @@ import type {
 } from "typescript-markup";
 
 interface TodoItem extends Model {
-  text: string;
-  completed: Let<boolean, false>;
-  complete(): Set<TodoItem, "completed", true>;
+  text: string
+  completed: Let<boolean, false>
+  complete(): Set<TodoItem, "completed", true>
 }
 
 interface TodoItemView extends View {
   props: {
-    model: Take<TodoItem>;
-  };
+    model: Take<TodoItem>
+  }
   components: [
     Render<"li", {
-      click: Dispatch<TodoItem, "model", "complete">;
+      click: Dispatch<TodoItem, "model", "complete">
       content: [
         Render<"label", {
           content: [
             Render<"input", { type: "checkbox" }>,
-            Get<Get<TodoItemView, "model">, "text">,
-          ];
-        }>,
-      ];
-    }>,
-  ];
+            Get<Get<TodoItemView, "model">, "text">
+          ]
+        }>
+      ]
+    }>
+  ]
 }
 
 export interface TodoListApp extends View {
   props: {
-    model: Let<Array<TodoItem>, []>;
-  };
+    model: Let<Array<TodoItem>, []>
+  }
   components: [
     Render<"main", {
       content: [
         Render<"form", {
           submit: Dispatch<TodoListApp, "model", "push", {
-            text: Get<Get<Event<"submit">, "data">, "text">;
-          }>;
+            text: Get<Get<Event<"submit">, "data">, "text">
+          }>
           content: [
             Render<"label", {
               content: [
                 "Add a new to-do:",
-                Render<"input", { name: "text"; type: "text" }>,
-              ];
+                Render<"input", { name: "text"; type: "text" }>
+              ]
             }>,
-            Render<"button", { type: "submit" }>,
-          ];
+            Render<"button", { type: "submit" }>
+          ]
         }>,
         Render<"ul", {
           content: Call<
@@ -64,11 +64,11 @@ export interface TodoListApp extends View {
             "model",
             "map",
             Render<TodoItemView, {
-              model: Each<TodoListApp, "model">;
-            }>,
-          >;
-        }>,
-      ];
-    }>,
-  ];
+              model: Each<TodoListApp, "model">
+            }>
+          >
+        }>
+      ]
+    }>
+  ]
 }
