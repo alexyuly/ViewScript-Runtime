@@ -7,7 +7,7 @@ import type {
   Handle,
   Let,
   ListOf,
-  MapList,
+  Map,
   Model,
   Result,
   StringModel,
@@ -78,7 +78,7 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: MapList<TodoListApp, "model", Tag<TodoItemView, {
+          content: Map<TodoListApp, "model", Tag<TodoItemView, {
             model: EachOf<TodoListApp, "model">
           }>
         }>
