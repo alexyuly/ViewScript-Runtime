@@ -1,7 +1,7 @@
 import type {
   BooleanModel,
   Dispatch,
-  EachOf,
+  Each,
   Event,
   Get,
   Iterator,
@@ -74,10 +74,10 @@ export interface TodoListApp extends View {
         }>,
         Tag<"ul", {
           content: Map<
-            TodoListApp | Iterator
+            TodoListApp | Iterator<TodoItem>
             "model",
-            Tag<Iterator, TodoItemView, {
-              model: Get<Iterator, "each">
+            Tag<Iterator<TodoItem>, {
+              model: Each<Iterator<TodoItem>>
             }>
           >
         }>
