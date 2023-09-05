@@ -10,7 +10,7 @@ import type {
   Set,
   Take,
   View,
-} from "compendium-ts";
+} from "typescript-markup";
 
 interface TodoItem extends Model {
   text: string;
