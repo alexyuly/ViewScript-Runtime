@@ -3,7 +3,7 @@ import type { Dispatch, Get, Let, Model, Set, Take, V, ValueOf, View } from "com
 interface TodoItem extends Model {
   text: string;
   completed: Let<boolean, false>;
-  complete(): Set<TodoItem["completed"], true>;
+  complete(): Set<TodoItem, "completed", true>;
 }
 
 interface TodoItemView extends View {
@@ -12,7 +12,7 @@ interface TodoItemView extends View {
   };
   components: [
     V<"li", {
-      click: Dispatch<TodoItem["complete"]>,
+      click: Dispatch<TodoItem, "complete">,
       content: [
         V<"label", {
           content: [
