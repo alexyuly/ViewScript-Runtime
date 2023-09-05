@@ -90,7 +90,7 @@ export interface TodoListApp extends View {
 /*
 {
   "__name": "Model",
-  "__extension": "TodoItem",
+  "__kind": "TodoItem",
   "text": {
     "__name": "StringModel"
   },
