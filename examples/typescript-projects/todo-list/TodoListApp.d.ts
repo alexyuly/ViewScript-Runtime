@@ -10,6 +10,7 @@ import type {
   View,
 } from "typescript-markup";
 
+
 /*
 Model TodoItem
 
@@ -55,6 +56,7 @@ interface TodoItemView extends View {
     }>
   ]
 }
+
 
 export interface TodoListApp extends View {
   head: {
