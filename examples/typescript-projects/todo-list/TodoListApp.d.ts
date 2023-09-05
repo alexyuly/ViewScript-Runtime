@@ -28,7 +28,9 @@ interface TodoItemView extends View {
   }
   components: [
     Tag<"li", {
-      click: Handle<Dispatching<TodoItem, "model", "complete">>
+      click: Handle<
+        Dispatching<TodoItem, "model", "complete">
+      >
       content: Tag<"label", {
         content: [
           Tag<"input", {
@@ -76,13 +78,9 @@ export interface TodoListApp extends View {
           ]
         }>,
         Tag<"ul", {
-          content: MapList<
-            TodoListApp,
-            "model",
-            Tag<TodoItemView, {
-              model: EachOf<TodoListApp, "model">
-            }>
-          >
+          content: MapList<TodoListApp, "model", Tag<TodoItemView, {
+            model: EachOf<TodoListApp, "model">
+          }>
         }>
       ]
     }>
