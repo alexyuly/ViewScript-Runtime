@@ -18,10 +18,8 @@
         "name": "Model",
         "kind": "TodoItem"
       },
-      "path": [
-        "completed",
-        "enable"
-      ]
+      "model": "completed",
+      "action": "enable"
     }
   }
 }

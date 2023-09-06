@@ -1,5 +1,7 @@
 type Action<T extends Model | void = void> = (argument: T extends void ? never : T) => void
 
+// type BigIntModel
+
 type BooleanModel = PrimitiveModel<"BooleanModel", {
   enable(): void
 }>
@@ -18,52 +20,76 @@ type DataType<T extends Model> =
   T extends Model ? ComplexDataType<T> :
   never
 
-interface Dispatch<
+type Dispatch<
   Scope extends Model,
   ModelName extends {
     [K in keyof (Scope["properties"])]: (Scope["properties"])[K] extends Field ? K : never
   }[keyof (Scope["properties"])],
   ActionName extends {
-    [K in keyof (Scope["properties"][ModelName]["properties"])]: (Scope["properties"][ModelName]["properties"])[K] extends Action ? K : never
-  }[keyof (Scope["properties"][ModelName]["properties"])]
-  // TODO fix ActionName ^
-> extends Node<"Dispatch"> {
-  scope: Scope
-  modelName: ModelName
-  actionName: ActionName
+    [K in keyof (
+      Scope["properties"][ModelName] extends Model ? Scope["properties"][ModelName]["properties"] :
+      Scope["properties"][ModelName] extends Store ? Scope["properties"][ModelName]["model"]["properties"] :
+      never
+    )]: (
+      Scope["properties"][ModelName] extends Model ? Scope["properties"][ModelName]["properties"] :
+      Scope["properties"][ModelName] extends Store ? Scope["properties"][ModelName]["model"]["properties"] :
+      never
+    )[K] extends Action ? K : never
+  }[keyof (
+    Scope["properties"][ModelName] extends Model ? Scope["properties"][ModelName]["properties"] :
+    Scope["properties"][ModelName] extends Store ? Scope["properties"][ModelName]["model"]["properties"] :
+    never
+  )]
+> = Node<"Dispatch"> & {
+  scope: Reference<Scope>
+  model: ModelName
+  action: ActionName
 }
 
-type Field = Let<Model> | Let<Model, DataType<Model>> | Model
+type Field =
+  | Model
+  | Store
 
-interface Let<T extends Model, V extends DataType<T> | void = void> extends Node<"Let"> {
+type Let<
+  T extends Model,
+  V extends DataType<T> | void = void
+> = Node<"Let"> & {
   model: T
   value: V extends void ? never : V
 }
 
-interface Model<
+type Model<
   Kind extends string = string,
   Properties extends { [x: string]: Action | Field } = {}
-> extends NodeOfKind<"Model", Kind> {
+> = NodeOfKind<"Model", Kind> & {
   properties: Properties
 } 
 
-interface Node<Name extends string> {
+type Node<Name extends string> = {
   name: Name
 }
 
-interface NodeOfKind<Name extends string, Kind extends string> extends Node<Name> {
+type NodeOfKind<
+  Name extends string,
+  Kind extends string
+> = Node<Name> & {
   kind: Kind
 }
 
 type NumberModel = PrimitiveModel<"NumberModel">
 
-// TODO Support other primitive types, like bigint and symbol?
-interface PrimitiveModel<
+type PrimitiveModel<
   Kind extends string = string,
   Properties extends { [x: string]: Action } = {}
-> extends Model<Kind, Properties> {
+> = Model<Kind, Properties> & {
   properties: Properties
-} 
+}
+
+type Reference<Scope extends Model> = Pick<Scope, "name" | "kind">
+
+type Store =
+  | Let<Model>
+  | Let<Model, DataType<Model>>
 
 type StringModel = PrimitiveModel<"StringModel">
 
