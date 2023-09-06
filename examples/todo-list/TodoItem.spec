@@ -14,4 +14,11 @@ Take model of TodoItemModel
   display = "flex"
   align-items = "center"
   content = <label>
-   content = "TO-DO"
+    content = "TO-DO"
+
+
+Export View TodoListApp
+
+Let model of many TodoItemModel
+<main>
+  content = "TO-DO"
