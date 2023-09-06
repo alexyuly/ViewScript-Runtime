@@ -1,4 +1,5 @@
 import type {
+  Action,
   BooleanModel,
   Dispatch,
   Let,
@@ -16,7 +17,7 @@ type TodoItemModel = Model<
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel, false>;
-    complete(): Dispatch<TodoItemModel, "completed", "enable">;
+    complete: Action<Dispatch<TodoItemModel, "completed", "enable">>;
   }
 >;
 
