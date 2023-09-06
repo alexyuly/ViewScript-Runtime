@@ -45,7 +45,7 @@ type TodoItemView = View<
 export type TodoListApp = View<
   "TodoListApp",
   {
-    model: Take<Many<TodoItemModel>>;
+    model: Let<Many<TodoItemModel>>;
   },
   Show<
     "main",
