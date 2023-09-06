@@ -18,7 +18,7 @@
         "name": "Model",
         "kind": "TodoItem"
       },
-      "model": "completed",
+      "field": "completed",
       "action": "enable"
     }
   }
