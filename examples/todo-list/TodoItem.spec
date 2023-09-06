@@ -13,4 +13,5 @@ Take model of TodoItemModel
   padding = "8px 16px"
   display = "flex"
   align-items = "center"
-  content = "TODO"
+  content = <label>
+   content = "TO-DO"
