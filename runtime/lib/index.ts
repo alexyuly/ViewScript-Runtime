@@ -39,6 +39,8 @@ type DataType<M extends Model> = M extends BooleanModel
   ? number
   : M extends StringModel
   ? string
+  : M extends Many<infer A extends Model>
+  ? Array<A>
   : M extends Model
   ? ComplexDataType<M>
   : never;
