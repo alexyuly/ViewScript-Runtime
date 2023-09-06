@@ -50,7 +50,7 @@ type Dispatch<
     ? M["properties"][F]["model"]["properties"]
     : never)],
 > = Node<"Dispatch"> & {
-  reference: Reference<M>;
+  scope: Reference<M>;
   field: F;
   action: A;
 };
