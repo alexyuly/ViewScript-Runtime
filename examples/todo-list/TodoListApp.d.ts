@@ -1,15 +1,16 @@
 import type {
   BooleanModel,
-  ComplexModel,
+  Dispatch,
   Let,
+  Model,
   StringModel,
 } from "../../runtime/lib/Runtime"
 
-interface TodoItem extends ComplexModel {
+type TodoItem = Model<"TodoItem", {
   text: StringModel
   completed: Let<BooleanModel, false>
-  // complete(): Dispatch<TodoItem, ["completed", "enable"]>
-}
+  complete(): Dispatch<TodoItem, "completed", "enable">
+}>
 
 // interface TodoItemView extends View {
 //   properties: {
