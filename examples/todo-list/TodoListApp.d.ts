@@ -4,12 +4,13 @@ import type {
   Let,
   Model,
   StringModel,
+  Take,
 } from "../../runtime/lib";
 
 type TodoItem = Model<
   "TodoItem",
   {
-    text: StringModel;
+    text: Take<StringModel>;
     completed: Let<BooleanModel, false>;
     complete(): Dispatch<TodoItem, "completed", "enable">;
   }

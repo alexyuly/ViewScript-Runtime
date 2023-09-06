@@ -7,14 +7,14 @@
     },
     "completed": {
       "name": "Let",
-      "model": {
+      "reference": {
         "name": "BooleanModel"
       },
       "value": false
     },
     "complete": {
       "name": "Dispatch",
-      "scope": {
+      "reference": {
         "name": "Model",
         "kind": "TodoItem"
       },
