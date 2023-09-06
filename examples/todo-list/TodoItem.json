@@ -1,0 +1,27 @@
+{
+  "name": "Model",
+  "kind": "TodoItem",
+  "properties": {
+    "text": {
+      "name": "StringModel"
+    },
+    "completed": {
+      "name": "Let",
+      "model": {
+        "name": "BooleanModel"
+      },
+      "value": false
+    },
+    "complete": {
+      "name": "Dispatch",
+      "scope": {
+        "name": "Model",
+        "kind": "TodoItem"
+      },
+      "path": [
+        "completed",
+        "enable"
+      ]
+    }
+  }
+}
