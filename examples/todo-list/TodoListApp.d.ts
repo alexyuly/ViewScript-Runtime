@@ -2,6 +2,7 @@ import type {
   BooleanModel,
   Dispatch,
   Let,
+  Many,
   Model,
   Show,
   StringModel,
@@ -10,7 +11,7 @@ import type {
 } from "../../runtime/lib";
 
 type TodoItemModel = Model<
-  "TodoItem",
+  "TodoItemModel",
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel, false>;
@@ -19,13 +20,36 @@ type TodoItemModel = Model<
 >;
 
 type TodoItemView = View<
-  "TodoItem",
+  "TodoItemView",
   {
     model: Take<TodoItemModel>;
   },
   Show<
-    "main",
+    "li",
     TodoItemView,
+    {
+      click: Dispatch<TodoItemView, "model", "complete">;
+      padding: "8px 16px";
+      display: "flex";
+      "align-items": "center";
+    },
+    Show<
+      "label",
+      TodoItemView,
+      {},
+      [] // TODO
+    >
+  >
+>;
+
+export type TodoListApp = View<
+  "TodoListApp",
+  {
+    model: Take<Many<TodoItemModel>>;
+  },
+  Show<
+    "main",
+    TodoListApp,
     {
       position: "fixed";
       width: "100%";
@@ -39,5 +63,3 @@ type TodoItemView = View<
     [] // TODO
   >
 >;
-
-// export type TodoListApp
