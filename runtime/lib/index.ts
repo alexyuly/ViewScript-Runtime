@@ -1,7 +1,7 @@
 export { BooleanModel, Dispatch, Let, Model, StringModel };
 
 type Action<M extends Model | void = void> = (
-  argument: M extends void ? never : M
+  parameter: M extends void ? never : M
 ) => void;
 
 type BooleanModel = PrimitiveModel<
@@ -50,8 +50,8 @@ type Dispatch<
     ? M["properties"][F]["model"]["properties"]
     : never)],
 > = Node<"Dispatch"> & {
-  scope: Reference<M>;
-  model: F;
+  reference: Reference<M>;
+  field: F;
   action: A;
 };
 
