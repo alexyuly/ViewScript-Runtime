@@ -3,13 +3,9 @@ import type {
   BooleanModel,
   Dispatch,
   Let,
-  // Many,
   Model,
-  // NumberModel
-  // Show,
   StringModel,
   Take,
-  // View,
 } from "../../runtime/lib";
 
 type TodoItemModel = Model<
@@ -17,7 +13,7 @@ type TodoItemModel = Model<
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel, false>;
-    complete: Action<Dispatch<TodoItemModel, "completed", "enable">>;
+    complete: Action<null, [Dispatch<TodoItemModel, "completed", "enable">]>;
   }
 >;
 

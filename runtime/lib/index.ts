@@ -1,4 +1,5 @@
 export {
+  Action,
   BooleanModel,
   Dispatch,
   Generate,
@@ -10,21 +11,37 @@ export {
   Take,
 };
 
-type Action<M extends Model | void = void> = (
-  parameter: M extends void ? never : M
-) => void;
+type Action<
+  Parameter extends Model | null,
+  H extends Handler,
+> = Node<"Action"> & {
+  parameter: Reference<Parameter>;
+  handler: H;
+};
+
+type ActionKey<M extends Model = Model, F extends FieldKey<M> = FieldKey<M>> = {
+  [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
+    M,
+    F
+  >["properties"][K] extends UnknownAction
+    ? K
+    : never;
+}[keyof ModelChild<M, F>["properties"]];
 
 type BooleanModel = PrimitiveModel<
   "BooleanModel",
   {
-    enable(): void;
+    enable: PrimitiveAction<BooleanModel>;
   }
 >;
+
+// TODO pass in Expression<BooleanModel> after making Expression generic
+// type Catch
 
 type ComplexDataType<M extends Model> = {
   [K in keyof M["properties"]]: M["properties"][K] extends Field
     ? DataType<
-        M["properties"][K]["reference"] extends Reference<infer R extends Model>
+        M["properties"][K]["type"] extends Reference<infer R extends Model>
           ? R
           : never
       >
@@ -47,27 +64,38 @@ type DataType<M extends Model> = M extends BooleanModel
 
 type Dispatch<
   M extends Model,
-  F extends ModelField<M>,
-  A extends ModelAction<M, F>,
-> = Node<"Dispatch"> &
-  Field & {
-    field: F;
-    action: A;
-  };
+  F extends FieldKey<M>,
+  A extends ActionKey<M, F>,
+> = Node<"Dispatch"> & {
+  scope: Reference<M>;
+  fieldKey: F;
+  actionKey: A;
+};
+
+// TODO make generic
+type Expression = Node<"Expression"> & {
+  outlet: Generate<Model, FieldKey, MethodKey> | ValueOf<Model, FieldKey>;
+};
 
 type Field<M extends Model = Model> = {
-  reference: Reference<M>;
+  type: Reference<M>;
 };
+
+type FieldKey<M extends Model = Model> = {
+  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
+}[keyof M["properties"]];
 
 type Generate<
   M extends Model,
-  F extends ModelField<M>,
-  E extends ModelMethod<M, F>,
-> = Node<"Generate"> &
-  Field & {
-    field: F;
-    method: E;
-  };
+  F extends FieldKey<M>,
+  MK extends MethodKey<M, F>,
+> = Node<"Generate"> & {
+  scope: Reference<M>;
+  fieldKey: F;
+  methodKey: MK;
+};
+
+type Handler = Array<Dispatch<Model, FieldKey, ActionKey>>;
 
 type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> &
   Field<M> & {
@@ -77,80 +105,96 @@ type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> &
 type Many<M extends Model> = PrimitiveModel<
   "Many",
   {
-    length(): NumberModel;
-    push(parameter: M): void;
+    length: PrimitiveMethod<null, NumberModel>;
+    push: PrimitiveAction<M>;
   }
 > & {
   model: Reference<M>;
 };
 
-type Method<R extends Model = Model, M extends Model | void = void> = (
-  parameter: M extends void ? never : M
-) => R;
-
-type Model<
-  K extends string = string,
-  P extends Record<string, Action | Field | Method> = {},
-> = NodeOfKind<"Model", K> & {
-  properties: P;
+type Method<
+  Parameter extends Model | null,
+  Return extends Model,
+  X extends Expression,
+> = Node<"Method"> & {
+  parameter: Reference<Parameter>;
+  return: Reference<Return>;
+  expression: X;
 };
 
-type ModelAction<
-  M extends Model = Model,
-  F extends ModelField<M> = ModelField<M>,
-> = {
+type MethodKey<M extends Model = Model, F extends FieldKey<M> = FieldKey<M>> = {
   [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
     M,
     F
-  >["properties"][K] extends Action
+  >["properties"][K] extends UnknownMethod
     ? K
     : never;
 }[keyof ModelChild<M, F>["properties"]];
+
+type Model<
+  Kind extends string = string,
+  Properties extends ModelProperties = {},
+> = NodeOfKind<"Model", Kind> & {
+  properties: Properties;
+};
 
 type ModelChild<
   M extends Model,
   F extends keyof M["properties"],
 > = M["properties"][F] extends Field
-  ? M["properties"][F]["reference"] extends Reference<infer R extends Model>
+  ? M["properties"][F]["type"] extends Reference<infer R extends Model>
     ? R
     : never
   : never;
 
-type ModelField<M extends Model = Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
-}[keyof M["properties"]];
-
-type ModelMethod<
-  M extends Model = Model,
-  F extends ModelField<M> = ModelField<M>,
-> = {
-  [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
-    M,
-    F
-  >["properties"][K] extends Method
-    ? K
-    : never;
-}[keyof ModelChild<M, F>["properties"]];
+type ModelProperties = Record<string, Field | UnknownAction | UnknownMethod>;
 
 type Node<N extends string> = {
   name: N;
 };
 
-type NodeOfKind<N extends string, K extends string> = Node<N> & {
-  kind: K;
+type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
+  kind: Kind;
 };
 
 type NumberModel = PrimitiveModel<"NumberModel">;
 
+type PrimitiveAction<Parameter extends PrimitiveModel | null> = Action<
+  Parameter,
+  never
+>;
+
+type PrimitiveMethod<
+  Parameter extends PrimitiveModel | null,
+  Return extends PrimitiveModel,
+> = Method<Parameter, Return, never>;
+
 type PrimitiveModel<
-  K extends string = string,
-  P extends Record<string, Action | Method> = {},
-> = Model<K, P> & {
-  properties: P;
+  Kind extends string = string,
+  Properties extends PrimitiveModelProperties = {},
+> = Model<Kind, Properties> & {
+  properties: Properties;
 };
 
-type Reference<M extends Model> = Pick<M, "name" | "kind">;
+type PrimitiveModelProperties = Record<
+  string,
+  | PrimitiveAction<PrimitiveModel | null>
+  | PrimitiveMethod<PrimitiveModel | null, Model>
+>;
+
+type Reference<M extends Model | null> = M extends Model
+  ? Pick<M, "name" | "kind">
+  : M;
 
 type StringModel = PrimitiveModel<"StringModel">;
 
 type Take<M extends Model> = Node<"Take"> & Field<M>;
+
+type UnknownAction = Action<Model | null, Handler>;
+
+type UnknownMethod = Method<Model | null, Model, Expression>;
+
+type ValueOf<M extends Model, F extends FieldKey<M>> = Node<"ValueOf"> & {
+  scope: Reference<M>;
+  fieldKey: F;
+};
