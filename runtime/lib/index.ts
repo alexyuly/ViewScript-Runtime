@@ -19,13 +19,12 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Model<
   Kind extends string = string,
-  Properties extends Record<string, Action | Method> = Record<
-    string,
-    Action | Method
-  >,
+  Properties extends ModelProperties = ModelProperties, // TODO Fix circular reference
 > = NodeOfKind<"Model", Kind> & {
   properties: Properties;
 };
+
+type ModelProperties = Record<string, Action | Method>; // TODO Fix circular reference
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
