@@ -19,21 +19,16 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Model<
   Kind extends string = string,
-  Methods extends ModelMethods = ModelMethods,
-  Actions extends ModelActions = ModelActions,
-> = NodeOfKind<"Model", Kind> & Methods & Actions;
-
-type ModelActions = {
-  actions: Record<string, Action>;
+  Properties extends Record<string, Action | Method> = {},
+> = NodeOfKind<"Model", Kind> & {
+  properties: Properties;
 };
 
-type ModelMethods = {
-  methods: Record<string, Method>;
-};
+type ModelReference<M extends Model | Nothing> = M extends Model
+  ? NodeOfKind<"ModelReference", M["kind"]>
+  : Nothing;
 
-type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
-
-type Nothing = Model<"Nothing">;
+type Nothing = Node<"Nothing">;
 
 type Action<Input extends Model | Nothing = Model | Nothing> =
   Node<"Action"> & {
@@ -73,23 +68,23 @@ type DataType<M extends Model> = M extends BooleanModel
   : never;
 
 type FieldKey<M extends Model = Model> = {
-  [K in keyof M["methods"]]: M["methods"][K] extends Field ? K : never;
-}[keyof M["methods"]];
+  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
+}[keyof M["properties"]];
 
 type ActionKey<M extends Model = Model, F extends FieldKey<M> = FieldKey<M>> = {
-  [K in keyof ModelChild<M, F>["actions"]]: ModelChild<
+  [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
     M,
     F
-  >["actions"][K] extends Action
+  >["properties"][K] extends Action
     ? K
     : never;
-}[keyof ModelChild<M, F>["actions"]];
+}[keyof ModelChild<M, F>["properties"]];
 
 type ModelChild<
   M extends Model,
-  F extends keyof M["methods"],
-> = M["methods"][F] extends Field
-  ? M["methods"][F]["type"] extends ModelReference<infer R extends Model>
+  F extends keyof M["properties"],
+> = M["properties"][F] extends Field
+  ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
     ? R
     : never
   : never;
@@ -107,14 +102,8 @@ type Dispatch<
 type BooleanModel = Model<
   "BooleanModel",
   {
-    methods: {
-      value: Method;
-    };
-  },
-  {
-    actions: {
-      enable: Action;
-    };
+    value: Method;
+    enable: Action;
   }
 >;
 
