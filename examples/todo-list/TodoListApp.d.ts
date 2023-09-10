@@ -1,5 +1,5 @@
 import type {
-  ActionHandled,
+  ActionHandler,
   BooleanModel,
   Dispatch,
   Field,
@@ -14,7 +14,7 @@ type TodoItemModel = Model<
   {
     text: Field<StringModel>;
     completed: Let<BooleanModel, false>;
-    complete: ActionHandled<
+    complete: ActionHandler<
       Nothing,
       [Dispatch<TodoItemModel, "completed", "enable">]
     >;
