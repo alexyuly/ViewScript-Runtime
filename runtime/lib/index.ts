@@ -19,12 +19,14 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Model<
   Kind extends string = string,
-  Properties extends ModelProperties = ModelProperties, // TODO Fix circular reference
+  Properties extends ModelProperties = ModelProperties,
 > = NodeOfKind<"Model", Kind> & {
   properties: Properties;
 };
 
-type ModelProperties = Record<string, Action | Method>; // TODO Fix circular reference
+type ModelProperties = {
+  [K in string]: Action | Method | Record<string, Action>;
+};
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
@@ -66,11 +68,11 @@ type DataType<M extends Model> = M extends BooleanModel
   ? string
   : never;
 
-type FieldKey<M extends Model = Model> = {
+type FieldKey<M extends Model> = {
   [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
 }[keyof M["properties"]];
 
-type ActionKey<M extends Model = Model, F extends FieldKey<M> = FieldKey<M>> = {
+type ActionKey<M extends Model, F extends FieldKey<M>> = {
   [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
     M,
     F
