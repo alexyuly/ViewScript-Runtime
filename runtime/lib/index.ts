@@ -19,31 +19,31 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Model<
   Kind extends string = string,
-  Properties extends Record<string, Action | Method> = {},
+  Properties extends Record<string, Action | Method> = Record<
+    string,
+    Action | Method
+  >,
 > = NodeOfKind<"Model", Kind> & {
   properties: Properties;
 };
 
-type ModelReference<M extends Model | Nothing> = M extends Model
-  ? NodeOfKind<"ModelReference", M["kind"]>
-  : Nothing;
+type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
-type Nothing = Node<"Nothing">;
+type Nothing = Model<"Nothing">;
 
-type Action<Input extends Model | Nothing = Model | Nothing> =
-  Node<"Action"> & {
-    input: ModelReference<Input>;
-  };
+type Action<Input extends Model = Model> = Node<"Action"> & {
+  input: ModelReference<Input>;
+};
 
 type ActionHandled<
-  Input extends Model | Nothing = Model | Nothing,
+  Input extends Model,
   Handler extends Array<Dispatch> = Array<Dispatch>,
 > = Action<Input> & {
   handler: Handler;
 };
 
 type Method<
-  Input extends Model | Nothing = Model | Nothing,
+  Input extends Model = Model,
   Output extends Model = Model,
 > = Node<"Method"> & {
   input: ModelReference<Input>;
