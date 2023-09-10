@@ -1,5 +1,5 @@
 export {
-  ActionHandled,
+  ActionHandler,
   BooleanModel,
   Dispatch,
   Field,
@@ -36,7 +36,7 @@ type Action<Input extends Model = Model> = Node<"Action"> & {
   input: ModelReference<Input>;
 };
 
-type ActionHandled<
+type ActionHandler<
   Input extends Model,
   Handler extends Array<Dispatch> = Array<Dispatch>,
 > = Action<Input> & {
