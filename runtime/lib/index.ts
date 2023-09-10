@@ -1,5 +1,5 @@
 export {
-  Action,
+  ActionHandled,
   BooleanModel,
   Dispatch,
   Field,
@@ -19,37 +19,36 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Model<
   Kind extends string = string,
-  Properties extends ModelProperties = ModelProperties,
-> = NodeOfKind<"Model", Kind> & Properties;
+  Methods extends ModelMethods = ModelMethods,
+  Actions extends ModelActions = ModelActions,
+> = NodeOfKind<"Model", Kind> & Methods & Actions;
 
-type ModelChild<
-  M extends Model,
-  F extends keyof M["properties"],
-> = M["properties"][F] extends Field
-  ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
-    ? R
-    : never
-  : never;
+type ModelActions = {
+  actions: Record<string, Action>;
+};
 
-type ModelProperties = {
-  properties: Record<string, Action | Method>;
+type ModelMethods = {
+  methods: Record<string, Method>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
 type Nothing = Model<"Nothing">;
 
-type Optional<M extends Model> = M | Nothing;
+type Action<Input extends Model | Nothing = Model | Nothing> =
+  Node<"Action"> & {
+    input: ModelReference<Input>;
+  };
 
-type Action<
-  Input extends Optional<Model> = Optional<Model>,
-  Handler extends Array<Dispatch> = [],
-> = Node<"Action"> & {
-  input: ModelReference<Input>;
+type ActionHandled<
+  Input extends Model | Nothing = Model | Nothing,
+  Handler extends Array<Dispatch> = Array<Dispatch>,
+> = Action<Input> & {
+  handler: Handler;
 };
 
 type Method<
-  Input extends Optional<Model> = Optional<Model>,
+  Input extends Model | Nothing = Model | Nothing,
   Output extends Model = Model,
 > = Node<"Method"> & {
   input: ModelReference<Input>;
@@ -74,17 +73,26 @@ type DataType<M extends Model> = M extends BooleanModel
   : never;
 
 type FieldKey<M extends Model = Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
-}[keyof M["properties"]];
+  [K in keyof M["methods"]]: M["methods"][K] extends Field ? K : never;
+}[keyof M["methods"]];
 
 type ActionKey<M extends Model = Model, F extends FieldKey<M> = FieldKey<M>> = {
-  [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
+  [K in keyof ModelChild<M, F>["actions"]]: ModelChild<
     M,
     F
-  >["properties"][K] extends Action
+  >["actions"][K] extends Action
     ? K
     : never;
-}[keyof ModelChild<M, F>["properties"]];
+}[keyof ModelChild<M, F>["actions"]];
+
+type ModelChild<
+  M extends Model,
+  F extends keyof M["methods"],
+> = M["methods"][F] extends Field
+  ? M["methods"][F]["type"] extends ModelReference<infer R extends Model>
+    ? R
+    : never
+  : never;
 
 type Dispatch<
   M extends Model = Model,
@@ -99,7 +107,12 @@ type Dispatch<
 type BooleanModel = Model<
   "BooleanModel",
   {
-    properties: {
+    methods: {
+      value: Method;
+    };
+  },
+  {
+    actions: {
       enable: Action;
     };
   }
