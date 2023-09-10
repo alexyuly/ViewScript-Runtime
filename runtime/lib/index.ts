@@ -68,28 +68,6 @@ type DataType<M extends Model> = M extends BooleanModel
   ? string
   : never;
 
-type FieldKey<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
-}[keyof M["properties"]];
-
-type ActionKey<M extends Model, F extends FieldKey<M>> = {
-  [K in keyof ModelChild<M, F>["properties"]]: ModelChild<
-    M,
-    F
-  >["properties"][K] extends Action
-    ? K
-    : never;
-}[keyof ModelChild<M, F>["properties"]];
-
-type ModelChild<
-  M extends Model,
-  F extends keyof M["properties"],
-> = M["properties"][F] extends Field
-  ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
-    ? R
-    : never
-  : never;
-
 type Dispatch<
   M extends Model = Model,
   F extends FieldKey<M> = FieldKey<M>,
@@ -99,6 +77,28 @@ type Dispatch<
   fieldKey: F;
   actionKey: A;
 };
+
+type FieldKey<M extends Model> = {
+  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
+}[keyof M["properties"]];
+
+type ActionKey<M extends Model, F extends FieldKey<M>> = {
+  [K in keyof ModelField<M, F>["properties"]]: ModelField<
+    M,
+    F
+  >["properties"][K] extends Action
+    ? K
+    : never;
+}[keyof ModelField<M, F>["properties"]];
+
+type ModelField<
+  M extends Model,
+  F extends keyof M["properties"],
+> = M["properties"][F] extends Field
+  ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
+    ? R
+    : never
+  : never;
 
 type BooleanModel = Model<
   "BooleanModel",
