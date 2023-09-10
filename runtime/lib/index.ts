@@ -25,14 +25,12 @@ type Model<
 };
 
 type ModelProperties = {
-  [K in string]: Action | Method;
+  [K in string]: Action<Model> | Method<Model, Model>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
-type Nothing = Model<"Nothing">;
-
-type Action<Input extends Model = Model> = Node<"Action"> & {
+type Action<Input extends Model> = Node<"Action"> & {
   input: ModelReference<Input>;
 };
 
@@ -43,10 +41,7 @@ type ActionHandler<
   handler: Handler;
 };
 
-type Method<
-  Input extends Model = Model,
-  Output extends Model = Model,
-> = Node<"Method"> & {
+type Method<Input extends Model, Output extends Model> = Node<"Method"> & {
   input: ModelReference<Input>;
   output: ModelReference<Output>;
 };
@@ -86,7 +81,7 @@ type ActionKey<M extends Model, F extends FieldKey<M>> = {
   [K in keyof ModelField<M, F>["properties"]]: ModelField<
     M,
     F
-  >["properties"][K] extends Action
+  >["properties"][K] extends Action<Model>
     ? K
     : never;
 }[keyof ModelField<M, F>["properties"]];
@@ -100,12 +95,21 @@ type ModelField<
     : never
   : never;
 
+type Nothing = Model<"Nothing">;
+
+type Primitive = Model<"Primitive">;
+
 type BooleanModel = Model<
   "BooleanModel",
   {
-    value: Method;
+    value: Field<Primitive>;
     enable: Action;
   }
 >;
 
-type StringModel = Model<"StringModel">;
+type StringModel = Model<
+  "StringModel",
+  {
+    value: Field<Primitive>;
+  }
+>;
