@@ -25,7 +25,7 @@ type Model<
 };
 
 type ModelProperties = {
-  [K in string]: Action | Method | Record<string, Action>;
+  [K in string]: Action | Method;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
