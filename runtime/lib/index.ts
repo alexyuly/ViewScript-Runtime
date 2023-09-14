@@ -103,7 +103,7 @@ type BooleanModel = Model<
   "BooleanModel",
   {
     value: Field<Primitive>;
-    enable: Action;
+    enable: Action<Model>;
   }
 >;
 
