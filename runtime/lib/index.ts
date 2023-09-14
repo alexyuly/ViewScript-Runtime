@@ -50,7 +50,7 @@ type Take<M extends Model> = Node<"Take"> & {
   type: ModelReference<M>;
 };
 
-type Field<M extends Model = Model> = Take<M> & Method<Nothing, M>;
+type Field<M extends Model> = Take<M> & Method<Nothing, M>;
 
 type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> &
   Field<M> & {
@@ -74,7 +74,9 @@ type Dispatch<
 };
 
 type FieldKey<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Field ? K : never;
+  [K in keyof M["properties"]]: M["properties"][K] extends Field<Model>
+    ? K
+    : never;
 }[keyof M["properties"]];
 
 type ActionKey<M extends Model, F extends FieldKey<M>> = {
@@ -89,7 +91,7 @@ type ActionKey<M extends Model, F extends FieldKey<M>> = {
 type ModelField<
   M extends Model,
   F extends keyof M["properties"],
-> = M["properties"][F] extends Field
+> = M["properties"][F] extends Field<Model>
   ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
     ? R
     : never
