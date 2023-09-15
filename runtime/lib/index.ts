@@ -1,14 +1,10 @@
 export {
-  Action,
-  ActionHandler,
   ActionRef,
   BooleanModel,
   Dispatch,
-  Field,
   FieldRef,
   Let,
   Model,
-  Nothing,
   StringModel,
   Take,
 };
@@ -38,15 +34,15 @@ type Action<Input extends Model> = Node<"Action"> & {
   actionInput: ModelReference<Input>;
 };
 
-type Dispatch<A extends Action<Model>> = Node<"Dispatch"> & {
-  action: A;
+type Dispatch<A extends Action<Model>> = A & {
+  dispatch: true;
 };
 
 type ActionHandler<
   Input extends Model,
-  Handler extends Array<Dispatch<Action<Model>>> = Array<
-    Dispatch<Action<Model>>
-  >,
+  Handler extends Dispatch<Action<Model>> | Array<Dispatch<Action<Model>>> =
+    | Dispatch<Action<Model>>
+    | Array<Dispatch<Action<Model>>>,
 > = Action<Input> & {
   handler: Handler;
 };
