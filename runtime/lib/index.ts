@@ -1,12 +1,16 @@
 export {
+  Action,
   ActionHandler,
+  ActionRef,
   BooleanModel,
   Dispatch,
   Field,
+  FieldRef,
   Let,
   Model,
   Nothing,
   StringModel,
+  Take,
 };
 
 type Node<N extends string> = {
@@ -25,37 +29,43 @@ type Model<
 };
 
 type ModelProperties = {
-  [K in string]: Action<Model> | Method<Model, Model>;
+  [K in string]: Action<Model> | Field<Model>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
 type Action<Input extends Model> = Node<"Action"> & {
-  input: ModelReference<Input>;
+  actionInput: ModelReference<Input>;
+};
+
+type Dispatch<A extends Action<Model>> = Node<"Dispatch"> & {
+  action: A;
 };
 
 type ActionHandler<
   Input extends Model,
-  Handler extends Array<Dispatch> = Array<Dispatch>,
+  Handler extends Array<Dispatch<Action<Model>>> = Array<
+    Dispatch<Action<Model>>
+  >,
 > = Action<Input> & {
   handler: Handler;
 };
 
-type Method<Input extends Model, Output extends Model> = Node<"Method"> & {
-  input: ModelReference<Input>;
-  output: ModelReference<Output>;
-};
+// TODO methods (should include fields + so-called "generators")
+// type Method
 
 type Take<M extends Model> = Node<"Take"> & {
-  type: ModelReference<M>;
+  methodInput: ModelReference<Nothing>;
+  methodOutput: ModelReference<M>;
 };
 
-type Field<M extends Model> = Take<M> & Method<Nothing, M>;
+type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
+  methodInput: ModelReference<Nothing>;
+  methodOutput: ModelReference<M>;
+  value: D extends void ? never : D;
+};
 
-type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> &
-  Field<M> & {
-    value: D extends void ? never : D;
-  };
+type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
 
 type DataType<M extends Model> = M extends BooleanModel
   ? boolean
@@ -63,39 +73,27 @@ type DataType<M extends Model> = M extends BooleanModel
   ? string
   : never;
 
-type Dispatch<
-  M extends Model = Model,
-  F extends FieldKey<M> = FieldKey<M>,
-  A extends ActionKey<M, F> = ActionKey<M, F>,
-> = Node<"Dispatch"> & {
-  scope: ModelReference<M>;
-  fieldKey: F;
-  actionKey: A;
-};
+type ActionKeys<M extends Model> = {
+  [K in keyof M["properties"]]: M["properties"][K] extends Action<Model>
+    ? K
+    : never;
+}[keyof M["properties"]];
 
-type FieldKey<M extends Model> = {
+type ActionRef<
+  M extends Model,
+  K extends ActionKeys<M>,
+> = M["properties"][K] extends Action<Model> ? M["properties"][K] : never;
+
+type FieldKeys<M extends Model> = {
   [K in keyof M["properties"]]: M["properties"][K] extends Field<Model>
     ? K
     : never;
 }[keyof M["properties"]];
 
-type ActionKey<M extends Model, F extends FieldKey<M>> = {
-  [K in keyof ModelField<M, F>["properties"]]: ModelField<
-    M,
-    F
-  >["properties"][K] extends Action<Model>
-    ? K
-    : never;
-}[keyof ModelField<M, F>["properties"]];
-
-type ModelField<
+type FieldRef<
   M extends Model,
-  F extends keyof M["properties"],
-> = M["properties"][F] extends Field<Model>
-  ? M["properties"][F]["type"] extends ModelReference<infer R extends Model>
-    ? R
-    : never
-  : never;
+  K extends FieldKeys<M>,
+> = M["properties"][K] extends Field<infer N extends Model> ? N : never;
 
 type Nothing = Model<"Nothing">;
 

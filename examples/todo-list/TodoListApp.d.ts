@@ -1,22 +1,26 @@
 import type {
+  ActionRef,
   ActionHandler,
   BooleanModel,
   Dispatch,
-  Field,
+  FieldRef,
   Let,
   Model,
   Nothing,
   StringModel,
+  Take,
 } from "../../runtime/lib";
 
 type TodoItemModel = Model<
   "TodoItemModel",
   {
-    text: Field<StringModel>;
-    completed: Let<BooleanModel, false>;
+    text: Take<StringModel>;
+    // TODO get the initial value (2nd param) for Let working:
+    // completed: Let<BooleanModel, false>;
+    completed: Let<BooleanModel>;
     complete: ActionHandler<
       Nothing,
-      [Dispatch<TodoItemModel, "completed", "enable">]
+      [Dispatch<ActionRef<FieldRef<TodoItemModel, "completed">, "enable">>]
     >;
   }
 >;
