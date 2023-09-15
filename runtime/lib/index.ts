@@ -1,10 +1,10 @@
 export {
-  ActionRef,
   BooleanModel,
   Dispatch,
-  FieldRef,
   Let,
   Model,
+  OfAction,
+  OfField,
   StringModel,
   Take,
 };
@@ -38,14 +38,8 @@ type Dispatch<A extends Action<Model>> = A & {
   dispatch: true;
 };
 
-type ActionHandler<
-  Input extends Model,
-  Handler extends Dispatch<Action<Model>> | Array<Dispatch<Action<Model>>> =
-    | Dispatch<Action<Model>>
-    | Array<Dispatch<Action<Model>>>,
-> = Action<Input> & {
-  handler: Handler;
-};
+// TODO a sequence of dispatch calls (and catches, too):
+// type Chain
 
 // TODO methods (should include fields + so-called "generators")
 // type Method
@@ -61,7 +55,10 @@ type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
   value: D extends void ? never : D;
 };
 
-type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
+type Field<
+  M extends Model,
+  D extends DataType<M> | void = DataType<M> | void,
+> = D extends DataType<M> ? Let<M, DataType<M>> : Take<M> | Let<M>;
 
 type DataType<M extends Model> = M extends BooleanModel
   ? boolean
@@ -75,7 +72,7 @@ type ActionKeys<M extends Model> = {
     : never;
 }[keyof M["properties"]];
 
-type ActionRef<
+type OfAction<
   M extends Model,
   K extends ActionKeys<M>,
 > = M["properties"][K] extends Action<Model> ? M["properties"][K] : never;
@@ -86,7 +83,7 @@ type FieldKeys<M extends Model> = {
     : never;
 }[keyof M["properties"]];
 
-type FieldRef<
+type OfField<
   M extends Model,
   K extends FieldKeys<M>,
 > = M["properties"][K] extends Field<infer N extends Model> ? N : never;
