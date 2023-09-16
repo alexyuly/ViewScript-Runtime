@@ -1,13 +1,4 @@
-export {
-  BooleanModel,
-  Control,
-  Let,
-  Model,
-  OfAction,
-  OfField,
-  StringModel,
-  Take,
-};
+export { BooleanModel, Control, Let, Model, OfField, StringModel, Take };
 
 type Node<N extends string> = {
   name: N;
@@ -34,10 +25,6 @@ type Action<Input extends Model> = Node<"Action"> & {
   actionInput: ModelReference<Input>;
 };
 
-type Control<A extends Action<Model>> = A & {
-  controller: true;
-};
-
 // type Catch
 
 // type ControlSequence ... ? (we need something for a sequence of control and catch)
@@ -46,7 +33,10 @@ type Control<A extends Action<Model>> = A & {
 // type MethodKeys
 // type OfMethod
 
-// type Product<M extends Method | Field> ... ?
+type Product<
+  M extends Model,
+  K extends ActionKeys<M>,
+> = M["properties"][K] extends Field<Model> ? M["properties"][K] : never; // TODO Field & Method
 
 type Take<M extends Model> = Node<"Take"> & {
   methodInput: ModelReference<Nothing>;
@@ -73,7 +63,7 @@ type ActionKeys<M extends Model> = {
     : never;
 }[keyof M["properties"]];
 
-type OfAction<
+type Control<
   M extends Model,
   K extends ActionKeys<M>,
 > = M["properties"][K] extends Action<Model> ? M["properties"][K] : never;
@@ -97,7 +87,9 @@ type BooleanModel = Model<
   "BooleanModel",
   {
     value: Field<Primitive>;
+    disable: Action<Model>;
     enable: Action<Model>;
+    toggle: Action<Model>;
   }
 >;
 

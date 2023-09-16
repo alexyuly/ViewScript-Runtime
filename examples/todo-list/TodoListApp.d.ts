@@ -3,7 +3,6 @@ import type {
   Control,
   Let,
   Model,
-  OfAction,
   OfField,
   StringModel,
   Take,
@@ -14,6 +13,6 @@ type TodoItemModel = Model<
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel>; // TODO How do I get the `, true` parameter working?
-    complete: Control<OfAction<OfField<TodoItemModel, "completed">, "enable">>;
+    complete: Control<OfField<TodoItemModel, "completed">, "enable">;
   }
 >;
