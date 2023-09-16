@@ -1,13 +1,13 @@
-export { BooleanModel, Control, Let, Model, Of, StringModel, Take };
+export { BooleanModel, Control, Field, Let, Model, StringModel, Take };
 
 type Action<Input extends Model = Nothing> = Node<"Action"> & {
-  actionInput: ModelReference<Input>;
+  input: ModelReference<Input>;
 };
 
 type BooleanModel = Model<
   "BooleanModel",
   {
-    value: Field<Primitive>;
+    value: Take<Primitive>;
     disable: Action;
     enable: Action;
     toggle: Action;
@@ -16,12 +16,14 @@ type BooleanModel = Model<
 
 type Control<
   M extends Model,
-  K extends {
-    [K2 in keyof M["properties"]]: M["properties"][K2] extends Action
-      ? K2
-      : never;
-  }[keyof M["properties"]],
+  K extends ControlKeys<M>,
 > = M["properties"][K] extends Action ? M["properties"][K] : never;
+
+type ControlKeys<M extends Model> = {
+  [K2 in keyof M["properties"]]: M["properties"][K2] extends Action
+    ? K2
+    : never;
+}[keyof M["properties"]];
 
 type DataType<M extends Model> = M extends BooleanModel
   ? boolean
@@ -29,13 +31,28 @@ type DataType<M extends Model> = M extends BooleanModel
   ? string
   : never;
 
-type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
+type Field<
+  M extends Model,
+  K extends FieldKeys<M>,
+> = M["properties"][K] extends LetOrTake<infer N extends Model>
+  ? N & {
+      reference: ModelReference<M>;
+      referenceField: K;
+    }
+  : never;
+
+type FieldKeys<M extends Model> = {
+  [K2 in keyof M["properties"]]: M["properties"][K2] extends LetOrTake<Model>
+    ? K2
+    : never;
+}[keyof M["properties"]];
 
 type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
-  methodInput: ModelReference<Nothing>;
-  methodOutput: ModelReference<M>;
-  value: D;
+  initialValue: D;
+  output: ModelReference<M>;
 };
+
+type LetOrTake<M extends Model> = Take<M> | Let<M>;
 
 type Model<
   Kind extends string = string,
@@ -45,7 +62,7 @@ type Model<
 };
 
 type ModelProperties = {
-  [K in string]: Action<Model> | Field<Model>;
+  [K in string]: Action<Model> | LetOrTake<Model>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
@@ -60,25 +77,15 @@ type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
 
 type Nothing = Model<"Nothing">;
 
-type Of<
-  M extends Model,
-  K extends {
-    [K2 in keyof M["properties"]]: M["properties"][K2] extends Field<Model>
-      ? K2
-      : never;
-  }[keyof M["properties"]],
-> = M["properties"][K] extends Field<infer N extends Model> ? N : never;
-
 type Primitive = Model<"Primitive">;
 
 type StringModel = Model<
   "StringModel",
   {
-    value: Field<Primitive>;
+    value: Take<Primitive>;
   }
 >;
 
 type Take<M extends Model> = Node<"Take"> & {
-  methodInput: ModelReference<Nothing>;
-  methodOutput: ModelReference<M>;
+  output: ModelReference<M>;
 };
