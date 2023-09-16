@@ -7,9 +7,7 @@ Model TodoItemModel {
         false
     )
     complete = Control (
-        Field (
-            completed
-        )
+        Field { completed }
         enable
     )
 }
