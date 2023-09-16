@@ -1,11 +1,40 @@
-export { BooleanModel, Control, Let, Model, OfField, StringModel, Take };
+export { BooleanModel, Control, Let, Model, Of, StringModel, Take };
 
-type Node<N extends string> = {
-  name: N;
+type Action<Input extends Model = Nothing> = Node<"Action"> & {
+  actionInput: ModelReference<Input>;
 };
 
-type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
-  kind: Kind;
+type BooleanModel = Model<
+  "BooleanModel",
+  {
+    value: Field<Primitive>;
+    disable: Action;
+    enable: Action;
+    toggle: Action;
+  }
+>;
+
+type Control<
+  M extends Model,
+  K extends {
+    [K2 in keyof M["properties"]]: M["properties"][K2] extends Action
+      ? K2
+      : never;
+  }[keyof M["properties"]],
+> = M["properties"][K] extends Action ? M["properties"][K] : never;
+
+type DataType<M extends Model> = M extends BooleanModel
+  ? boolean
+  : M extends StringModel
+  ? string
+  : never;
+
+type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
+
+type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
+  methodInput: ModelReference<Nothing>;
+  methodOutput: ModelReference<M>;
+  value: D;
 };
 
 type Model<
@@ -21,77 +50,26 @@ type ModelProperties = {
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
-type Action<Input extends Model> = Node<"Action"> & {
-  actionInput: ModelReference<Input>;
+type Node<N extends string> = {
+  name: N;
 };
 
-// type Catch
-
-// type ControlSequence ... ? (we need something for a sequence of control and catch)
-
-// type Method
-// type MethodKeys
-// type OfMethod
-
-type Product<
-  M extends Model,
-  K extends ActionKeys<M>,
-> = M["properties"][K] extends Field<Model> ? M["properties"][K] : never; // TODO Field & Method
-
-type Take<M extends Model> = Node<"Take"> & {
-  methodInput: ModelReference<Nothing>;
-  methodOutput: ModelReference<M>;
+type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
+  kind: Kind;
 };
-
-type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
-  methodInput: ModelReference<Nothing>;
-  methodOutput: ModelReference<M>;
-  value: D;
-};
-
-type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
-
-type DataType<M extends Model> = M extends BooleanModel
-  ? boolean
-  : M extends StringModel
-  ? string
-  : never;
-
-type ActionKeys<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Action<Model>
-    ? K
-    : never;
-}[keyof M["properties"]];
-
-type Control<
-  M extends Model,
-  K extends ActionKeys<M>,
-> = M["properties"][K] extends Action<Model> ? M["properties"][K] : never;
-
-type FieldKeys<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Field<Model>
-    ? K
-    : never;
-}[keyof M["properties"]];
-
-type OfField<
-  M extends Model,
-  K extends FieldKeys<M>,
-> = M["properties"][K] extends Field<infer N extends Model> ? N : never;
 
 type Nothing = Model<"Nothing">;
 
-type Primitive = Model<"Primitive">;
+type Of<
+  M extends Model,
+  K extends {
+    [K2 in keyof M["properties"]]: M["properties"][K2] extends Field<Model>
+      ? K2
+      : never;
+  }[keyof M["properties"]],
+> = M["properties"][K] extends Field<infer N extends Model> ? N : never;
 
-type BooleanModel = Model<
-  "BooleanModel",
-  {
-    value: Field<Primitive>;
-    disable: Action<Model>;
-    enable: Action<Model>;
-    toggle: Action<Model>;
-  }
->;
+type Primitive = Model<"Primitive">;
 
 type StringModel = Model<
   "StringModel",
@@ -99,3 +77,8 @@ type StringModel = Model<
     value: Field<Primitive>;
   }
 >;
+
+type Take<M extends Model> = Node<"Take"> & {
+  methodInput: ModelReference<Nothing>;
+  methodOutput: ModelReference<M>;
+};
