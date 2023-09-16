@@ -1,8 +1,6 @@
 export { BooleanModel, Control, Field, Let, Model, StringModel, Take };
 
-type Action<Input extends Model = Nothing> = Node<"Action"> & {
-  input: ModelReference<Input>;
-};
+type Action = Node<"Action">;
 
 type BooleanModel = Model<
   "BooleanModel",
@@ -17,7 +15,12 @@ type BooleanModel = Model<
 type Control<
   M extends Model,
   Key extends ControlKeys<M>,
-> = M["properties"][Key] extends Action ? M["properties"][Key] : never;
+> = M["properties"][Key] extends Action
+  ? M["properties"][Key] & {
+      fieldReference: ModelReference<M>;
+      fieldReferenceAction: Key;
+    }
+  : never;
 
 type ControlKeys<M extends Model> = {
   [Key in keyof M["properties"]]: M["properties"][Key] extends Action
@@ -48,11 +51,11 @@ type FieldKeys<M extends Model> = {
 }[keyof M["properties"]];
 
 type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
-  initialValue: D;
-  output: ModelReference<M>;
+  reference: ModelReference<M>;
+  referenceSeed: D;
 };
 
-type LetOrTake<M extends Model> = Take<M> | Let<M>;
+type LetOrTake<M extends Model> = Let<M> | Take<M>;
 
 type Model<
   Kind extends string = string,
@@ -62,7 +65,7 @@ type Model<
 };
 
 type ModelProperties = {
-  [Key in string]: Action<Model> | LetOrTake<Model>;
+  [Key in string]: Action | LetOrTake<Model>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
@@ -75,8 +78,6 @@ type NodeOfKind<Name extends string, Kind extends string> = Node<Name> & {
   kind: Kind;
 };
 
-type Nothing = Model<"Nothing">;
-
 type Primitive = Model<"Primitive">;
 
 type StringModel = Model<
@@ -87,5 +88,5 @@ type StringModel = Model<
 >;
 
 type Take<M extends Model> = Node<"Take"> & {
-  output: ModelReference<M>;
+  reference: ModelReference<M>;
 };

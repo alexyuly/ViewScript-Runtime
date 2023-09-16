@@ -1,5 +1,15 @@
 Model TodoItemModel {
-    text = Take( String )
-    completed = Let( Boolean, false )
-    complete = Control( Field( completed ), enable )
+    text = Take (
+        String
+    )
+    completed = Let (
+        Boolean
+        false
+    )
+    complete = Control (
+        Field (
+            completed
+        )
+        enable
+    )
 }
