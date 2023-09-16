@@ -13,7 +13,6 @@ type TodoItemModel = Model<
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel>;
-    // completed: Let<BooleanModel, false>;
     complete: Control<Field<TodoItemModel, "completed">, "enable">;
   }
 >;

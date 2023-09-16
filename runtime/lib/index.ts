@@ -50,9 +50,12 @@ type FieldKeys<M extends Model> = {
     : never;
 }[keyof M["properties"]];
 
-type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
+type Let<
+  M extends Model,
+  Data extends DataType<M> | void = void,
+> = Node<"Let"> & {
   reference: ModelReference<M>;
-  referenceSeed: D;
+  referenceSeed: Data extends void ? never : Data;
 };
 
 type LetOrTake<M extends Model> = Let<M> | Take<M>;
