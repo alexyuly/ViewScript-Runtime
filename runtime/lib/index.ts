@@ -16,11 +16,13 @@ type BooleanModel = Model<
 
 type Control<
   M extends Model,
-  K extends ControlKeys<M>,
-> = M["properties"][K] extends Action ? M["properties"][K] : never;
+  Key extends ControlKeys<M>,
+> = M["properties"][Key] extends Action ? M["properties"][Key] : never;
 
 type ControlKeys<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends Action ? K : never;
+  [Key in keyof M["properties"]]: M["properties"][Key] extends Action
+    ? Key
+    : never;
 }[keyof M["properties"]];
 
 type DataType<M extends Model> = M extends BooleanModel
@@ -31,17 +33,17 @@ type DataType<M extends Model> = M extends BooleanModel
 
 type Field<
   M extends Model,
-  K extends FieldKeys<M>,
-> = M["properties"][K] extends LetOrTake<infer N extends Model>
-  ? N & {
+  Key extends FieldKeys<M>,
+> = M["properties"][Key] extends LetOrTake<infer Inner extends Model>
+  ? Inner & {
       reference: ModelReference<M>;
-      referenceField: K;
+      referenceField: Key;
     }
   : never;
 
 type FieldKeys<M extends Model> = {
-  [K in keyof M["properties"]]: M["properties"][K] extends LetOrTake<Model>
-    ? K
+  [Key in keyof M["properties"]]: M["properties"][Key] extends LetOrTake<Model>
+    ? Key
     : never;
 }[keyof M["properties"]];
 
@@ -60,16 +62,16 @@ type Model<
 };
 
 type ModelProperties = {
-  [K in string]: Action<Model> | LetOrTake<Model>;
+  [Key in string]: Action<Model> | LetOrTake<Model>;
 };
 
 type ModelReference<M extends Model> = NodeOfKind<"ModelReference", M["kind"]>;
 
-type Node<N extends string> = {
-  name: N;
+type Node<Name extends string> = {
+  name: Name;
 };
 
-type NodeOfKind<N extends string, Kind extends string> = Node<N> & {
+type NodeOfKind<Name extends string, Kind extends string> = Node<Name> & {
   kind: Kind;
 };
 
