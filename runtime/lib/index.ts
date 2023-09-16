@@ -40,11 +40,13 @@ type Control<A extends Action<Model>> = A & {
 
 // type Catch
 
-// type ControlSequence ? (we need something for a sequence of control and catch)
+// type ControlSequence ... ? (we need something for a sequence of control and catch)
 
 // type Method
+// type MethodKeys
+// type OfMethod
 
-// type Produce = Field | Method (?)
+// type Product<M extends Method | Field> ... ?
 
 type Take<M extends Model> = Node<"Take"> & {
   methodInput: ModelReference<Nothing>;
