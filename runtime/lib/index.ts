@@ -20,9 +20,7 @@ type Control<
 > = M["properties"][K] extends Action ? M["properties"][K] : never;
 
 type ControlKeys<M extends Model> = {
-  [K2 in keyof M["properties"]]: M["properties"][K2] extends Action
-    ? K2
-    : never;
+  [K in keyof M["properties"]]: M["properties"][K] extends Action ? K : never;
 }[keyof M["properties"]];
 
 type DataType<M extends Model> = M extends BooleanModel
@@ -42,8 +40,8 @@ type Field<
   : never;
 
 type FieldKeys<M extends Model> = {
-  [K2 in keyof M["properties"]]: M["properties"][K2] extends LetOrTake<Model>
-    ? K2
+  [K in keyof M["properties"]]: M["properties"][K] extends LetOrTake<Model>
+    ? K
     : never;
 }[keyof M["properties"]];
 
