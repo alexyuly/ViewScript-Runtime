@@ -1,6 +1,6 @@
 import type {
   BooleanModel,
-  Dispatch,
+  Control,
   Let,
   Model,
   OfAction,
@@ -14,6 +14,6 @@ type TodoItemModel = Model<
   {
     text: Take<StringModel>;
     completed: Let<BooleanModel>; // TODO How do I get the `, true` parameter working?
-    complete: Dispatch<OfAction<OfField<TodoItemModel, "completed">, "enable">>;
+    complete: Control<OfAction<OfField<TodoItemModel, "completed">, "enable">>;
   }
 >;

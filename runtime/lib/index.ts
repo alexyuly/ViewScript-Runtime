@@ -1,6 +1,6 @@
 export {
   BooleanModel,
-  Dispatch,
+  Control,
   Let,
   Model,
   OfAction,
@@ -34,15 +34,17 @@ type Action<Input extends Model> = Node<"Action"> & {
   actionInput: ModelReference<Input>;
 };
 
-type Dispatch<A extends Action<Model>> = A & {
-  dispatch: true;
+type Control<A extends Action<Model>> = A & {
+  controller: true;
 };
 
-// TODO a sequence of dispatch calls (and catches, too):
-// type Chain
+// type Catch
 
-// TODO methods (should include fields + so-called "generators")
+// type ControlSequence ? (we need something for a sequence of control and catch)
+
 // type Method
+
+// type Produce = Field | Method (?)
 
 type Take<M extends Model> = Node<"Take"> & {
   methodInput: ModelReference<Nothing>;
@@ -52,13 +54,10 @@ type Take<M extends Model> = Node<"Take"> & {
 type Let<M extends Model, D extends DataType<M> | void = void> = Node<"Let"> & {
   methodInput: ModelReference<Nothing>;
   methodOutput: ModelReference<M>;
-  value: D extends void ? never : D;
+  value: D;
 };
 
-type Field<
-  M extends Model,
-  D extends DataType<M> | void = DataType<M> | void,
-> = D extends DataType<M> ? Let<M, DataType<M>> : Take<M> | Let<M>;
+type Field<M extends Model> = Take<M> | Let<M> | Let<M, DataType<M>>;
 
 type DataType<M extends Model> = M extends BooleanModel
   ? boolean
