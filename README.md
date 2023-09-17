@@ -1,6 +1,6 @@
 # Compendium
 
-Compendium is an opinionated toolkit for building web apps. Enter the walled garden, and enjoy the fruits of knowledge! 🏡🍎💡
+Compendium is an opinionated toolkit for building web apps. Enter the walled garden, and enjoy the fruits of knowledge! 🍇🤓
 
 ## ViewScript
 
