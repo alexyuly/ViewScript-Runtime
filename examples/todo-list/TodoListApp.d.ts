@@ -68,7 +68,7 @@ type TodoItemView = View<
 # views are autonomous...
 # you can't use references to them
 # you can just instantiate them, and then
-# either: 1) set them as children in a view type declaration
+# either: 1) render them in a view type declaration
 # or:     2) pass them into a property list
 
 # models are manual...
