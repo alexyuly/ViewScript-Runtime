@@ -19,6 +19,8 @@ type TodoItemModel = Model<
 
 /*
 
+# ViewScript implementation:
+
 Model TodoItemModel {
   String text
   Boolean completed = false
