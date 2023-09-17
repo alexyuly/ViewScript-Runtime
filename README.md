@@ -29,7 +29,7 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-  Boolean hovered : false
+  Condition hovered : false
 
   <p>
     content = if hovered then "You hovered me!" else "Hello, world!"
@@ -46,7 +46,7 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-  Boolean hovered : false
+  Condition hovered : false
 
   <main>
     position = "fixed"
