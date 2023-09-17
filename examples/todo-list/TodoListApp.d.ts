@@ -37,10 +37,13 @@ View TodoItemView {
   TodoItemModel model
 
   <li>
+    click {
+      model.complete
+    }
     content = <label>
     - <input>
         type = "checkbox"
-        checked = model.complete
+        checked = model.completed
     - <span>
         content = model.text
 }
