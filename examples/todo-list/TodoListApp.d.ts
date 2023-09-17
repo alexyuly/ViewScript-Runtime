@@ -57,6 +57,9 @@ type TodoItemView = View<
 
 # ViewScript implementation:
 
+# curly braces denote procedural code, which is...
+# either 1) the declaration of a type
+# or     2) the execution of actions
 
 Model TodoItemModel {
   String text
