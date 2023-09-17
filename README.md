@@ -1,8 +1,8 @@
 # ViewScript
 
-**ViewScript** is a modern programming language for building user interface applications in web browsers.
+**ViewScript** is a modern programming language for building browser-based web applications.
 
-Render a paragraph with text content:
+🧙 Render a paragraph with text content:
 
 ```
 View HelloWorld {
@@ -11,7 +11,7 @@ View HelloWorld {
 }
 ```
 
-Show an alert when a paragraph is clicked:
+💁 Show an alert when a paragraph is clicked:
 
 ```
 View HelloWorld {
@@ -23,7 +23,7 @@ View HelloWorld {
 }
 ```
 
-Use conditional state to choose which content is rendered, and update the state when pointer events happen:
+🧑‍🔬 Use conditional state to choose which content is rendered, and update the state when pointer events happen:
 
 ```
 View HelloWorld {
@@ -40,7 +40,7 @@ View HelloWorld {
 }
 ```
 
-Style and nest elements:
+🧑‍🎨 Style and nest elements:
 
 ```
 View HelloWorld {
