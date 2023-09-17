@@ -16,3 +16,16 @@ type TodoItemModel = Model<
     complete: Control<Field<TodoItemModel, "completed">, "enable">;
   }
 >;
+
+/*
+
+Model TodoItemModel {
+  String text
+  Boolean completed = false
+  
+  Control complete {
+    this.completed.enable
+  }
+}
+
+*/
