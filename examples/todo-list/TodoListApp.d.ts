@@ -79,7 +79,7 @@ type TodoItemView = View<
 Model TodoItemModel {
   String text
 
-  Boolean completed is false
+  Boolean completed : false
 
   Action complete {
     completed.enable
