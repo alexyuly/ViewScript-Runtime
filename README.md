@@ -63,7 +63,7 @@ View HelloWorld {
          font-weight = if hovered then "bold"
          pointerover {
             hovered.enable
-         }ke 
+         }
          pointerleave {
             hovered.disable
          }
