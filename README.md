@@ -56,15 +56,15 @@ View HelloWorld {
     justify-content = "center"
     align-items = "center"
     content = <p>
-       content = if hovered then "You hovered me!" else "Hello, world!"
-       color = if hovered then "blue"
-       font-weight = if hovered then "bold"
-       pointerover {
-         hovered.enable
-       }
-       pointerleave {
-         hovered.disable
-       }
+      content = if hovered then "You hovered me!" else "Hello, world!"
+      color = if hovered then "blue"
+      font-weight = if hovered then "bold"
+      pointerover {
+        hovered.enable
+      }
+      pointerleave {
+        hovered.disable
+      }
 }
 ```
 🙌 Easy peasy!
