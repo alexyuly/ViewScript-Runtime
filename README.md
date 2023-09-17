@@ -13,7 +13,7 @@ View HelloWorld {
 }
 ```
 
-🪄 Let's make things interactive! ✨
+✨ Let's make things interactive!
 
 ```
 View HelloWorld {
@@ -25,7 +25,7 @@ View HelloWorld {
 }
 ```
 
-🪄 What about stateful behavior? 🤔
+🤔 What about stateful behavior?
 
 ```
 View HelloWorld {
@@ -42,7 +42,7 @@ View HelloWorld {
 }
 ```
 
-🪄 Nice! Let's add some razzle dazzle 💅
+💅 Nice! Let's add some razzle dazzle
 
 ```
 View HelloWorld {
