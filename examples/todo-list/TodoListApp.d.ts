@@ -61,6 +61,11 @@ type TodoItemView = View<
 # either 1) the declaration of a type
 # or     2) the execution of actions
 
+# instantiating a type simply requires
+# the type name followed by
+# an indented property list
+
+
 Model TodoItemModel {
   String text
 
@@ -88,7 +93,5 @@ View TodoItemView {
           content = model.text
 }
 
-
-# to be continued...
 
 */
