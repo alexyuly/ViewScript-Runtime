@@ -26,7 +26,26 @@ type TodoItemView = View<
     "li",
     {
       click: Control<Field<TodoItemView, "model">, "complete">;
-      content: Render< ... >
+      content: Render<
+        "label",
+        {
+          content: [
+            Render<
+              "input",
+              {
+                type: "checkbox";
+                checked: Produce<Field<TodoItemView, "model">, "completed">;
+              }
+            >,
+            Render<
+              "span",
+              {
+                content: Produce<Field<TodoItemView, "model">, "text">;
+              }
+            >
+          ]
+        }
+      >
     }
   >
 >;
