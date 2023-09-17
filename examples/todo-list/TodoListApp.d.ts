@@ -65,6 +65,15 @@ type TodoItemView = View<
 # the type name followed by
 # an indented property list
 
+# views are autonomous...
+# you can't use references to them
+# you can just instantiate them, and then
+# either: 1) set them as children in a view type declaration
+# or:     2) pass them into a property list
+
+# models are manual...
+# you can use references to them
+# you can instantiate them and pass them around pretty freely
 
 Model TodoItemModel {
   String text
