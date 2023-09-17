@@ -91,9 +91,6 @@ View TodoItemView {
   TodoItemModel model
 
   <li>
-    click {
-      model.complete
-    }
     content = <label>
       content =
       - <input>
@@ -101,6 +98,9 @@ View TodoItemView {
           checked = model.completed
       - <span>
           content = model.text
+    click {
+      model.complete
+    }
 }
 
 
