@@ -1,213 +1,76 @@
-# 📗 The Compendium
+# Compendium
 
-## End-to-end flow for Compendium source code
+## ViewScript
 
-1. Entry Point (`[NAME].component.spec`)
-1. Source Code (`[NAME.TYPE].spec`)
-1. Parsed Tokens _(in memory)_
-1. Compiled Object (`[NAME.TYPE].json`)
-1. Dependency Resolution
-   1. For each dependency, repeat steps 2-5
-1. Linked App Object (`[NAME].app.json`)
+**ViewScript** is a modern programming language for building user interface applications in web browsers.
 
-_Where and how does type checking happen?_
-
-## Compilation drip for the Hello-World app
-
-💧 Source Code (`Hello-World.component.spec`)
+🪄 It's simple to declare a view that renders a welcoming paragraph:
 
 ```
-View Component Hello-World
-
-<main>
-  content = "Hello, world!"
-
-```
-
-💧 Parsed Tokens
-
-```json
-[
-  ["View", "Component", "Hello-World"],
-  ["<main>"],
-  [
-    {
-      "indent": 1
-    },
-    "content",
-    "=",
-    "\"Hello, world!\""
-  ]
-]
-```
-
-💧 Compiled Object / Linked App Object
-
-```json
-{
-  "type": "view",
-  "name": "Hello-World",
-  "units": [
-    {
-      "type": "element",
-      "name": "main",
-      "properties": {
-        "content": {
-          "type": "field",
-          "name": "content",
-          "value": "Hello, world!"
-        }
-      }
-    }
-  ]
+View HelloWorld {
+  <p>
+    content = "Hello, world!"
 }
 ```
 
-💧 Created Objects At Runtime
-
-```ts
-new ViewUnit({
-  name: "Hello-World",
-  units: [
-    {
-      type: "element",
-      name: "main",
-      properties: {
-        content: "Hello, world!",
-      },
-    },
-  ],
-});
-
-new ElementUnit({
-  name: "main",
-  properties: {
-    content: "Hello, world!",
-  },
-});
-
-new StringField("Hello, world!");
-
-// Here's the equivalent Ergonomic API:
-
-view(
-  "Hello-World",
-  main({
-    content: "Hello, world!",
-  })
-);
-```
-
-## Examples of Compendium Code versus the Compendium Ergonomic TypeScript API (CEnTA) 🐛
+🪄 Let's make things interactive! ✨
 
 ```
-View Component Counter
-
-Let count be 0
-
-<main>
-  padding = "24px"
-
-  content =
-  - <button>
-      on click -> count: add 1
-
-      content = "Click me to add 1"
-
-  - <p>
-      content = "Count is {count}!"
-
-```
-
-versus
-
-```ts
-view(
-  "Counter",
-  store("count", 0),
-  main({
-    padding: "24px",
-    content: [
-      button({
-        onClick: action("count", "add", 1),
-        content: "Click me to add 1",
-      }),
-      p({
-        content: ["Count is ", valueOf("count"), "!"],
-      }),
-    ],
-  })
-);
-```
-
-or, as JSON:
-
-```json
-{
-  "type": "view",
-  "name": "Counter",
-  "references": {
-    "count": {
-      "type": "field",
-      "name": "number",
-      "value": 0
+View HelloWorld {
+  <p>
+    content = "Hello, world!"
+    click {
+      window.alert "You clicked me!"
     }
-  },
-  "units": [
-    {
-      "type": "element",
-      "name": "main",
-      "properties": {
-        "padding": {
-          "type": "field",
-          "name": "string",
-          "value": "24px"
-        },
-        "content": [
-          {
-            "type": "element",
-            "name": "button",
-            "handlers": {
-              "onClick": {
-                "type": "action",
-                "name": "count",
-                "operator": "add",
-                "operand": {
-                  "type": "field",
-                  "name": "number",
-                  "value": 1
-                }
-              }
-            },
-            "properties": {
-              "content": {
-                "type": "field",
-                "name": "content",
-                "value": "Click me to add 1"
-              }
-            }
-          },
-          {
-            "type": "element",
-            "name": "p",
-            "properties": {
-              "content": {
-                "type": "field",
-                "name": "content",
-                "value": [
-                  "Count is ",
-                  {
-                    "type": "reference-value",
-                    "name": "count"
-                  },
-                  "!"
-                ]
-              }
-            }
-          }
-        ]
-      }
-    }
-  ]
 }
 ```
+
+🪄 What about stateful behavior? 🤔
+
+```
+View HelloWorld {
+  Boolean hovered : false
+
+  <p>
+    content = if hovered then "You hovered me!" else "Hello, world!"
+    pointerover {
+      hovered.enable
+    }
+    pointerleave {
+      hovered.disable
+    }
+}
+```
+
+🪄 Nice! Let's add some razzle dazzle 💅
+
+```
+View HelloWorld {
+  Boolean hovered : false
+
+  <main>
+    position = "fixed"
+    width = "100%"
+    height = "100%"
+    display = "flex"
+    justify-content = "center"
+    align-items = "center"
+    content = <p>
+       content = if hovered then "You hovered me!" else "Hello, world!"
+       color = if hovered then "blue"
+       font-weight = if hovered then "bold"
+       pointerover {
+         hovered.enable
+       }
+       pointerleave {
+         hovered.disable
+       }
+}
+```
+🙌 Easy peasy!
+
+## TypeScript integration
+
+## Compendium Core Language
+
+## Compendium Runtime
