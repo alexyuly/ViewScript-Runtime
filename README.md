@@ -73,8 +73,8 @@ View HelloWorld {
 
 ### Model-View-Task Architecture
 
-ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Here, we reject traditional controllers in favor of _tasks_.
+ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Here, we reject traditional controllers in favor of focused _tasks_.
 
-In legacy UI application codebases, controllers tend to become bloated behemoths, juggling responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
+In legacy UI application codebases, controllers tend to become sprawling, bloated behemoths. They juggle responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
 
 In ViewScript code, models prepare the data, the framework synchronizes it with views (which render it), and tasks take charge of async behavior beyond the core model-view relationship. Procedural code is embraced where useful but strictly limited, and typing is rock solid: it flows beyond data, into views and tasks, and throughout your apps. So much setup is moved from runtime to compile time, which boosts efficiency and stability.
