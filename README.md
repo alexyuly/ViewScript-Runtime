@@ -8,8 +8,8 @@
 
 ```
 View HelloWorld {
-  <p>
-    content = "Hello, world!"
+   <p>
+      content = "Hello, world!"
 }
 ```
 
@@ -17,11 +17,11 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-  <p>
-    content = "Hello, world!"
-    click {
-      window.alert "You clicked me!"
-    }
+   <p>
+      content = "Hello, world!"
+      click {
+         window.alert "You clicked me!"
+      }
 }
 ```
 
@@ -29,16 +29,16 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-  Condition hovered : false
+   Condition hovered : false
 
-  <p>
-    content = if hovered then "You hovered me!" else "Hello, world!"
-    pointerover {
-      hovered.enable
-    }
-    pointerleave {
-      hovered.disable
-    }
+   <p>
+      content = if hovered then "You hovered me!" else "Hello, world!"
+      pointerover {
+         hovered.enable
+      }
+      pointerleave {
+         hovered.disable
+      }
 }
 ```
 
@@ -46,25 +46,25 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-  Condition hovered : false
+   Condition hovered : false
 
-  <main>
-    position = "fixed"
-    width = "100%"
-    height = "100%"
-    display = "flex"
-    justify-content = "center"
-    align-items = "center"
-    content = <p>
-      content = if hovered then "You hovered me!" else "Hello, world!"
-      color = if hovered then "blue"
-      font-weight = if hovered then "bold"
-      pointerover {
-        hovered.enable
-      }
-      pointerleave {
-        hovered.disable
-      }
+   <main>
+      position = "fixed"
+      width = "100%"
+      height = "100%"
+      display = "flex"
+      justify-content = "center"
+      align-items = "center"
+      content = <p>
+         content = if hovered then "You hovered me!" else "Hello, world!"
+         color = if hovered then "blue"
+         font-weight = if hovered then "bold"
+         pointerover {
+            hovered.enable
+         }
+         pointerleave {
+            hovered.disable
+         }
 }
 ```
 🙌 Easy peasy!
