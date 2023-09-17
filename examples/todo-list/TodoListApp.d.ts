@@ -75,6 +75,7 @@ type TodoItemView = View<
 # you can use references to them
 # you can instantiate them and pass them around pretty freely
 
+
 Model TodoItemModel {
   String text
 
