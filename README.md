@@ -63,7 +63,7 @@ View HelloWorld {
          font-weight = if hovered then "bold"
          pointerover {
             hovered.enable
-         }
+         }ke 
          pointerleave {
             hovered.disable
          }
@@ -73,4 +73,8 @@ View HelloWorld {
 
 ### Model-View-Task Architecture
 
-ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Note the replacement of our traditional "controller" with _task_. In legacy UI application codebases, controllers tend to become bloated behemoths, juggling responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
+ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Here, we reject traditional controllers in favor of _tasks_.
+
+In legacy UI application codebases, controllers tend to become bloated behemoths, juggling responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
+
+In ViewScript code, models prepare the data, the framework synchronizes it with views (which render it), and tasks take charge of async behavior beyond the core model-view relationship. Procedural code is strictly limited, and typing is rock solid, beyond data, into the views and tasks, and throughout the whole application. So much setup is moved from runtime to compile time, which boosts efficiency and stability.
