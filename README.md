@@ -69,8 +69,6 @@ View HelloWorld {
 ```
 🙌 Easy peasy!
 
-## TypeScript integration
-
 ## Compendium Core Language
 
 ## Compendium Runtime
