@@ -41,11 +41,12 @@ View TodoItemView {
       model.complete
     }
     content = <label>
-    - <input>
-        type = "checkbox"
-        checked = model.completed
-    - <span>
-        content = model.text
+      content =
+      - <input>
+          type = "checkbox"
+          checked = model.completed
+      - <span>
+          content = model.text
 }
 
 
