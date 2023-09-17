@@ -24,7 +24,7 @@ Model TodoItemModel {
   Boolean completed = false
   
   Control complete {
-    this.completed.enable
+    completed.enable
   }
 }
 
