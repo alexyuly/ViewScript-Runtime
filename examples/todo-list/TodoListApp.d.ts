@@ -17,6 +17,20 @@ type TodoItemModel = Model<
   }
 >;
 
+type TodoItemView = View<
+  "TodoItemView",
+  {
+    model: Take<TodoItemModel>;
+  },
+  Render<
+    "li",
+    {
+      click: Control<Field<TodoItemView, "model">, "complete">;
+      content: Render< ... >
+    }
+  >
+>;
+
 /*
 
 # ViewScript implementation:
