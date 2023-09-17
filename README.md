@@ -1,14 +1,8 @@
-# Compendium
-
-Compendium is an opinionated toolkit for building web apps. Enter the walled garden, and enjoy the fruits of knowledge!
-
-🪴🧑‍🌾🥕
-
-## ViewScript
+# ViewScript
 
 **ViewScript** is a modern programming language for building user interface applications in web browsers.
 
-🪄 It's simple to declare a view that renders a welcoming paragraph:
+It's simple to define a view that renders a paragraph:
 
 ```
 View HelloWorld {
@@ -17,7 +11,7 @@ View HelloWorld {
 }
 ```
 
-✨ Let's make things interactive!
+You can do something when it's clicked:
 
 ```
 View HelloWorld {
@@ -29,7 +23,7 @@ View HelloWorld {
 }
 ```
 
-🙋 What about stateful behavior?
+Conditionally control what users see, based on events:
 
 ```
 View HelloWorld {
@@ -46,7 +40,7 @@ View HelloWorld {
 }
 ```
 
-💅 Nice! Let's add some razzle dazzle
+Style and nest the elements in your view:
 
 ```
 View HelloWorld {
@@ -71,12 +65,3 @@ View HelloWorld {
          }
 }
 ```
-🙌 Easy peasy!
-
-### Model-View-Task Architecture
-
-ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Here, we reject traditional controllers in favor of focused _tasks_.
-
-In legacy UI application codebases, controllers tend to become sprawling, bloated behemoths. They juggle responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
-
-In ViewScript code, models prepare the data, the framework synchronizes it with views (which render it), and tasks take charge of async behavior beyond the core model-view relationship. Procedural code is embraced where useful but strictly limited, and typing is rock solid: it flows beyond data, into views and tasks, and throughout your apps. So much setup is moved from runtime to compile time, which boosts efficiency and stability.
