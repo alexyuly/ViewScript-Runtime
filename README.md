@@ -23,7 +23,7 @@ View HelloWorld {
 }
 ```
 
-🧑‍🔬 Use conditional state to choose which content is rendered, and update the state when pointer events happen:
+🧑‍🔬 Show different text content conditionally, while a paragraph is hovered:
 
 ```
 View HelloWorld {
@@ -40,7 +40,7 @@ View HelloWorld {
 }
 ```
 
-🧑‍🎨 Style and nest elements:
+🧑‍🎨 Style elements and nest one inside another:
 
 ```
 View HelloWorld {
