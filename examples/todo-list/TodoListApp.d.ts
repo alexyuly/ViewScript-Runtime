@@ -23,7 +23,7 @@ Model TodoItemModel {
   String text
   Boolean completed = false
   
-  Control complete {
+  Action complete {
     completed.enable
   }
 }
