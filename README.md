@@ -1,5 +1,7 @@
 # Compendium
 
+Compendium is an opinionated toolkit for building web apps. Enter the walled garden, and enjoy the fruits of knowledge! 🏡🍎💡
+
 ## ViewScript
 
 **ViewScript** is a modern programming language for building user interface applications in web browsers.
@@ -69,6 +71,6 @@ View HelloWorld {
 ```
 🙌 Easy peasy!
 
-## Compendium Core Language
+### Model-View-Task Architecture
 
-## Compendium Runtime
+ViewScript supports a familiar but evolved paradigm for building user interface applications: Model-View-_Task_. Note the replacement of our traditional "controller" with _task_. In legacy UI application codebases, controllers tend to become bloated behemoths, juggling responsibilities of preparing data for views, synchronizing views and models, managing data retrieval and storage, and anything else that doesn't fall neatly into the "view" and "model" paradigms.
