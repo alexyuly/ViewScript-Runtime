@@ -50,7 +50,7 @@ View HoverMe {
 #### 🧑‍🎨 Style two elements, and nest one inside another:
 
 ```
-View StylishHelloWorld {
+View StylishHello {
    <main>
       content = <p>
          content = "Hello, world!"
