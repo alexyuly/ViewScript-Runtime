@@ -6,8 +6,8 @@
 
 ```
 View HelloWorld {
-    <p>
-        content = "Hello, world!"
+   <p>
+      content = "Hello, world!"
 }
 ```
 
@@ -15,12 +15,12 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-    <button>
-        content = "Please click me"
+   <button>
+      content = "Please click me"
 
-        click {
-            window.alert "You clicked me!"
-        }
+      click {
+         window.alert "You clicked me!"
+      }
 }
 ```
 
@@ -28,17 +28,17 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-    Condition hovered : false
+   Condition hovered : false
 
-    <div>
-        content = if hovered then "You hovered me!" else "Hover me"
+   <div>
+      content = if hovered then "You hovered me!" else "Hover me"
 
-        pointerover {
-            hovered.enable
-        }
-        pointerleave {
-            hovered.disable
-        }
+      pointerover {
+         hovered.enable
+      }
+      pointerleave {
+         hovered.disable
+      }
 }
 ```
 
