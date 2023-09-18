@@ -13,7 +13,7 @@ View HelloWorld {
 
 > 💡 Curly braces enclose a unit of functionality with a sequence of steps. In this case, it's the definition of a view.
 
-> 💡 Render an HTML element in a snap by writing its tag name inside angle brackets, like `<p>`, for a paragraph.
+> 💡 Render an HTML element in a snap by putting its tag name inside angle brackets, like `<p>`, for a paragraph.
 
 > 💡 The equals sign denotes a binding of a field to a property. In this case, it binds the constant text value `"Hello, world!"` to the paragraph's `content` property.
 
@@ -29,6 +29,10 @@ View HelloWorld {
       }
 }
 ```
+
+> 💡 Handle events by binding them to actions. In this case, an inline action that controls the JavaScript `window.alert` function is bound to the button's `click` event.
+
+> 💡 Parentheses are not needed to pass an argument to an action. Just put a value after an action's name.
 
 🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
