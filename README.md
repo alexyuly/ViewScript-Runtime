@@ -62,3 +62,17 @@ View HelloWorld {
       width = "100%"
 }
 ```
+
+👷 Model complex data types and their behaviors:
+
+```
+Model TodoItem {
+   Text content
+
+   Condition completed : false
+
+   Action complete {
+      completed.enable
+   }
+}
+```
