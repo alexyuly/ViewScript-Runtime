@@ -6,8 +6,8 @@
 
 ```
 View HelloWorld {
-   <p>
-      content = "Hello, world!"
+    <p>
+        content = "Hello, world!"
 }
 ```
 
@@ -15,12 +15,12 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-   <button>
-      content = "Please click me"
+    <button>
+        content = "Please click me"
 
-      click {
-         window.alert "You clicked me!"
-      }
+        click {
+            window.alert "You clicked me!"
+        }
 }
 ```
 
@@ -28,17 +28,17 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-   Condition hovered : false
+    Condition hovered : false
 
-   <div>
-      content = if hovered then "You hovered me!" else "Hover me"
+    <div>
+        content = if hovered then "You hovered me!" else "Hover me"
 
-      pointerover {
-         hovered.enable
-      }
-      pointerleave {
-         hovered.disable
-      }
+        pointerover {
+            hovered.enable
+        }
+        pointerleave {
+            hovered.disable
+        }
 }
 ```
 
@@ -46,20 +46,20 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-   <main>
-      content = <p>
-         content = "Hello, world!"
+    <main>
+        content = <p>
+            content = "Hello, world!"
 
-         font = "24px serif bold"
-         padding = "24px"
+            font = "24px serif bold"
+            padding = "24px"
 
-      align-items = "center"
-      display = "flex"
-      height = "100%"
-      justify-content = "center"
-      padding = "24px"
-      position = "fixed"
-      width = "100%"
+        align-items = "center"
+        display = "flex"
+        height = "100%"
+        justify-content = "center"
+        padding = "24px"
+        position = "fixed"
+        width = "100%"
 }
 ```
 
@@ -67,13 +67,13 @@ View HelloWorld {
 
 ```
 Model TodoItem {
-   Text content
+    Text content
 
-   Condition completed : false
+    Condition completed : false
 
-   Action complete {
-      completed.enable
-   }
+    Action complete {
+        completed.enable
+    }
 }
 ```
 
@@ -81,20 +81,19 @@ Model TodoItem {
 
 ```
 View TodoItemView {
-   TodoItem data
+    TodoItem data
 
-   <li>
-      content = <label>
-         content = [
-            <input>
-               checked = data.completed
-               type = "checkbox"
+    <li>
+        content = <label>
+            content =
+            -- <input>
+                   checked = data.completed
+                   type = "checkbox"
 
-            data.content
-         ]
+            -- data.content
 
-      click {
-         data.complete
-      }
+        click {
+            data.complete
+        }
 }
 ```
