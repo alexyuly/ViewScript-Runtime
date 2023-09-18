@@ -11,6 +11,8 @@ View HelloWorld {
 }
 ```
 
+> ℹ️ Curly braces enclose a unit of functionality. They visually represent the concept of "encapsulation".
+
 💁 Show an alert when a button is clicked:
 
 ```
