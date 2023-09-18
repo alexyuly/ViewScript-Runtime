@@ -77,7 +77,7 @@ Model TodoItem {
 }
 ```
 
-#### 🧑‍🏭 Define a view that renders and controls aspects of a data model:
+#### 🧑‍🏭 Define a view that uses a data model to render a simple user interface:
 
 ```
 View TodoItemView {
