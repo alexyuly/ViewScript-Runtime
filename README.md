@@ -30,18 +30,9 @@ A property binds the given field or action to an object's input or output:
 View HelloWorld {
    <button>
       content = "Please click me"
-
-      click {
-         window.alert "You clicked me!"
-      }
+      click = window.alert "You clicked me!"
 }
 ```
-
-##### 💡 Tips
-
-Handle events by binding them to actions. In this case, an action that controls the built-in JavaScript `window.alert` function is bound to the button's `click` event.
-
-You don't need parentheses to pass an argument to an action. Just put a value after an action's name. Actions never accept more than one argument, so don't worry about commas.
 
 #### 🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
@@ -51,14 +42,8 @@ View HelloWorld {
 
    <div>
       content = if hovered then "You hovered me!" else "Hover me"
-
-      pointerover {
-         hovered.enable
-      }
-
-      pointerleave {
-         hovered.disable
-      }
+      pointerover = hovered.enable
+      pointerleave = hovered.disable
 }
 ```
 
@@ -88,10 +73,7 @@ View HelloWorld {
 Model TodoItem {
    Text content
    Condition completed = false
-
-   Action complete {
-      completed.enable
-   }
+   Action complete = completed.enable
 }
 ```
 
@@ -110,8 +92,6 @@ View TodoItemView {
 
          -- data.content
 
-      click {
-         data.complete
-      }
+      click = data.complete
 }
 ```
