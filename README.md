@@ -76,7 +76,7 @@ Model TodoItem {
 }
 ```
 
-🧑‍🏭 Render a widget that shows and controls aspects of a data model:
+🧑‍🏭 Define a view that renders and controls aspects of a data model:
 
 ```
 View TodoItemView {
