@@ -80,7 +80,7 @@ View HelloWorld {
 ```
 Model TodoItem {
    Text content
-   Condition completed : false
+   Condition completed = false
 
    Action complete {
       completed.enable
