@@ -69,7 +69,7 @@ View HelloWorld {
 
 ##### 💡 Tips
 
-Pass styles as properties to an HTML element. Stop using selectors and specify exact CSS properties for your elements to use.
+Pass styles as properties to HTML elements. Skip the classes and selectors, and directly specify CSS properties for each element.
 
 #### 👷 Model complex data types and their behaviors:
 
