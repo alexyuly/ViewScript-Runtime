@@ -34,7 +34,7 @@ View HelloWorld {
 > 💡
 > Handle events by binding them to actions. In this case, an action that controls the built-in JavaScript `window.alert` function is bound to the button's `click` event.
 > 
-> You don't need parentheses to pass an argument to an action. Just put a value after an action's name.
+> You don't need parentheses to pass an argument to an action. Just put a value after an action's name. Actions never accept more than one argument.
 
 🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
