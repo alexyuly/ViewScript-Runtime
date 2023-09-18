@@ -1,6 +1,6 @@
 # ViewScript
 
-**ViewScript** is a modern programming language for building browser-based web applications.
+**ViewScript** is a modern language for building browser-based web apps.
 
 ### Examples
 
