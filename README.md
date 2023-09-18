@@ -2,6 +2,8 @@
 
 **ViewScript** is a modern programming language for building browser-based web applications.
 
+### Examples
+
 #### 🧙 Render a paragraph with text content:
 
 ```
@@ -17,7 +19,10 @@ Curly braces surround an ordered sequence of steps. In this example, there is ju
 
 To construct an HTML element, use `<tag-name>`, followed by an indented list of properties.
 
-A property binds an object's input or output to the given field or action. A child receives data through its input, "down" from a parent's field. Conversely, a child sends data through its output, "up" to a parent's action.
+A property binds the given field or action to an object's input or output:
+
+- A parent object sends data from a field, down through a child's input, to control the child's behavior.
+- Conversely, a child object sends data from a field, up through its own output, to notify its parent of an event.
 
 #### 💁 Show an alert when a button is clicked:
 
