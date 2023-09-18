@@ -11,12 +11,12 @@ View HelloWorld {
 }
 ```
 
-💁 Show an alert when a paragraph is clicked:
+💁 Show an alert when a button is clicked:
 
 ```
 View HelloWorld {
-   <p>
-      content = "Hello, world!"
+   <button>
+      content = "Please click me"
 
       click {
          window.alert "You clicked me!"
@@ -24,14 +24,14 @@ View HelloWorld {
 }
 ```
 
-🧑‍🔬 Show different text content conditionally, while a paragraph is hovered:
+🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
 ```
 View HelloWorld {
    Condition hovered : false
 
-   <p>
-      content = if hovered then "You hovered me!" else "Hello, world!"
+   <div>
+      content = if hovered then "You hovered me!" else "Hover me"
 
       pointerover {
          hovered.enable
