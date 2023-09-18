@@ -4,7 +4,7 @@
 
 ### Examples
 
-#### 🧙 Render a paragraph with text content:
+#### 🧙 Show a paragraph with text content:
 
 ```
 View HelloWorld {
@@ -77,7 +77,7 @@ Model TodoItem {
 }
 ```
 
-#### 🧑‍🏭 Define a view that uses a data model to render a simple user interface:
+#### 🧑‍🏭 Use a data model to render a simple user interface:
 
 ```
 View TodoItemView {
