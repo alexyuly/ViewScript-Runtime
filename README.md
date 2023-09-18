@@ -13,11 +13,11 @@ View HelloWorld {
 
 ##### 💡 Tips
 
-Curly braces enclose a unit of functionality defined by an ordered sequence of steps. In this case, it's the definition of a view.
+Curly braces surround an ordered sequence of steps. In this example, there is just one step, to construct an HTML paragraph element.
 
-Render an HTML element in a snap by putting its tag name inside angle brackets, like `<p>`, for a paragraph.
+To construct an HTML element, use `<tag-name>`, followed by an indented list of properties.
 
-The equals sign denotes a binding of a field to a property. In this case, it binds the constant text value `"Hello, world!"` to the paragraph element's `content` property.
+A property binds an object's input or output to the given field or action. A child receives data through its input, "down" from a parent's field. Conversely, a child sends data through its output, "up" to a parent's action.
 
 #### 💁 Show an alert when a button is clicked:
 
