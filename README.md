@@ -37,7 +37,7 @@ View HelloWorld {
 #### 🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
 ```
-View HelloWorld {
+View HoverMe {
    Condition hovered = false
 
    <div>
@@ -50,7 +50,7 @@ View HelloWorld {
 #### 🧑‍🎨 Style two elements, and nest one inside another:
 
 ```
-View HelloWorld {
+View StylishHelloWorld {
    <main>
       content = <p>
          content = "Hello, world!"
