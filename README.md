@@ -127,7 +127,7 @@ View TodoListForm {
 
 
 View TodoListApp {
-   List of TodoItem data
+   Multiple TodoItem data
 
    <main>
       content =
