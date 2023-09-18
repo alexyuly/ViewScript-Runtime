@@ -76,3 +76,23 @@ Model TodoItem {
    }
 }
 ```
+
+🧑‍🏭 Render a widget that shows and controls aspects of a data model:
+
+```
+View TodoItemView {
+   TodoItem data
+
+   <li>
+      content = <label>
+         content =
+          - <input>
+               checked = data.completed
+               type = "checkbox"
+          - data.content
+
+      click {
+         data.complete
+      }
+}
+```
