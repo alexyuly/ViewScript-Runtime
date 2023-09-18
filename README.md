@@ -17,6 +17,7 @@ View HelloWorld {
 View HelloWorld {
    <p>
       content = "Hello, world!"
+
       click {
          window.alert "You clicked me!"
       }
@@ -31,6 +32,7 @@ View HelloWorld {
 
    <p>
       content = if hovered then "You hovered me!" else "Hello, world!"
+
       pointerover {
          hovered.enable
       }
@@ -40,21 +42,23 @@ View HelloWorld {
 }
 ```
 
-🧑‍🎨 Style elements and nest one inside another:
+🧑‍🎨 Style two elements, and nest one inside another:
 
 ```
 View HelloWorld {
    <main>
       content = <p>
          content = "Hello, world!"
-         padding = "24px"
+
          font = "24px serif bold"
+         padding = "24px"
+
+      align-items = "center"
+      display = "flex"
+      height = "100%"
+      justify-content = "center"
+      padding = "24px"
       position = "fixed"
       width = "100%"
-      height = "100%"
-      display = "flex"
-      justify-content = "center"
-      align-items = "center"
-      padding = "24px"
 }
 ```
