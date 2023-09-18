@@ -81,7 +81,7 @@ Model TodoItem {
 }
 ```
 
-#### 🧑‍🏭 Use a data model to render a simple user interface:
+#### 🧑‍🏭 Use a data model to render an interactive view:
 
 _Or, "Data? Tada!"_
 
@@ -99,5 +99,39 @@ View TodoItemView {
          -- data.content
 
       click = data.complete
+}
+```
+
+#### 🧑‍🍳 Conjure a simple to-do list app, using TodoItem and TodoItemView:
+
+```
+View TodoListApp {
+   Many TodoItem data
+
+   <main>
+      content =
+      -- <form>
+            content =
+            -- <input>
+                  name = "content"
+                  placeholder = "Add a new to-do..."
+                  type = "text"
+
+            -- <button>
+                  type = "submit"
+
+            display = "flex"
+            align-items = "center"
+
+            submit = data.unshift TodoItem
+               content = event.values.content
+
+      -- <ul>
+            content = data.map TodoItemView
+               data = each
+
+      display = "flex"
+      flex-direction = "column"
+      gap = "24px"
 }
 ```
