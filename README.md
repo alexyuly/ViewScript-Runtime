@@ -40,7 +40,7 @@ View HelloWorld {
 
 ```
 View HelloWorld {
-   Condition hovered : false
+   Condition hovered = false
 
    <div>
       content = if hovered then "You hovered me!" else "Hover me"
