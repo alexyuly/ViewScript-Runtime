@@ -52,6 +52,7 @@ View HelloWorld {
          content = "Hello, world!"
          font = "24px serif bold"
          padding = "24px"
+
       align-items = "center"
       display = "flex"
       height = "100%"
@@ -67,7 +68,6 @@ View HelloWorld {
 ```
 Model TodoItem {
    Text content
-
    Condition completed : false
 
    Action complete {
@@ -88,6 +88,7 @@ View TodoItemView {
             -- <input>
                   checked = data.completed
                   type = "checkbox"
+
             -- data.content
 
       click {
