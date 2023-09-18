@@ -79,6 +79,8 @@ Model TodoItem {
 
 #### 🧑‍🏭 Use a data model to render a simple user interface:
 
+_Or, "Data? Tada!"_
+
 ```
 View TodoItemView {
    TodoItem data
