@@ -84,12 +84,13 @@ View TodoItemView {
 
    <li>
       content = <label>
-         content =
-            -- <input>
-                  checked = data.completed
-                  type = "checkbox"
+         content = [
+            <input>
+               checked = data.completed
+               type = "checkbox"
 
-            -- data.content
+            data.content
+         ]
 
       click {
          data.complete
