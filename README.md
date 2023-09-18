@@ -105,26 +105,34 @@ View TodoItemView {
 #### 🧑‍🍳 Conjure a simple to-do list app, using TodoItem and TodoItemView:
 
 ```
+View TodoListForm {
+   Output submit TodoItem
+
+   <form>
+      content =
+      -- <input>
+            name = "content"
+            placeholder = "Add a new to-do..."
+            type = "text"
+
+      -- <button>
+            type = "submit"
+
+      display = "flex"
+      align-items = "center"
+
+      submit = submit TodoItem
+         content = event.values.content
+}
+
+
 View TodoListApp {
    Many TodoItem data
 
    <main>
       content =
-      -- <form>
-            content =
-            -- <input>
-                  name = "content"
-                  placeholder = "Add a new to-do..."
-                  type = "text"
-
-            -- <button>
-                  type = "submit"
-
-            display = "flex"
-            align-items = "center"
-
-            submit = data.unshift TodoItem
-               content = event.values.content
+      -- TodoListForm
+            submit = data.unshift event
 
       -- <ul>
             content = data.map TodoItemView
