@@ -15,7 +15,7 @@ View HelloWorld {
 
 ##### 💡 Tips
 
-Curly braces surround an ordered sequence of steps. In this example, there is just one step, to construct an HTML paragraph element.
+Curly braces surround a procedure, which is a sequence of steps to perform in order. In this example, there is just one step, to construct an HTML paragraph element.
 
 To construct an HTML element, use `<tag-name>`, followed by an indented list of properties.
 
