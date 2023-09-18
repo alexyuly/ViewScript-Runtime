@@ -11,7 +11,7 @@ View HelloWorld {
 }
 ```
 
-> 💡 Curly braces enclose a unit of functionality with a sequence of steps. In this case, it's the definition of a view type.
+> 💡 Curly braces enclose a unit of functionality with a sequence of steps. In this case, it's the definition of a view.
 
 > 💡 Render an HTML element in a snap by writing its tag name inside angle brackets, like `<p>`, for a paragraph.
 
