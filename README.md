@@ -27,7 +27,7 @@ A property binds the given field or action to an object's input or output:
 #### 💁 Show an alert when a button is clicked:
 
 ```
-View HelloWorld {
+View ClickMe {
    <button>
       content = "Please click me"
       click = window.alert "You clicked me!"
