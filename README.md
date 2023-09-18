@@ -2,7 +2,7 @@
 
 **ViewScript** is a modern programming language for building browser-based web applications.
 
-🧙 Render a paragraph with text content:
+#### 🧙 Render a paragraph with text content:
 
 ```
 View HelloWorld {
@@ -19,7 +19,7 @@ Render an HTML element in a snap by putting its tag name inside angle brackets, 
 
 The equals sign denotes a binding of a field to a property. In this case, it binds the constant text value `"Hello, world!"` to the paragraph element's `content` property.
 
-💁 Show an alert when a button is clicked:
+#### 💁 Show an alert when a button is clicked:
 
 ```
 View HelloWorld {
@@ -38,7 +38,7 @@ Handle events by binding them to actions. In this case, an action that controls 
 
 You don't need parentheses to pass an argument to an action. Just put a value after an action's name. Actions never accept more than one argument, so don't worry about commas.
 
-🧑‍🔬 Show different text content conditionally, while an element is hovered:
+#### 🧑‍🔬 Show different text content conditionally, while an element is hovered:
 
 ```
 View HelloWorld {
@@ -57,7 +57,7 @@ View HelloWorld {
 }
 ```
 
-🧑‍🎨 Style two elements, and nest one inside another:
+#### 🧑‍🎨 Style two elements, and nest one inside another:
 
 ```
 View HelloWorld {
@@ -77,7 +77,7 @@ View HelloWorld {
 }
 ```
 
-👷 Model complex data types and their behaviors:
+#### 👷 Model complex data types and their behaviors:
 
 ```
 Model TodoItem {
@@ -90,7 +90,7 @@ Model TodoItem {
 }
 ```
 
-🧑‍🏭 Define a view that renders and controls aspects of a data model:
+#### 🧑‍🏭 Define a view that renders and controls aspects of a data model:
 
 ```
 View TodoItemView {
