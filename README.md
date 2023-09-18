@@ -11,7 +11,11 @@ View HelloWorld {
 }
 ```
 
-> ℹ️ Curly braces enclose a unit of functionality. They visually represent the concept of "encapsulation".
+> 💡 Curly braces enclose a unit of functionality. In this case, it's a type of view. They visually represent the concept of "encapsulation".
+
+> 💡 Render an HTML element in a snap with its tag name enclosed in angle brackets, like `<p>`, for a paragraph.
+
+> 💡 The equals sign denotes a binding of a field to a property. In this case, it's binding the constant text value `"Hello, world!"` to a paragraph's `content` property.
 
 💁 Show an alert when a button is clicked:
 
