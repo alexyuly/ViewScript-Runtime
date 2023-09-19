@@ -121,8 +121,9 @@ View TodoListForm {
       display = "flex"
       align-items = "center"
 
-      submit = submit TodoItem
-         content = it.values.content
+      submit = for event:
+         submit TodoItem
+            content = event.values.content
 }
 
 
@@ -132,11 +133,13 @@ View TodoListApp {
    <main>
       content =
       -- TodoListForm
-            submit = data.unshift it
+            submit = for todo-item:
+               data.unshift todo-item
 
       -- <ul>
-            content = data.map TodoItemView
-               data = it
+            content = data.map for todo-item:
+               TodoItemView
+                  data = todo-item
 
       display = "flex"
       flex-direction = "column"
