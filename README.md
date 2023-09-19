@@ -121,7 +121,7 @@ View TodoListForm {
       display = "flex"
       align-items = "center"
 
-      submit = for event:
+      submit = (event) ->
          submit TodoItem
             content = event.values.content
 }
@@ -133,11 +133,11 @@ View TodoListApp {
    <main>
       content =
       -- TodoListForm
-            submit = for todo-item:
+            submit = (todo-item) ->
                data.unshift todo-item
 
       -- <ul>
-            content = data.map for todo-item:
+            content = data.map (todo-item) ->
                TodoItemView
                   data = todo-item
 
