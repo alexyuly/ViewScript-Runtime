@@ -83,7 +83,7 @@ Model TodoItem {
 
 #### 🧑‍🏭 Use a data model to render an interactive view:
 
-_Or, "Data? Tada!"_
+_Also known as, "Data? Tada!"_
 
 ```
 View TodoItemView {
