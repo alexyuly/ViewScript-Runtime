@@ -34,7 +34,7 @@ View ClickMe {
 }
 ```
 
-#### 🧑‍🔬 Show different text content conditionally, while an element is hovered:
+#### 🧑‍🔬 Show text conditionally while an element is hovered:
 
 ```
 View HoverMe {
@@ -47,7 +47,7 @@ View HoverMe {
 }
 ```
 
-#### 🧑‍🎨 Style two elements, and nest one inside another:
+#### 🧑‍🎨 Show a styled paragraph centered inside a full-screen container:
 
 ```
 View StylishHello {
@@ -71,7 +71,7 @@ View StylishHello {
 
 Pass styles as properties to HTML elements. Skip the classes and selectors, and directly specify CSS properties for each element.
 
-#### 👷 Build a simple to-do list apps using fundamental concepts:
+#### 👷 Build a very simple to-do list app, using many fundamental concepts:
 
 ```
 Model TodoItem {
