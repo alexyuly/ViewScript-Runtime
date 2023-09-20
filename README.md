@@ -32,6 +32,8 @@ A property binds the given field or action to an object's input or output:
 - A parent object sends data from a field, falling down through a child's input, to control the child's behavior.
 - Conversely, a child object sends data rising up through its own output, into an action, to notify its parent of an event.
 
+In other words, a parent _actively controls_ its children, while a child _passively notifies_ its parents. Data has downward pressure, with parents sitting above children.
+
 #### 💁 Show an alert when a button is clicked:
 
 ```
