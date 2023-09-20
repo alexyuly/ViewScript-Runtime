@@ -12,7 +12,7 @@ ViewScript has three goals:
 
 ### Code Examples
 
-#### 🧙 Show a paragraph with text content:
+#### 🧑‍💻 Show a paragraph with text content:
 
 ```
 View HelloWorld {
