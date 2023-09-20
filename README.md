@@ -4,13 +4,11 @@
 
 🧙🪄✨💖🌺
 
-ViewScript has three main goals:
+ViewScript has three goals:
 
-🏃 Reduce the bloat of web apps, by improving dependency quality, bundle file sizes, and runtime performance.
-
-🧭 Eliminate boilerplate code for web apps, by providing consistent, predictable design patterns for components and systems.
-
-🙌 Elevate shared technical terminology and business logic in web app code, to better align with stakeholders across your organization.
+1. _Reduce the bloat_ of web apps, by improving dependency quality, bundle file sizes, and runtime performance.
+2. _Eliminate boilerplate code_ for web apps, by providing consistent, predictable design patterns for components and systems.
+3. _Elevate shared domain vocabulary_ and business logic in web app code, to better align with stakeholders across your organization.
 
 ### Code Examples
 
