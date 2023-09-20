@@ -4,29 +4,15 @@
 
 🧙🪄✨💖🌺
 
-### Motivation
-
-HTML, CSS, and JavaScript are amazing tools, and web browsers are a viable platform for building and distributing apps worldwide.
-
-But the web has a problem. An elephant in the room, maybe. That elephant is JavaScript.
-
-For more than a decade, web app developers have embraced JavaScript as the cornerstone of their process, above HTML and CSS. It's natural, right? Apps use complex logic, take long actions, and have side effects. HTML and CSS fall far short of providing all the tools to build standalone apps for web browsers. They were designed for a world where frontend web apps were thin shells, fully controlled by servers. They were designed to present static content to a user, and to update only upon navigation or reload.
-
-Now, JavaScript's gains in capability and performance have made HTML and CSS the stars of a dynamic runtime toolkit for app development. Technically, it's possible to build sprawling apps by manipulating the DOM and CSSOM with JavaScript. But elements and styles need continual maintenance to keep them updated when parameters change. Moreover, logic and requirements need similar care to keep them fresh as a business evolves. JavaScript provides insufficient assistance in these critical areas.
-
-In fact, vanilla JavaScript fails resoundingly at the task of maintaining large web apps over long time periods by unstable development teams. Unfortunately, this is a common situation in software development. First Angular, then React, now Svelte, have stepped up somewhat to fill the gaps left by JavaScript. The advent of TypeScript has eased considerable pain. But, it all feels just a bit incoherent, stitched together, too chaotic, inefficient, and unproductive... Maybe you feel this, too?
-
-ViewScript provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is NOT intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Most web-based content may never need ViewScript. Dynamic web apps will benefit from it, and even then, perhaps only greenfield apps with limited integrations.
-
 ViewScript has three main goals:
 
-🏃 Reduce the bloat of frontend web apps, in terms of dependency quality and quantity, bundle file sizes, and runtime performance.
+🏃 Reduce the bloat of web apps, by improving dependency quality, bundle file sizes, and runtime performance.
 
-⚙️ Eliminate boilerplate code for frontend web apps, by requiring consistent, predictable design patterns for components and systems.
+🧭 Eliminate boilerplate code for web apps, by providing consistent, predictable design patterns for components and systems.
 
-🙌 Elevate ubiquitous technical terminology in apps and products, shared across R&D by frontend engineers, designers, and managers.
+🙌 Elevate shared technical terminology and business logic in web app code, to better align with stakeholders across your organization.
 
-### Examples
+### Code Examples
 
 #### 🧙 Show a paragraph with text content:
 
@@ -162,3 +148,17 @@ View TodoListApp {
       gap = "24px"
 }
 ```
+
+### Motivation
+
+HTML, CSS, and JavaScript are amazing tools, and web browsers are a viable platform for building and distributing apps worldwide.
+
+But the web has a problem. An elephant in the room, maybe. That elephant is JavaScript.
+
+For more than a decade, web app developers have embraced JavaScript as the cornerstone of their process, above HTML and CSS. It's natural, right? Apps use complex logic, take long actions, and have side effects. HTML and CSS fall far short of providing all the tools to build standalone apps for web browsers. They were designed for a world where frontend web apps were thin shells, fully controlled by servers. They were designed to present static content to a user, and to update only upon navigation or reload.
+
+Now, JavaScript's gains in capability and performance have made HTML and CSS the stars of a dynamic runtime toolkit for app development. Technically, it's possible to build sprawling apps by manipulating the DOM and CSSOM with JavaScript. But elements and styles need continual maintenance to keep them updated when parameters change. Moreover, logic and requirements need similar care to keep them fresh as a business evolves. JavaScript provides insufficient assistance in these critical areas.
+
+In fact, vanilla JavaScript fails resoundingly at the task of maintaining large web apps over long time periods by unstable development teams. Unfortunately, this is a common situation in software development. First Angular, then React, now Svelte, have stepped up somewhat to fill the gaps left by JavaScript. The advent of TypeScript has eased considerable pain. But, it all feels just a bit incoherent, stitched together, too chaotic, inefficient, and unproductive... Maybe you feel this, too?
+
+ViewScript provides a potential path forward for web app development. It reinforces HTML, CSS, and JavaScript best practices, by bridging gaps and balancing concerns holistically across the web trinity. It is NOT intended to replace HTML, CSS, or JavaScript as fundamental web browser technologies. Most web-based content may never need ViewScript. Dynamic web apps will benefit from it, and even then, perhaps only greenfield apps with limited integrations.
