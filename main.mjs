@@ -5,59 +5,61 @@ import path from "path";
 const indentationSpacing = 3;
 
 function main() {
-    const filename = process.argv[2];
-    assert(!!filename, "You must provide the path to a file.");
+  const filename = process.argv[2];
+  assert(!!filename, "You must provide the path to a file.");
 
-    const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
-    console.log("fileContent:")
-    console.log(fileContent);
-    console.log();
+  const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
+  console.log("fileContent:");
+  console.log(fileContent);
+  console.log();
 
-    const fileLines = fileContent.split("\n");
-    console.log("fileLines:");
-    console.log(JSON.stringify(fileLines, null, 2));
-    console.log();
+  const fileLines = fileContent.split("\n");
+  console.log("fileLines:");
+  console.log(JSON.stringify(fileLines, null, 2));
+  console.log();
 
-    const fileSplitLines = fileLines.map(line => line.split(" "));
-    console.log("fileSplitLines:");
-    console.log(JSON.stringify(fileSplitLines, null, 2));
-    console.log();
+  const fileSplitLines = fileLines.map((line) => line.split(" "));
+  console.log("fileSplitLines:");
+  console.log(JSON.stringify(fileSplitLines, null, 2));
+  console.log();
 
-    for (let i = 0; i < fileSplitLines.length; i++) {
-        const line = fileSplitLines[i];
+  for (let i = 0; i < fileSplitLines.length; i++) {
+    const line = fileSplitLines[i];
 
-        let consecutiveEmptyWords = 0;
-        let isInsideString = false;
+    let consecutiveEmptyWords = 0;
+    let isInsideString = false;
 
-        for (let j = 0; j < line.length; j++) {
-            const word = line[j];
+    for (let j = 0; j < line.length; j++) {
+      const word = line[j];
 
-            if (word === "") {
-                if (line.length === 1) {
-                    // This is an empty line.
-                    fileSplitLines.splice(i, 1, { empty: true });
-                } else {
-                    consecutiveEmptyWords++;
-                }
-            } else {
-                if (consecutiveEmptyWords > 0) {
-                    if (consecutiveEmptyWords % indentationSpacing === 0) {
-                        const indentationLevel = consecutiveEmptyWords / indentationSpacing;
-                        line.splice(j - consecutiveEmptyWords, consecutiveEmptyWords, { indentationLevel });
-                    } else {
-                        // Invalid indentation detected
-                        // TODO throw error
-                    }
-                }
-
-                // TODO process strings
-            }
+      if (word === "") {
+        if (line.length === 1) {
+          // This is an empty line.
+          fileSplitLines.splice(i, 1, { empty: true });
+        } else {
+          consecutiveEmptyWords++;
         }
-    }
+      } else {
+        if (consecutiveEmptyWords > 0) {
+          if (consecutiveEmptyWords % indentationSpacing === 0) {
+            const indentationLevel = consecutiveEmptyWords / indentationSpacing;
+            line.splice(j - consecutiveEmptyWords, consecutiveEmptyWords, {
+              indentationLevel,
+            });
+          } else {
+            // Invalid indentation detected
+            // TODO throw error
+          }
+        }
 
-    console.log("fileSplitLines:");
-    console.log(JSON.stringify(fileSplitLines, null, 2));
-    console.log();
+        // TODO process strings
+      }
+    }
+  }
+
+  console.log("fileSplitLines:");
+  console.log(JSON.stringify(fileSplitLines, null, 2));
+  console.log();
 }
 
 main();
