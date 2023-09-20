@@ -6,7 +6,7 @@ const indentationSpacing = 3;
 
 function main() {
   const filename = process.argv[2];
-  assert(!!filename, "You must provide the path to a file.");
+  assert(!!filename, "You must provide the path to a file");
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
   console.log("fileContent:");
@@ -41,15 +41,16 @@ function main() {
         }
       } else {
         if (consecutiveEmptyWords > 0) {
-          if (consecutiveEmptyWords % indentationSpacing === 0) {
-            const indentationLevel = consecutiveEmptyWords / indentationSpacing;
-            line.splice(j - consecutiveEmptyWords, consecutiveEmptyWords, {
-              indentationLevel,
-            });
-          } else {
-            // Invalid indentation detected
-            // TODO throw error
-          }
+          assert(
+            consecutiveEmptyWords % indentationSpacing === 0,
+            `Invalid indentation detected at line ${i}. Indentation must be in multiples of 3 spaces.`
+          );
+
+          const indentationLevel = consecutiveEmptyWords / indentationSpacing;
+
+          line.splice(j - consecutiveEmptyWords, consecutiveEmptyWords, {
+            indentationLevel,
+          });
         }
 
         // TODO process strings

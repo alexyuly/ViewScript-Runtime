@@ -1,0 +1,8 @@
+View HoverMe {
+   Condition hovered = false
+
+   <div>
+      content = if hovered then "You hovered me!" else "Hover me"
+      pointerover = hovered.enable
+      pointerleave = hovered.disable
+}

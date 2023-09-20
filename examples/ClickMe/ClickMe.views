@@ -1,0 +1,5 @@
+View ClickMe {
+   <button>
+      content = "Please click me"
+      click = window.alert "You clicked me!"
+}

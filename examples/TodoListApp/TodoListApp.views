@@ -1,0 +1,63 @@
+Model TodoItem {
+   Text content
+   Condition completed = false
+   Action complete = completed.enable
+}
+
+
+View TodoItemView {
+   TodoItem data
+
+   <li>
+      content = <label>
+         content =
+         -- <input>
+               checked = data.completed
+               type = "checkbox"
+
+         -- data.content
+
+      click = data.complete
+}
+
+
+View TodoListForm {
+   Output submit TodoItem
+
+   <form>
+      content =
+      -- <input>
+            name = "content"
+            placeholder = "Add a new to-do..."
+            type = "text"
+
+      -- <button>
+            type = "submit"
+
+      display = "flex"
+      align-items = "center"
+
+      submit = (event) ->
+         submit TodoItem
+            content = event.values.content
+}
+
+
+View TodoListApp {
+   TodoItem List data
+
+   <main>
+      content =
+      -- TodoListForm
+            submit = (todo-item) ->
+               data.unshift todo-item
+
+      -- <ul>
+            content = data.map (todo-item) ->
+               TodoItemView
+                  data = todo-item
+
+      display = "flex"
+      flex-direction = "column"
+      gap = "24px"
+}
