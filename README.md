@@ -71,7 +71,7 @@ View StylishHello {
 
 Pass styles as properties to HTML elements. Skip the classes and selectors, and directly specify CSS properties for each element.
 
-#### 👷 Model complex data types and their behaviors:
+#### 👷 Build a simple to-do list apps using fundamental concepts:
 
 ```
 Model TodoItem {
@@ -79,13 +79,8 @@ Model TodoItem {
    Condition completed = false
    Action complete = completed.enable
 }
-```
 
-#### 🧑‍🏭 Use a data model to render an interactive view:
 
-_Also known as, "Data? Tada!"_
-
-```
 View TodoItemView {
    TodoItem data
 
@@ -100,11 +95,8 @@ View TodoItemView {
 
       click = data.complete
 }
-```
 
-#### 🧑‍🍳 Conjure a simple to-do list app, using TodoItem and TodoItemView:
 
-```
 View TodoListForm {
    Output submit TodoItem
 
