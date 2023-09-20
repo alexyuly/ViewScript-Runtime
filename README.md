@@ -29,8 +29,8 @@ To construct an HTML element, use `<tag-name>`, followed by an indented list of 
 
 A property binds the given field or action to an object's input or output:
 
-- A parent object sends data from a field, falling down through a child's input, to control the child's behavior.
-- Conversely, a child object sends data rising up through its own output, into an action, to notify its parent of an event.
+- A parent object sends data from a field, down through a child's input, to control the child's behavior.
+- Conversely, a child object sends events up through its own output, into an action, to notify its parent of behaviors.
 
 In other words, a parent _actively controls_ its children, while a child _passively notifies_ its parents. Data has downward pressure, with parents sitting above children.
 
