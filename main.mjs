@@ -23,18 +23,27 @@ function main() {
     console.log(JSON.stringify(fileSplitLines, null, 2));
     console.log();
 
-    for (const line of fileSplitLines) {
+    for (let i = 0; i < fileSplitLines.length; i++) {
+        const line = fileSplitLines[i];
+
         let consecutiveEmptyWords = 0;
         let isInsideString = false;
 
-        for (const word of line) {
-            if (word === " ") {
-                consecutiveEmptyWords++;
+        for (let j = 0; j < line.length; j++) {
+            const word = line[j];
+
+            if (word === "") {
+                if (line.length === 1) {
+                    // This is an empty line.
+                    fileSplitLines.splice(i, 1, { empty: true });
+                } else {
+                    consecutiveEmptyWords++;
+                }
             } else {
                 if (consecutiveEmptyWords > 0) {
                     if (consecutiveEmptyWords % indentationSpacing === 0) {
                         const indentationLevel = consecutiveEmptyWords / indentationSpacing;
-                        // TODO splice in a node with indentation level in place of empty words
+                        line.splice(j - consecutiveEmptyWords, consecutiveEmptyWords, { indentationLevel });
                     } else {
                         // Invalid indentation detected
                         // TODO throw error
@@ -45,6 +54,10 @@ function main() {
             }
         }
     }
+
+    console.log("fileSplitLines:");
+    console.log(JSON.stringify(fileSplitLines, null, 2));
+    console.log();
 }
 
 main();
