@@ -125,8 +125,8 @@ function main() {
   const filename = process.argv[2];
   assert(!!filename, "You must provide the path to a file");
 
-  console.log(`File: ${filename}`);
-  console.log("Compiling HTML and JavaScript...\n");
+  console.log(`file =\x1b[33m ${filename} \x1b[0m`);
+  console.log("\x1b[36mCompiling HTML and JavaScript... \x1b[0m\n");
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
 
