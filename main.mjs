@@ -21,9 +21,7 @@ function tokenize(fileContent) {
 
       if (word === "") {
         if (line.length === 1) {
-          file.splice(L, 1, {
-            empty: true,
-          });
+          file.splice(L, 1, []);
         } else {
           consecutiveEmptyWords++;
         }
@@ -31,24 +29,24 @@ function tokenize(fileContent) {
         if (consecutiveEmptyWords > 0) {
           assert(
             consecutiveEmptyWords % indentationSpacing === 0,
-            `Invalid indentation is at line ${L}, word ${W}. Indentation must be a multiple of 3 spaces.`
+            `Invalid indent is at line ${L}, word ${W}. Indentation must be a multiple of 3 spaces.`
           );
 
-          const indentationObject = {
-            indentation: consecutiveEmptyWords / indentationSpacing,
+          const indentObject = {
+            indent: consecutiveEmptyWords / indentationSpacing,
           };
 
-          const isListItem = word === "--";
+          const listItem = word === "--";
 
-          if (isListItem) {
-            indentationObject.indentation = indentationObject.indentation + 1;
-            indentationObject.isListItem = true;
+          if (listItem) {
+            indentObject.indent = indentObject.indent + 1;
+            indentObject.listItem = true;
           }
 
           line.splice(
             W - consecutiveEmptyWords,
-            consecutiveEmptyWords + (isListItem ? 1 : 0),
-            indentationObject
+            consecutiveEmptyWords + (listItem ? 1 : 0),
+            indentObject
           );
 
           wordIndexOffset += consecutiveEmptyWords - 1;
