@@ -35,14 +35,25 @@ function main() {
         if (consecutiveEmptyWords > 0) {
           assert(
             consecutiveEmptyWords % indentationSpacing === 0,
-            `Invalid indentation is at line ${L}. Indentation must be in multiples of 3 spaces.`
+            `Invalid indentation is at line ${L}, word ${W}. Indentation must be a multiple of 3 spaces.`
           );
 
-          const indentation = consecutiveEmptyWords / indentationSpacing;
+          const indentationObject = {
+            indentation: consecutiveEmptyWords / indentationSpacing,
+          };
 
-          line.splice(W - consecutiveEmptyWords, consecutiveEmptyWords, {
-            indentation,
-          });
+          const isListItem = word === "--";
+
+          if (isListItem) {
+            indentationObject.indentation = indentationObject.indentation + 1;
+            indentationObject.isListItem = true;
+          }
+
+          line.splice(
+            W - consecutiveEmptyWords,
+            consecutiveEmptyWords + (isListItem ? 1 : 0),
+            indentationObject
+          );
 
           wordIndexOffset += consecutiveEmptyWords - 1;
 
@@ -60,7 +71,7 @@ function main() {
         ) {
           assert(
             consecutiveTextParts > 0,
-            `Invalid character detected at line ${L}, word ${W}. Space must come before opening quote of text.`
+            `Invalid character is at line ${L}, word ${W}. Space must come before opening quote of text.`
           );
         }
 
