@@ -37,7 +37,7 @@ function tokenize(fileContent) {
         if (consecutiveEmptyWords > 0) {
           assert(
             consecutiveEmptyWords % indentationSpacing === 0,
-            `Invalid indent is at line ${L}, word ${W}. Indentation must be a multiple of 3 spaces.`
+            `Invalid indentation on line ${L}: Indentation must be a multiple of 3 spaces.`
           );
 
           const indentObject = {
@@ -65,7 +65,7 @@ function tokenize(fileContent) {
         if (word[0] === '"') {
           assert(
             consecutiveTextParts === 0 || word.length === 1,
-            `Invalid character is at line ${L}, word ${W}. Space must come after closing quote of text.`
+            `Invalid character on line ${L}: Space must come after closing quote of text.`
           );
         } else if (
           word[word.length - 1] === '"' &&
@@ -73,7 +73,7 @@ function tokenize(fileContent) {
         ) {
           assert(
             consecutiveTextParts > 0,
-            `Invalid character is at line ${L}, word ${W}. Space must come before opening quote of text.`
+            `Invalid character on line ${L}: Space must come before opening quote of text.`
           );
         }
 
