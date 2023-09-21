@@ -9,37 +9,25 @@ function main() {
   assert(!!filename, "You must provide the path to a file");
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
-  console.log("fileContent:");
-  console.log(fileContent);
-  console.log();
-
   const fileLines = fileContent.split("\n");
-  console.log("fileLines:");
-  console.log(JSON.stringify(fileLines, null, 2));
-  console.log();
-
   const file = fileLines.map((line) => line.split(" "));
-  console.log("file:");
-  console.log(JSON.stringify(file, null, 2));
-  console.log();
 
   for (let L = 0; L < file.length; L++) {
     const line = file[L];
-    console.log(`Line L = ${line}`);
 
     let consecutiveEmptyWords = 0;
     let consecutiveTextParts = 0;
 
     for (let W = 0; W < line.length; W++) {
       const word = line[W];
-      console.log(`Word W = ${word}`);
 
-      let wOffset = 0;
+      let wordIndexOffset = 0;
 
       if (word === "") {
         if (line.length === 1) {
-          // This is an empty line.
-          file.splice(L, 1, { empty: true });
+          file.splice(L, 1, {
+            empty: true,
+          });
         } else {
           consecutiveEmptyWords++;
         }
@@ -50,15 +38,13 @@ function main() {
             `Invalid indentation is at line ${L}. Indentation must be in multiples of 3 spaces.`
           );
 
-          console.log("consecutiveEmptyWords", consecutiveEmptyWords);
-
-          const indentationLevel = consecutiveEmptyWords / indentationSpacing;
+          const indentation = consecutiveEmptyWords / indentationSpacing;
 
           line.splice(W - consecutiveEmptyWords, consecutiveEmptyWords, {
-            indentationLevel,
+            indentation,
           });
 
-          wOffset += consecutiveEmptyWords - 1;
+          wordIndexOffset += consecutiveEmptyWords - 1;
 
           consecutiveEmptyWords = 0;
         }
@@ -87,8 +73,6 @@ function main() {
             consecutiveTextParts++;
           }
         } else if (word[0] === '"' || word[word.length - 1] === '"') {
-          console.log("consecutiveTextParts", consecutiveTextParts);
-          console.log(line.slice(W - consecutiveTextParts, W + 1));
           line.splice(W - consecutiveTextParts, consecutiveTextParts + 1, {
             text: line
               .slice(W - consecutiveTextParts, W + 1)
@@ -104,7 +88,7 @@ function main() {
               ),
           });
 
-          wOffset += consecutiveTextParts - 1;
+          wordIndexOffset += consecutiveTextParts - 1;
 
           consecutiveTextParts = 0;
         } else if (consecutiveTextParts > 0) {
@@ -112,14 +96,11 @@ function main() {
         }
       }
 
-      W -= wOffset;
+      W -= wordIndexOffset;
     }
   }
 
-  console.log();
-  console.log("file:");
   console.log(JSON.stringify(file, null, 2));
-  console.log();
 }
 
 main();
