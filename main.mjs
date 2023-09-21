@@ -80,7 +80,7 @@ function main() {
 
         if (word[0] === '"' && consecutiveTextParts === 0) {
           if (word[word.length - 1] === '"' && word[word.length - 2] !== "\\") {
-            line.splice(W - consecutiveTextParts, consecutiveTextParts, {
+            line.splice(W - consecutiveTextParts, consecutiveTextParts + 1, {
               text: word.slice(1, word.length - 1),
             });
           } else {
@@ -107,6 +107,8 @@ function main() {
           wOffset += consecutiveTextParts - 1;
 
           consecutiveTextParts = 0;
+        } else if (consecutiveTextParts > 0) {
+          consecutiveTextParts++;
         }
       }
 
