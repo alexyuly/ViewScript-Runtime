@@ -4,11 +4,7 @@ import path from "path";
 
 const indentationSpacing = 3;
 
-function main() {
-  const filename = process.argv[2];
-  assert(!!filename, "You must provide the path to a file");
-
-  const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
+function tokenize(fileContent) {
   const fileLines = fileContent.split("\n");
   const file = fileLines.map((line) => line.split(" "));
 
@@ -111,7 +107,24 @@ function main() {
     }
   }
 
+  console.log();
+  console.log("⬇️");
+  console.log();
   console.log(JSON.stringify(file, null, 2));
+
+  return file;
+}
+
+function main() {
+  const filename = process.argv[2];
+  assert(!!filename, "You must provide the path to a file");
+
+  const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
+  console.log(fileContent);
+
+  const tokens = tokenize(fileContent);
+  // TODO tokens -> AST
+  // TODO AST -> CST
 }
 
 main();
