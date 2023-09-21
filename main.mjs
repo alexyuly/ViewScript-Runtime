@@ -2,6 +2,14 @@ import assert from "assert";
 import fs from "fs";
 import path from "path";
 
+function concrete(ast) {
+  // TODO
+}
+
+function abstract(tokens) {
+  // TODO
+}
+
 const indentationSpacing = 3;
 
 function tokenize(fileContent) {
@@ -105,19 +113,24 @@ function tokenize(fileContent) {
     }
   }
 
-  console.log();
-  console.log("⬇️");
-  console.log();
+  console.log("\n💧 \x1b[32m TOKENS \x1b[0m \n\n");
   console.log(JSON.stringify(file, null, 2));
 
   return file;
 }
 
 function main() {
+  console.log("\x1b[1mWelcome to ViewScript 0.0.0 \x1b[0m \n");
+
   const filename = process.argv[2];
   assert(!!filename, "You must provide the path to a file");
 
+  console.log(`File: ${filename}`);
+  console.log("Compiling HTML and JavaScript...\n");
+
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
+
+  console.log("\n💧 \x1b[32m SOURCE \x1b[0m \n\n");
   console.log(fileContent);
 
   const tokens = tokenize(fileContent);
