@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { countPlacesOfPositiveInteger } from "./util/countPlacesOfPositiveInteger.mjs";
 
+const viewScriptVersion = "0.0.0";
 const indentationSpacing = 3;
 
 class ViewScriptCompileError extends Error {}
@@ -396,7 +397,9 @@ function makeTree(fileLines) {
 }
 
 function main() {
-  console.log(`\x1b[1m\x1b[36mWelcome to ViewScript v0.0.0.\n\x1b[0m`);
+  console.log(
+    `\x1b[1m\x1b[36mWelcome to ViewScript v${viewScriptVersion}.\n\x1b[0m`
+  );
 
   const filename = process.argv[2];
 
