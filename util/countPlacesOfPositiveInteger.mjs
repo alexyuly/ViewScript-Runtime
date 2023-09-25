@@ -13,7 +13,7 @@ export function countPlacesOfPositiveInteger(integer) {
 
   let numberOfPlaces = 0;
 
-  while (number < 10 ** numberOfPlaces) {
+  while (number >= 10 ** numberOfPlaces) {
     numberOfPlaces++;
   }
 

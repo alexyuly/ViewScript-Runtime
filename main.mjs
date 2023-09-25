@@ -253,7 +253,7 @@ function makeTree(fileLines) {
 
           cursor.push(object);
         } else {
-          check(true, `Invalid statement.`, L + 1, fileLines[L]);
+          check(false, `Invalid statement.`, L + 1, fileLines[L]);
           // TODO Handle all possible types of statements.
         }
       } else if (cursor.length === 2) {
@@ -319,7 +319,7 @@ function makeTree(fileLines) {
             value: propertyValue[0],
           };
         } else {
-          check(true, `Invalid property value.`, L + 1, fileLines[L]);
+          check(false, `Invalid property value.`, L + 1, fileLines[L]);
           // TODO Handle all possible types of values.
         }
       }
@@ -355,7 +355,7 @@ function main() {
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
   const fileLines = fileContent.split("\n");
   const fileLineNumberPlacesMax = countPlacesOfPositiveInteger(
-    fileLines.length - 1
+    fileLines.length
   );
 
   console.log("\n 💧 \x1b[32m\x1b[1m SOURCE \x1b[0m \n\n");
@@ -367,7 +367,7 @@ function main() {
             fileLineNumberPlacesMax - countPlacesOfPositiveInteger(L + 1)
           )
             .fill(" ")
-            .join("")}${L + 1}:\x1b[0m\ ${line}`
+            .join("")}${L + 1}\x1b[0m\  ${line}`
       )
       .join("\n")
   );
