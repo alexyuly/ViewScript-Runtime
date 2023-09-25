@@ -6,13 +6,34 @@ const indentationSpacing = 3;
 
 class ViewScriptCompileError extends Error {}
 
-function check(condition, message, lineNumber, line) {
+function printSource(fileLines) {
+  const fileLineNumberPlacesMax = countPlacesOfPositiveInteger(
+    fileLines.length
+  );
+
+  console.log(
+    `\n 💧 \x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
+      .map(
+        (line, L) =>
+          `\x1b[36m${new Array(
+            fileLineNumberPlacesMax - countPlacesOfPositiveInteger(L + 1)
+          )
+            .fill(" ")
+            .join("")}${L + 1}\x1b[0m\  ${line}`
+      )
+      .join("\n")}\n`
+  );
+}
+
+function check(condition, message, lineNumber, lines) {
   if (!condition) {
-    console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
+    printSource(lines);
+
     console.log(
-      `\x1b[31m There is an error on line ${lineNumber}: \n\x1b[33m${line} \n`
+      `\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m\n\n\x1b[31m There is an error on line ${
+        lineNumber + 1
+      }:\n\x1b[33m${lines[lineNumber]}\n\n\x1b[31m ${message}\n\x1b[0m`
     );
-    console.log(`\x1b[31m ${message} \x1b[0m \n`);
     process.exitCode = 1;
     throw new ViewScriptCompileError(message);
   }
@@ -43,8 +64,8 @@ function makeTokens(fileLines) {
           check(
             consecutiveEmptyWords % indentationSpacing === 0,
             `Invalid indentation: Expected a multiple of 3 spaces.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
 
           const indentObject = {
@@ -73,8 +94,8 @@ function makeTokens(fileLines) {
           check(
             consecutiveTextParts === 0 || word.length === 1,
             `Invalid syntax: Expected a space after the closing quote.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
         } else if (
           word[word.length - 1] === '"' &&
@@ -83,8 +104,8 @@ function makeTokens(fileLines) {
           check(
             consecutiveTextParts > 0,
             `Invalid syntax: Expected a space before the opening quote.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
         }
 
@@ -130,10 +151,6 @@ function makeTokens(fileLines) {
 function makeTree(fileLines) {
   const tokens = makeTokens(fileLines);
 
-  console.log("\n 💧 \x1b[33m\x1b[1m TOKENS \x1b[0m \n\n");
-  console.log(JSON.stringify(tokens, null, 2));
-  console.log();
-
   const tree = {
     members: [],
   };
@@ -154,8 +171,8 @@ function makeTree(fileLines) {
         check(
           isNaN(procedureName),
           `Invalid class name: Must not be a number.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
@@ -165,22 +182,22 @@ function makeTree(fileLines) {
             "text" in procedureName
           ),
           `Invalid class name: Must not be literal text.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
           !tree.members.some((member) => member.name === procedureName),
           `Invalid class name: Must be unique.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
           line[2] === "{",
           `Invalid syntax: Expected an opening brace after the class name.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         const procedure = {
@@ -200,8 +217,8 @@ function makeTree(fileLines) {
         check(
           line.length === 1,
           `Invalid syntax: Expected a new line after the closing brace.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         cursor = [];
@@ -212,8 +229,8 @@ function makeTree(fileLines) {
         check(
           line[0].indent === 1,
           `Invalid indentation: Expected 3 spaces.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         const statement = line.slice(1);
@@ -222,8 +239,8 @@ function makeTree(fileLines) {
           check(
             isNaN(statement[0]),
             `Invalid class name: Must not be a number.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
 
           check(
@@ -233,8 +250,8 @@ function makeTree(fileLines) {
               "text" in statement[0]
             ),
             `Invalid class name: Must not be literal text.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
 
           const object = {
@@ -253,15 +270,15 @@ function makeTree(fileLines) {
 
           cursor.push(object);
         } else {
-          check(false, `Invalid statement.`, L + 1, fileLines[L]);
+          check(false, `Invalid statement.`, L, fileLines);
           // TODO Handle all possible types of statements.
         }
       } else if (cursor.length === 2) {
         check(
           line[0].indent === 2,
           `Invalid indentation: Expected 6 spaces.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         const propertyName = line[1];
@@ -269,8 +286,8 @@ function makeTree(fileLines) {
         check(
           isNaN(propertyName),
           `Invalid property name: Must not be a number.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
@@ -280,22 +297,22 @@ function makeTree(fileLines) {
             "text" in propertyName
           ),
           `Invalid property name: Must not be literal text.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
           !(propertyName in cursor[1].properties),
           `Invalid property name: Must be unique.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         check(
           line[2] === "=",
           `Invalid syntax: Expected an equals sign after the property name.`,
-          L + 1,
-          fileLines[L]
+          L,
+          fileLines
         );
 
         const propertyValue = line.slice(3);
@@ -308,8 +325,8 @@ function makeTree(fileLines) {
           check(
             propertyValue.length === 1,
             `Invalid syntax: Expected a new line after the closing quote.`,
-            L + 1,
-            fileLines[L]
+            L,
+            fileLines
           );
 
           cursor[1].properties[propertyName] = {
@@ -329,8 +346,8 @@ function makeTree(fileLines) {
             check(
               callArgument.length === 1,
               `Invalid syntax: Expected a new line after the closing quote.`,
-              L + 1,
-              fileLines[L]
+              L,
+              fileLines
             );
 
             cursor[1].properties[propertyName] = {
@@ -343,11 +360,11 @@ function makeTree(fileLines) {
               },
             };
           } else {
-            check(false, `Invalid call argument.`, L + 1, fileLines[L]);
+            check(false, `Invalid call argument.`, L, fileLines);
             // TODO Handle all possible types of call arguments.
           }
         } else {
-          check(false, `Invalid property value.`, L + 1, fileLines[L]);
+          check(false, `Invalid property value.`, L, fileLines);
           // TODO Handle all possible types of property values.
         }
       }
@@ -358,53 +375,48 @@ function makeTree(fileLines) {
     tree.members[tree.members.length - 1].kind === "View",
     `Invalid class declaration: Expected a view declaration.`,
     tree.members[tree.members.length - 1].compiler.line + 1,
-    fileLines[tree.members[tree.members.length - 1].compiler.line]
+    fileLines
+  );
+
+  console.log(
+    `\n 💧 \x1b[33m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
+      tree,
+      null,
+      2
+    )}\n\n\n 💧 \x1b[33m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
+      tokens,
+      null,
+      2
+    )}\n`
   );
 
   return tree;
 }
 
 function main() {
-  console.log("\x1b[1mWelcome to ViewScript v0.0.0. \x1b[0m \n");
+  console.log(`\x1b[1mWelcome to ViewScript v0.0.0.\n\x1b[0m`);
 
   const filename = process.argv[2];
 
   if (!filename) {
     const message = "You must provide the path to a file.";
-    console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
-    console.log(`\x1b[31m ${message} \x1b[0m \n`);
+    console.log(
+      `\n ⛔️ \x1b[31m\x1b[1m ERROR\n\n\x1b[0m\x1b[31m ${message}\n\x1b[0m`
+    );
     process.exitCode = 1;
     throw new ViewScriptCompileError(message);
   }
 
-  console.log(`file =\x1b[33m ${filename} \x1b[0m`);
-  console.log("\x1b[36mCompiling HTML and JavaScript... \x1b[0m\n");
+  console.log(
+    `file =\x1b[33m ${filename} \x1b[0m\x1b[36mCompiling HTML and JavaScript...\n\x1b[0m`
+  );
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
   const fileLines = fileContent.split("\n");
-  const fileLineNumberPlacesMax = countPlacesOfPositiveInteger(
-    fileLines.length
-  );
-
-  console.log("\n 💧 \x1b[32m\x1b[1m SOURCE \x1b[0m \n\n");
-  console.log(
-    fileLines
-      .map(
-        (line, L) =>
-          `\x1b[36m${new Array(
-            fileLineNumberPlacesMax - countPlacesOfPositiveInteger(L + 1)
-          )
-            .fill(" ")
-            .join("")}${L + 1}\x1b[0m\  ${line}`
-      )
-      .join("\n")
-  );
-  console.log();
 
   const tree = makeTree(fileLines);
 
-  console.log("\n 💧 \x1b[33m\x1b[1m TREE \x1b[0m \n\n");
-  console.log(JSON.stringify(tree, null, 2));
+  printSource(fileLines);
 
   // TODO Add a type-checking step.
   // TODO Create a new file which imports the runtime and the above tree.
