@@ -6,7 +6,7 @@ const indentationSpacing = 3;
 
 function makeTree(tokens) {
   const tree = {
-    members: {},
+    members: [],
   };
 
   let cursor = [];
@@ -37,7 +37,7 @@ function makeTree(tokens) {
         );
 
         assert(
-          !(procedureName in tree.members),
+          !tree.members.some((member) => member.name === procedureName),
           `Invalid class name on line ${L}: Must be unique.`
         );
 
@@ -47,11 +47,15 @@ function makeTree(tokens) {
         );
 
         const procedure = {
+          compiler: {
+            line: L,
+          },
+          name: procedureName,
           kind: "View",
           body: [],
         };
 
-        tree.members[procedureName] = procedure;
+        tree.members.push(procedure);
         cursor.push(procedure);
       }
     } else if (cursor[0]?.kind === "View") {
@@ -89,6 +93,9 @@ function makeTree(tokens) {
           );
 
           const object = {
+            compiler: {
+              line: L,
+            },
             class: statement[0],
             properties: {},
           };
@@ -148,7 +155,12 @@ function makeTree(tokens) {
             `Invalid syntax on line ${L}: Expected a new line after the closing quote.`
           );
 
-          cursor[1].properties[propertyName] = propertyValue[0];
+          cursor[1].properties[propertyName] = {
+            compiler: {
+              line: L,
+            },
+            value: propertyValue[0],
+          };
         } else {
           throw new Error(`Invalid property value on line ${L}`);
           // TODO Handle all possible types of values.
@@ -156,6 +168,13 @@ function makeTree(tokens) {
       }
     }
   }
+
+  assert(
+    tree.members[tree.members.length - 1].kind === "View",
+    `Invalid class declaration on line ${
+      tree.members[tree.members.length - 1].compiler.line
+    }: Expected a view declaration.`
+  );
 
   console.log("\n💧 \x1b[32m TREE \x1b[0m \n\n");
   console.log(JSON.stringify(tree, null, 2));
@@ -287,8 +306,9 @@ function main() {
   const tokens = makeTokens(fileContent);
   const tree = makeTree(tokens);
 
-  // TODO Create a new file which imports the runtime and the above tree
-  // TODO Use webpack or similar to generate HTML and JS for production
+  // TODO Add a type-checking step.
+  // TODO Create a new file which imports the runtime and the above tree.
+  // TODO Use webpack or similar to generate HTML and JS for production.
 }
 
 main();
