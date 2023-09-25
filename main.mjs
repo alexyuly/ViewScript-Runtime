@@ -42,6 +42,22 @@ function check(condition, message, lineNumber, lines) {
   }
 }
 
+function checkName(name, lineNumber, lines) {
+  check(
+    typeof name === "string",
+    `Invalid name: Expected a string of characters with no spaces.`,
+    lineNumber,
+    lines
+  );
+
+  check(
+    isNaN(name),
+    `Invalid name: Expected a non-numeric string of characters.`,
+    lineNumber,
+    lines
+  );
+}
+
 function makeTokens(fileLines) {
   const tokens = fileLines.map((line) => line.split(" "));
 
@@ -171,34 +187,18 @@ function makeTree(fileLines) {
       if (line[0] === "View") {
         const procedureName = line[1];
 
-        check(
-          isNaN(procedureName),
-          `Invalid class name: Must not be a number.`,
-          L,
-          fileLines
-        );
-
-        check(
-          !(
-            !!procedureName &&
-            typeof procedureName === "object" &&
-            "text" in procedureName
-          ),
-          `Invalid class name: Must not be literal text.`,
-          L,
-          fileLines
-        );
+        checkName(procedureName, L, fileLines);
 
         check(
           !tree.members.some((member) => member.name === procedureName),
-          `Invalid class name: Must be unique.`,
+          `Invalid syntax: Expected a unique name.`,
           L,
           fileLines
         );
 
         check(
           line[2] === "{",
-          `Invalid syntax: Expected an opening brace after the class name.`,
+          `Invalid syntax: Expected an opening brace after the view name.`,
           L,
           fileLines
         );
@@ -239,23 +239,7 @@ function makeTree(fileLines) {
         const statement = line.slice(1);
 
         if (statement.length === 1) {
-          check(
-            isNaN(statement[0]),
-            `Invalid class name: Must not be a number.`,
-            L,
-            fileLines
-          );
-
-          check(
-            !(
-              !!statement[0] &&
-              typeof statement[0] === "object" &&
-              "text" in statement[0]
-            ),
-            `Invalid class name: Must not be literal text.`,
-            L,
-            fileLines
-          );
+          checkName(statement[0], L, fileLines);
 
           const object = {
             compiler: {
@@ -286,23 +270,7 @@ function makeTree(fileLines) {
 
         const propertyName = line[1];
 
-        check(
-          isNaN(propertyName),
-          `Invalid property name: Must not be a number.`,
-          L,
-          fileLines
-        );
-
-        check(
-          !(
-            !!propertyName &&
-            typeof propertyName === "object" &&
-            "text" in propertyName
-          ),
-          `Invalid property name: Must not be literal text.`,
-          L,
-          fileLines
-        );
+        checkName(propertyName, L, fileLines);
 
         check(
           !(propertyName in cursor[1].properties),
