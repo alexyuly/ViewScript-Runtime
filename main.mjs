@@ -424,10 +424,9 @@ function main() {
   printSource(fileLines);
 
   // TODO Add a type-checking step.
-  // TODO Create a new file which imports the runtime and the above tree.
-  // TODO Use webpack or similar to generate HTML and JS for production.
+  // TODO Create a new file which imports the runtime and the tree.
+  // TODO Generate HTML and JS for production using webpack.
+  // TODO Log the total elapsed time.
 }
 
 main();
-
-// TODO Replace indentation spaces in error messages with this character: ・
