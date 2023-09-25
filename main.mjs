@@ -32,7 +32,7 @@ function check(condition, message, lineNumber, lines) {
     printSource(lines, lineNumber);
 
     console.log(
-      `\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m\n\n\x1b[31m There is an error on line ${
+      `\n 📣 \x1b[33m\x1b[1m ERROR \x1b[0m\n\n\x1b[31m There is an error on line ${
         lineNumber + 1
       }:\n\x1b[33m${lines[lineNumber]}\n\n\x1b[31m ${message}\n\x1b[0m`
     );
@@ -381,11 +381,11 @@ function makeTree(fileLines) {
   );
 
   console.log(
-    `\n 🌳 \x1b[33m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
+    `\n 🌳 \x1b[90m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
       tree,
       null,
       2
-    )}\n\n\n 🌿 \x1b[33m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
+    )}\n\n\n 🌿 \x1b[90m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
       tokens,
       null,
       2
