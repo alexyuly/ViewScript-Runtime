@@ -1,189 +1,21 @@
-import assert from "assert";
 import fs from "fs";
 import path from "path";
+import { countPlacesOfPositiveInteger } from "./util/countPlacesOfPositiveInteger.mjs";
 
 const indentationSpacing = 3;
 
-function makeTree(tokens) {
-  const tree = {
-    members: [],
-  };
-
-  let cursor = [];
-
-  for (let L = 0; L < tokens.length; L++) {
-    const line = tokens[L];
-
-    if (line.length === 0) {
-      continue;
-    }
-
-    if (cursor.length === 0) {
-      if (line[0] === "View") {
-        const procedureName = line[1];
-
-        assert(
-          isNaN(procedureName),
-          `Invalid class name on line ${L}: Must not be a number.`
-        );
-
-        assert(
-          !(
-            !!procedureName &&
-            typeof procedureName === "object" &&
-            "text" in procedureName
-          ),
-          `Invalid class name on line ${L}: Must not be literal text.`
-        );
-
-        assert(
-          !tree.members.some((member) => member.name === procedureName),
-          `Invalid class name on line ${L}: Must be unique.`
-        );
-
-        assert(
-          line[2] === "{",
-          `Invalid syntax on line ${L}: Expected an opening brace after the class name.`
-        );
-
-        const procedure = {
-          compiler: {
-            line: L,
-          },
-          name: procedureName,
-          kind: "View",
-          body: [],
-        };
-
-        tree.members.push(procedure);
-        cursor.push(procedure);
-      }
-    } else if (cursor[0]?.kind === "View") {
-      if (line[0] === "}") {
-        assert(
-          line.length === 1,
-          `Invalid syntax on line ${L}: Expected a new line after the closing brace.`
-        );
-
-        cursor = [];
-      } else if (
-        cursor.length === 1 ||
-        (cursor.length === 2 && line[0].indent === 1)
-      ) {
-        assert(
-          line[0].indent === 1,
-          `Invalid indentation on line ${L}: Expected 3 spaces.`
-        );
-
-        const statement = line.slice(1);
-
-        if (statement.length === 1) {
-          assert(
-            isNaN(statement[0]),
-            `Invalid class name on line ${L}: Must not be a number.`
-          );
-
-          assert(
-            !(
-              !!statement[0] &&
-              typeof statement[0] === "object" &&
-              "text" in statement[0]
-            ),
-            `Invalid class name on line ${L}: Must not be literal text.`
-          );
-
-          const object = {
-            compiler: {
-              line: L,
-            },
-            class: statement[0],
-            properties: {},
-          };
-
-          cursor[0].body.push(object);
-
-          if (cursor.length === 2) {
-            cursor.pop();
-          }
-
-          cursor.push(object);
-        } else {
-          throw new Error(`Invalid property value on line ${L}`);
-          // TODO Handle parameter declarations, not just objects.
-        }
-      } else if (cursor.length === 2) {
-        assert(
-          line[0].indent === 2,
-          `Invalid indentation on line ${L}: Expected 6 spaces.`
-        );
-
-        const propertyName = line[1];
-
-        assert(
-          isNaN(propertyName),
-          `Invalid property name on line ${L}: Must not be a number.`
-        );
-
-        assert(
-          !(
-            !!propertyName &&
-            typeof propertyName === "object" &&
-            "text" in propertyName
-          ),
-          `Invalid property name on line ${L}: Must not be literal text.`
-        );
-
-        assert(
-          !(propertyName in cursor[1].properties),
-          `Invalid property name on line ${L}: Must be unique.`
-        );
-
-        assert(
-          line[2] === "=",
-          `Invalid syntax on line ${L}: Expected an equals sign after the property name.`
-        );
-
-        const propertyValue = line.slice(3);
-
-        if (
-          !!propertyValue[0] &&
-          typeof propertyValue[0] === "object" &&
-          "text" in propertyValue[0]
-        ) {
-          assert(
-            propertyValue.length === 1,
-            `Invalid syntax on line ${L}: Expected a new line after the closing quote.`
-          );
-
-          cursor[1].properties[propertyName] = {
-            compiler: {
-              line: L,
-            },
-            value: propertyValue[0],
-          };
-        } else {
-          throw new Error(`Invalid property value on line ${L}`);
-          // TODO Handle all possible types of values.
-        }
-      }
-    }
+function check(condition, message, lineNumber, line) {
+  if (!condition) {
+    console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
+    console.log(
+      `\x1b[31m There is an error on line ${lineNumber}: \n\x1b[33m${line} \n`
+    );
+    console.error(`\x1b[31m ${message} \x1b[0m \n`);
+    process.exit(400);
   }
-
-  assert(
-    tree.members[tree.members.length - 1].kind === "View",
-    `Invalid class declaration on line ${
-      tree.members[tree.members.length - 1].compiler.line
-    }: Expected a view declaration.`
-  );
-
-  console.log("\n💧 \x1b[32m TREE \x1b[0m \n\n");
-  console.log(JSON.stringify(tree, null, 2));
-
-  return tree;
 }
 
-function makeTokens(fileContent) {
-  const fileLines = fileContent.split("\n");
+function makeTokens(fileLines) {
   const tokens = fileLines.map((line) => line.split(" "));
 
   for (let L = 0; L < tokens.length; L++) {
@@ -205,9 +37,11 @@ function makeTokens(fileContent) {
         }
       } else {
         if (consecutiveEmptyWords > 0) {
-          assert(
+          check(
             consecutiveEmptyWords % indentationSpacing === 0,
-            `Invalid indentation on line ${L}: Expected a multiple of 3 spaces.`
+            `Invalid indentation: Expected a multiple of 3 spaces.`,
+            L + 1,
+            fileLines[L]
           );
 
           const indentObject = {
@@ -233,17 +67,21 @@ function makeTokens(fileContent) {
         }
 
         if (word[0] === '"') {
-          assert(
+          check(
             consecutiveTextParts === 0 || word.length === 1,
-            `Invalid syntax on line ${L}: Expected a space after the closing quote.`
+            `Invalid syntax: Expected a space after the closing quote.`,
+            L + 1,
+            fileLines[L]
           );
         } else if (
           word[word.length - 1] === '"' &&
           word[word.length - 2] !== "\\"
         ) {
-          assert(
+          check(
             consecutiveTextParts > 0,
-            `Invalid syntax on line ${L}: Expected a space before the opening quote.`
+            `Invalid syntax: Expected a space before the opening quote.`,
+            L + 1,
+            fileLines[L]
           );
         }
 
@@ -283,28 +121,254 @@ function makeTokens(fileContent) {
     }
   }
 
-  console.log("\n💧 \x1b[32m TOKENS \x1b[0m \n\n");
-  console.log(JSON.stringify(tokens, null, 2));
-
   return tokens;
+}
+
+function makeTree(fileLines) {
+  const tokens = makeTokens(fileLines);
+
+  console.log("\n 💧 \x1b[33m\x1b[1m TOKENS \x1b[0m \n\n");
+  console.log(JSON.stringify(tokens, null, 2));
+  console.log();
+
+  const tree = {
+    members: [],
+  };
+
+  let cursor = [];
+
+  for (let L = 0; L < tokens.length; L++) {
+    const line = tokens[L];
+
+    if (line.length === 0) {
+      continue;
+    }
+
+    if (cursor.length === 0) {
+      if (line[0] === "View") {
+        const procedureName = line[1];
+
+        check(
+          isNaN(procedureName),
+          `Invalid class name: Must not be a number.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          !(
+            !!procedureName &&
+            typeof procedureName === "object" &&
+            "text" in procedureName
+          ),
+          `Invalid class name: Must not be literal text.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          !tree.members.some((member) => member.name === procedureName),
+          `Invalid class name: Must be unique.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          line[2] === "{",
+          `Invalid syntax: Expected an opening brace after the class name.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        const procedure = {
+          compiler: {
+            line: L + 1,
+          },
+          name: procedureName,
+          kind: "View",
+          body: [],
+        };
+
+        tree.members.push(procedure);
+        cursor.push(procedure);
+      }
+    } else if (cursor[0]?.kind === "View") {
+      if (line[0] === "}") {
+        check(
+          line.length === 1,
+          `Invalid syntax: Expected a new line after the closing brace.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        cursor = [];
+      } else if (
+        cursor.length === 1 ||
+        (cursor.length === 2 && line[0].indent === 1)
+      ) {
+        check(
+          line[0].indent === 1,
+          `Invalid indentation: Expected 3 spaces.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        const statement = line.slice(1);
+
+        if (statement.length === 1) {
+          check(
+            isNaN(statement[0]),
+            `Invalid class name: Must not be a number.`,
+            L + 1,
+            fileLines[L]
+          );
+
+          check(
+            !(
+              !!statement[0] &&
+              typeof statement[0] === "object" &&
+              "text" in statement[0]
+            ),
+            `Invalid class name: Must not be literal text.`,
+            L + 1,
+            fileLines[L]
+          );
+
+          const object = {
+            compiler: {
+              line: L + 1,
+            },
+            class: statement[0],
+            properties: {},
+          };
+
+          cursor[0].body.push(object);
+
+          if (cursor.length === 2) {
+            cursor.pop();
+          }
+
+          cursor.push(object);
+        } else {
+          throw new Error(`Invalid property value on line ${L + 1}`);
+          // TODO Handle parameter declarations, not just objects.
+        }
+      } else if (cursor.length === 2) {
+        check(
+          line[0].indent === 2,
+          `Invalid indentation: Expected 6 spaces.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        const propertyName = line[1];
+
+        check(
+          isNaN(propertyName),
+          `Invalid property name: Must not be a number.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          !(
+            !!propertyName &&
+            typeof propertyName === "object" &&
+            "text" in propertyName
+          ),
+          `Invalid property name: Must not be literal text.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          !(propertyName in cursor[1].properties),
+          `Invalid property name: Must be unique.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        check(
+          line[2] === "=",
+          `Invalid syntax: Expected an equals sign after the property name.`,
+          L + 1,
+          fileLines[L]
+        );
+
+        const propertyValue = line.slice(3);
+
+        if (
+          !!propertyValue[0] &&
+          typeof propertyValue[0] === "object" &&
+          "text" in propertyValue[0]
+        ) {
+          check(
+            propertyValue.length === 1,
+            `Invalid syntax: Expected a new line after the closing quote.`,
+            L + 1,
+            fileLines[L]
+          );
+
+          cursor[1].properties[propertyName] = {
+            compiler: {
+              line: L + 1,
+            },
+            value: propertyValue[0],
+          };
+        } else {
+          throw new Error(`Invalid property value on line ${L + 1}`);
+          // TODO Handle all possible types of values.
+        }
+      }
+    }
+  }
+
+  check(
+    tree.members[tree.members.length - 1].kind === "View",
+    `Invalid class declaration: Expected a view declaration.`,
+    tree.members[tree.members.length - 1].compiler.line + 1,
+    fileLines[tree.members[tree.members.length - 1].compiler.line]
+  );
+
+  return tree;
 }
 
 function main() {
   console.log("\x1b[1mWelcome to ViewScript v0.0.0. \x1b[0m \n");
 
   const filename = process.argv[2];
-  assert(!!filename, "You must provide the path to a file");
+  if (!filename) {
+    throw new Error("You must provide the path to a file");
+  }
 
   console.log(`file =\x1b[33m ${filename} \x1b[0m`);
   console.log("\x1b[36mCompiling HTML and JavaScript... \x1b[0m\n");
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
+  const fileLines = fileContent.split("\n");
+  const fileLineNumberPlacesMax = countPlacesOfPositiveInteger(
+    fileLines.length - 1
+  );
 
-  console.log("\n💧 \x1b[32m SOURCE \x1b[0m \n\n");
-  console.log(fileContent);
+  console.log("\n 💧 \x1b[32m\x1b[1m SOURCE \x1b[0m \n\n");
+  console.log(
+    fileLines
+      .map(
+        (line, L) =>
+          `\x1b[36m${new Array(
+            fileLineNumberPlacesMax - countPlacesOfPositiveInteger(L + 1)
+          )
+            .fill(" ")
+            .join("")}${L + 1}:\x1b[0m\ ${line}`
+      )
+      .join("\n")
+  );
+  console.log();
 
-  const tokens = makeTokens(fileContent);
-  const tree = makeTree(tokens);
+  const tree = makeTree(fileLines);
+
+  console.log("\n 💧 \x1b[33m\x1b[1m TREE \x1b[0m \n\n");
+  console.log(JSON.stringify(tree, null, 2));
 
   // TODO Add a type-checking step.
   // TODO Create a new file which imports the runtime and the above tree.
@@ -312,3 +376,5 @@ function main() {
 }
 
 main();
+
+// TODO Replace indentation spaces in error messages with this character: ・
