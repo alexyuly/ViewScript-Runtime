@@ -6,7 +6,7 @@ const indentationSpacing = 3;
 
 class ViewScriptCompileError extends Error {}
 
-function printSource(fileLines) {
+function printSource(fileLines, focusedLineNumber) {
   const fileLineNumberPlacesMax = countPlacesOfPositiveInteger(
     fileLines.length
   );
@@ -15,11 +15,13 @@ function printSource(fileLines) {
     `\n 🌱 \x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
       .map(
         (line, L) =>
-          `\x1b[36m${new Array(
+          `${new Array(
             fileLineNumberPlacesMax - countPlacesOfPositiveInteger(L + 1)
           )
             .fill(" ")
-            .join("")}${L + 1}\x1b[0m\  ${line}`
+            .join("")}${L === focusedLineNumber ? "\x1b[31m" : "\x1b[36m"}${
+            L + 1
+          }\x1b[0m\  ${L === focusedLineNumber ? "\x1b[33m" : ""}${line}\x1b[0m`
       )
       .join("\n")}\n`
   );
@@ -27,7 +29,7 @@ function printSource(fileLines) {
 
 function check(condition, message, lineNumber, lines) {
   if (!condition) {
-    printSource(lines);
+    printSource(lines, lineNumber);
 
     console.log(
       `\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m\n\n\x1b[31m There is an error on line ${
