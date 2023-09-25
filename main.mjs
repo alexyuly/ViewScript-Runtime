@@ -12,7 +12,7 @@ function printSource(fileLines) {
   );
 
   console.log(
-    `\n 💧 \x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
+    `\n 🌱 \x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
       .map(
         (line, L) =>
           `\x1b[36m${new Array(
@@ -379,11 +379,11 @@ function makeTree(fileLines) {
   );
 
   console.log(
-    `\n 💧 \x1b[33m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
+    `\n 🌳 \x1b[33m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
       tree,
       null,
       2
-    )}\n\n\n 💧 \x1b[33m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
+    )}\n\n\n 🌿 \x1b[33m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
       tokens,
       null,
       2
@@ -408,7 +408,7 @@ function main() {
   }
 
   console.log(
-    `file =\x1b[33m ${filename} \x1b[0m\x1b[36mCompiling HTML and JavaScript...\n\x1b[0m`
+    `file =\x1b[33m ${filename}\n\n\x1b[0m\x1b[36mCompiling HTML and JavaScript...\n\x1b[0m`
   );
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
