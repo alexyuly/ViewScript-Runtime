@@ -396,7 +396,7 @@ function makeTree(fileLines) {
 }
 
 function main() {
-  console.log(`\x1b[1mWelcome to ViewScript v0.0.0.\n\x1b[0m`);
+  console.log(`\x1b[1m\x1b[36mWelcome to ViewScript v0.0.0.\n\x1b[0m`);
 
   const filename = process.argv[2];
 
@@ -410,7 +410,7 @@ function main() {
   }
 
   console.log(
-    `file =\x1b[33m ${filename}\n\n\x1b[0m\x1b[36mCompiling HTML and JavaScript...\n\x1b[0m`
+    `\x1b[36m 💬  Compiling HTML and JavaScript from ${filename}\n\x1b[0m`
   );
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
