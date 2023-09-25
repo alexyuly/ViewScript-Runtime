@@ -4,7 +4,7 @@ import { countPlacesOfPositiveInteger } from "./util/countPlacesOfPositiveIntege
 
 const indentationSpacing = 3;
 
-class ViewScriptCompilerError extends Error {}
+class ViewScriptCompileError extends Error {}
 
 function check(condition, message, lineNumber, line) {
   if (!condition) {
@@ -14,7 +14,7 @@ function check(condition, message, lineNumber, line) {
     );
     console.log(`\x1b[31m ${message} \x1b[0m \n`);
     process.exitCode = 1;
-    throw new ViewScriptCompilerError(message);
+    throw new ViewScriptCompileError(message);
   }
 }
 
@@ -318,9 +318,37 @@ function makeTree(fileLines) {
             },
             value: propertyValue[0],
           };
+        } else if (typeof propertyValue[0] === "string") {
+          const callArgument = propertyValue.slice(1);
+
+          if (
+            !!callArgument[0] &&
+            typeof callArgument[0] === "object" &&
+            "text" in callArgument[0]
+          ) {
+            check(
+              callArgument.length === 1,
+              `Invalid syntax: Expected a new line after the closing quote.`,
+              L + 1,
+              fileLines[L]
+            );
+
+            cursor[1].properties[propertyName] = {
+              compiler: {
+                line: L + 1,
+              },
+              value: {
+                call: propertyValue[0],
+                argument: propertyValue[1],
+              },
+            };
+          } else {
+            check(false, `Invalid call argument.`, L + 1, fileLines[L]);
+            // TODO Handle all possible types of call arguments.
+          }
         } else {
           check(false, `Invalid property value.`, L + 1, fileLines[L]);
-          // TODO Handle all possible types of values.
+          // TODO Handle all possible types of property values.
         }
       }
     }
@@ -346,7 +374,7 @@ function main() {
     console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
     console.log(`\x1b[31m ${message} \x1b[0m \n`);
     process.exitCode = 1;
-    throw new ViewScriptCompilerError(message);
+    throw new ViewScriptCompileError(message);
   }
 
   console.log(`file =\x1b[33m ${filename} \x1b[0m`);
