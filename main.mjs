@@ -4,14 +4,17 @@ import { countPlacesOfPositiveInteger } from "./util/countPlacesOfPositiveIntege
 
 const indentationSpacing = 3;
 
+class ViewScriptCompilerError extends Error {}
+
 function check(condition, message, lineNumber, line) {
   if (!condition) {
     console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
     console.log(
       `\x1b[31m There is an error on line ${lineNumber}: \n\x1b[33m${line} \n`
     );
-    console.error(`\x1b[31m ${message} \x1b[0m \n`);
-    process.exit(400);
+    console.log(`\x1b[31m ${message} \x1b[0m \n`);
+    process.exitCode = 1;
+    throw new ViewScriptCompilerError(message);
   }
 }
 
@@ -250,8 +253,8 @@ function makeTree(fileLines) {
 
           cursor.push(object);
         } else {
-          throw new Error(`Invalid property value on line ${L + 1}`);
-          // TODO Handle parameter declarations, not just objects.
+          check(true, `Invalid statement.`, L + 1, fileLines[L]);
+          // TODO Handle all possible types of statements.
         }
       } else if (cursor.length === 2) {
         check(
@@ -316,7 +319,7 @@ function makeTree(fileLines) {
             value: propertyValue[0],
           };
         } else {
-          throw new Error(`Invalid property value on line ${L + 1}`);
+          check(true, `Invalid property value.`, L + 1, fileLines[L]);
           // TODO Handle all possible types of values.
         }
       }
@@ -337,8 +340,13 @@ function main() {
   console.log("\x1b[1mWelcome to ViewScript v0.0.0. \x1b[0m \n");
 
   const filename = process.argv[2];
+
   if (!filename) {
-    throw new Error("You must provide the path to a file");
+    const message = "You must provide the path to a file.";
+    console.log(`\n ⛔️ \x1b[31m\x1b[1m ERROR \x1b[0m \n\n`);
+    console.log(`\x1b[31m ${message} \x1b[0m \n`);
+    process.exitCode = 1;
+    throw new ViewScriptCompilerError(message);
   }
 
   console.log(`file =\x1b[33m ${filename} \x1b[0m`);
