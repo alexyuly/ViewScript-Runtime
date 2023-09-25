@@ -24,7 +24,7 @@ function makeTree(tokens) {
 
         assert(
           isNaN(procedureName),
-          `Invalid procedure name on line ${L}: Must not be a number.`
+          `Invalid class name on line ${L}: Must not be a number.`
         );
 
         assert(
@@ -33,28 +33,28 @@ function makeTree(tokens) {
             typeof procedureName === "object" &&
             "text" in procedureName
           ),
-          `Invalid procedure name on line ${L}: Must not be literal text.`
+          `Invalid class name on line ${L}: Must not be literal text.`
         );
 
         assert(
           !(procedureName in tree.members),
-          `Invalid procedure name on line ${L}: Must be unique.`
+          `Invalid class name on line ${L}: Must be unique.`
         );
 
         assert(
           line[2] === "{",
-          `Invalid syntax on line ${L}: Expected an opening brace after the procedure name.`
+          `Invalid syntax on line ${L}: Expected an opening brace after the class name.`
         );
 
         const procedure = {
-          procedure: "View",
+          kind: "View",
           body: [],
         };
 
         tree.members[procedureName] = procedure;
         cursor.push(procedure);
       }
-    } else if (cursor[0]?.procedure === "View") {
+    } else if (cursor[0]?.kind === "View") {
       if (line[0] === "}") {
         assert(
           line.length === 1,
@@ -71,18 +71,39 @@ function makeTree(tokens) {
           `Invalid indentation on line ${L}: Expected 3 spaces.`
         );
 
-        const object = {
-          object: line[1],
-          properties: {},
-        };
+        const statement = line.slice(1);
 
-        cursor[0].body.push(object);
+        if (statement.length === 1) {
+          assert(
+            isNaN(statement[0]),
+            `Invalid class name on line ${L}: Must not be a number.`
+          );
 
-        if (cursor.length === 2) {
-          cursor.pop();
+          assert(
+            !(
+              !!statement[0] &&
+              typeof statement[0] === "object" &&
+              "text" in statement[0]
+            ),
+            `Invalid class name on line ${L}: Must not be literal text.`
+          );
+
+          const object = {
+            class: statement[0],
+            properties: {},
+          };
+
+          cursor[0].body.push(object);
+
+          if (cursor.length === 2) {
+            cursor.pop();
+          }
+
+          cursor.push(object);
+        } else {
+          throw new Error(`Invalid property value on line ${L}`);
+          // TODO Handle parameter declarations, not just objects.
         }
-
-        cursor.push(object);
       } else if (cursor.length === 2) {
         assert(
           line[0].indent === 2,
