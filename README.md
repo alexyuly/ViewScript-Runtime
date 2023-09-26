@@ -6,7 +6,7 @@
 
 🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
 
-ViewScript is currently a limited proof of concept. The three examples below.
+ViewScript is currently a limited proof of concept. The three code examples below demonstrate the range of available functionality.
 
 ## Future Plans
 
