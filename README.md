@@ -21,7 +21,7 @@ View HelloWorld {
 
 Curly braces surround a procedure, a sequence of steps performed in order. A view is a kind of procedure that interacts with the browser's DOM, to render and respond to the UI.
 
-In this example, there is just one step, to construct an HTML paragraph element, with some text content.
+In the last example, there is just one step, to construct an HTML paragraph element, with some text content.
 
 #### 💁 Show an alert when a button is clicked:
 
@@ -33,9 +33,11 @@ View ClickMe {
 }
 ```
 
-💡 Tip 2
+##### 💡 Tip 2
 
 Pass actions to output properties, to handle events like button clicks.
+
+In the last example, each time the button is clicked, it opens an alert dialog.
 
 #### 🧑‍🔬 Show text conditionally while an element is hovered:
 
@@ -50,9 +52,11 @@ View HoverMe {
 }
 ```
 
-💡 Tip 3
+##### 💡 Tip 3
 
+Declare private state that only the view can read and write, by setting a field to a value. You can update this value by calling its actions.
 
+In the last example, there is one private state field named `hovered`, which stores a condition first set to `false` but changed according to relative mouse position.
 
 #### 🧑‍🎨 Show a styled paragraph centered inside a full-screen container:
 
