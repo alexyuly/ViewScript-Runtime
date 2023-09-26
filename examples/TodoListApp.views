@@ -39,12 +39,12 @@ View TodoListForm {
 
       submit = (event) ->
          submit TodoItem
-            content = event.values.content
+            content = event.fields.content
 }
 
 
 View TodoListApp {
-   TodoItem List data
+   TodoItem collection data
 
    <main>
       content =

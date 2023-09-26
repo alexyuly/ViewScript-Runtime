@@ -1,4 +1,4 @@
-View HelloWorld {
+View `Show a paragraph of text` {
    <p>
       content = "Hello, world!"
 }

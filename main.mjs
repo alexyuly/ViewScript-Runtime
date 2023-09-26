@@ -3,7 +3,30 @@ import path from "path";
 import { countPlacesOfPositiveInteger } from "./util/countPlacesOfPositiveInteger.mjs";
 
 const viewScriptVersion = "0.0.0";
+
 const indentationSpacing = 3;
+
+const reservedWords = [
+  "action",
+  "catch",
+  "collection",
+  "condition",
+  "else",
+  "empty",
+  "false",
+  "if",
+  "import",
+  "model",
+  "number",
+  "optional",
+  "output",
+  "task",
+  "text",
+  "then",
+  "true",
+  "view",
+  "window",
+];
 
 class ViewScriptCompileError extends Error {}
 
@@ -45,14 +68,26 @@ function check(condition, message, lineNumber, lines) {
 function checkName(name, qualifier, lineNumber, lines) {
   check(
     typeof name === "string",
-    `Invalid ${qualifier} name: Expected an identifier with no quotes and no spaces.`,
+    `Invalid ${qualifier} name: Must not be literal text.`,
     lineNumber,
     lines
   );
 
   check(
+    /^([\w-])+$/.test(name),
+    `Invalid ${qualifier} name: Must contain only alphanumeric, underscore, and hyphen characters.`
+  );
+
+  check(
     isNaN(name),
-    `Invalid ${qualifier} name: Expected a non-numeric string of characters.`,
+    `Invalid ${qualifier} name: Must not be a number.`,
+    lineNumber,
+    lines
+  );
+
+  check(
+    !reservedWords.includes(name.toLowerCase()),
+    `Invalid ${qualifier} name: Must not be a reserved word.`,
     lineNumber,
     lines
   );
@@ -204,7 +239,7 @@ function makeTree(fileLines) {
         );
 
         const procedure = {
-          compiler: {
+          source: {
             line: L + 1,
           },
           name: procedureName,
@@ -242,7 +277,7 @@ function makeTree(fileLines) {
           checkName(statement[0], "class", L, fileLines);
 
           const object = {
-            compiler: {
+            source: {
               line: L + 1,
             },
             class: statement[0],
@@ -262,11 +297,11 @@ function makeTree(fileLines) {
           checkName(statement[1], "field", L, fileLines);
 
           const field = {
-            compiler: {
+            source: {
               line: L + 1,
             },
-            model: statement[0],
             field: statement[1],
+            model: statement[0],
           };
 
           if (statement[2] === "=") {
@@ -312,31 +347,44 @@ function makeTree(fileLines) {
           fileLines
         );
 
+        const propertyValue = line.slice(3);
+
         let value;
 
-        const expression = line.slice(3);
-        const callable = expression[0];
+        if (propertyValue[0] === "if") {
+          // TODO ...
 
-        // TODO Handle basic if/then/else expressions.
+          check(
+            propertyValue[2] === "then",
+            `Invalid syntax: Expected \`then\` after conditional expression.`,
+            L,
+            fileLines
+          );
 
-        if (expression.length === 1) {
-          if (typeof callable !== "object") {
-            checkName(callable, "callable", L, fileLines);
+          // if (propertyValue[4] === "else") {
+          // }
+        } else if (propertyValue.length === 1) {
+          if (typeof propertyValue[0] !== "object") {
+            checkName(propertyValue[0], "callable", L, fileLines);
           }
 
-          value = typeof callable === "object" ? callable : { callable };
-        } else if (expression.length === 2) {
-          checkName(callable, "callable", L, fileLines);
+          value =
+            typeof propertyValue[0] === "object"
+              ? propertyValue[0]
+              : { callable: propertyValue[0] };
+        } else if (propertyValue.length === 2) {
+          // TODO fix this ....
+          checkName(propertyValue[0], "callable", L, fileLines);
 
-          const argument = expression.slice(1);
+          const argument = propertyValue.slice(1);
 
           if (argument.length === 1) {
-            if (typeof callable !== "object") {
-              checkName(callable, "callable", L, fileLines);
+            if (typeof propertyValue[0] !== "object") {
+              checkName(propertyValue[0], "callable", L, fileLines);
             }
 
             value = {
-              callable,
+              callable: propertyValue[0],
               argument:
                 typeof argument === "object"
                   ? argument
@@ -348,7 +396,7 @@ function makeTree(fileLines) {
         }
 
         cursor[1].properties[propertyName] = {
-          compiler: {
+          source: {
             line: L + 1,
           },
           value,
@@ -360,7 +408,7 @@ function makeTree(fileLines) {
   check(
     tree.members[tree.members.length - 1].kind === "View",
     `Invalid class declaration: Expected a view declaration.`,
-    tree.members[tree.members.length - 1].compiler.line + 1,
+    tree.members[tree.members.length - 1].source.line + 1,
     fileLines
   );
 

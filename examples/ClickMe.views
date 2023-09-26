@@ -1,5 +1,5 @@
-View ClickMe {
+View `Print logs when a button is clicked` {
    <button>
-      content = "Please click me"
-      click = window.alert "You clicked me!"
+      content = "Please click me."
+      click = window.console.log "You clicked the button."
 }

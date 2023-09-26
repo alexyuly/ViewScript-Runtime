@@ -1,6 +1,6 @@
 # ViewScript
 
-🏗️ **ViewScript** is a modern language for building web apps.
+🏗️ **ViewScript** is a modern language for compiling HTML and JavaScript.
 
 ## Current State
 

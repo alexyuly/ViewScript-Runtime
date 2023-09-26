@@ -1,8 +1,14 @@
-View HoverMe {
+View `Change styles while a section is hovered` {
    Condition hovered = false
 
-   <div>
-      content = if hovered then "You hovered me!" else "Hover me"
-      pointerover = hovered.enable
+   <section>
+      background = if hovered then "black" else "white"
+      border = "1px solid black"
+      color = if hovered then "white" else "black"
+      content = if hovered then "You are hovering the section." else "Please hover me."
+      font = "12px sans-serif bold"
+      margin = "24px"
+      padding = "24px"
       pointerleave = hovered.disable
+      pointerover = hovered.enable
 }
