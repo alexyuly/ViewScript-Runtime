@@ -42,17 +42,17 @@ function check(condition, message, lineNumber, lines) {
   }
 }
 
-function checkName(name, lineNumber, lines) {
+function checkName(name, qualifier, lineNumber, lines) {
   check(
     typeof name === "string",
-    `Invalid name: Expected a string of characters with no spaces.`,
+    `Invalid ${qualifier} name: Expected an identifier with no quotes and no spaces.`,
     lineNumber,
     lines
   );
 
   check(
     isNaN(name),
-    `Invalid name: Expected a non-numeric string of characters.`,
+    `Invalid ${qualifier} name: Expected a non-numeric string of characters.`,
     lineNumber,
     lines
   );
@@ -187,7 +187,7 @@ function makeTree(fileLines) {
       if (line[0] === "View") {
         const procedureName = line[1];
 
-        checkName(procedureName, L, fileLines);
+        checkName(procedureName, "view", L, fileLines);
 
         check(
           !tree.members.some((member) => member.name === procedureName),
@@ -239,7 +239,7 @@ function makeTree(fileLines) {
         const statement = line.slice(1);
 
         if (statement.length === 1) {
-          checkName(statement[0], L, fileLines);
+          checkName(statement[0], "class", L, fileLines);
 
           const object = {
             compiler: {
@@ -257,8 +257,34 @@ function makeTree(fileLines) {
 
           cursor.push(object);
         } else {
-          check(false, `Invalid statement.`, L, fileLines);
-          // TODO Handle all possible types of statements.
+          checkName(statement[0], "model", L, fileLines);
+
+          checkName(statement[1], "field", L, fileLines);
+
+          const field = {
+            compiler: {
+              line: L + 1,
+            },
+            model: statement[0],
+            field: statement[1],
+          };
+
+          if (statement[2] === "=") {
+            check(
+              statement[3] === "false" ||
+                statement[3] === "true" ||
+                (!!statement[3] &&
+                  typeof statement[3] === "object" &&
+                  "text" in statement[3]),
+              `Invalid syntax: Expected a literal value after the equals sign.`,
+              L,
+              fileLines
+            );
+
+            field.value = statement[3];
+          }
+
+          cursor[0].body.push(field);
         }
       } else if (cursor.length === 2) {
         check(
@@ -270,7 +296,7 @@ function makeTree(fileLines) {
 
         const propertyName = line[1];
 
-        checkName(propertyName, L, fileLines);
+        checkName(propertyName, "property", L, fileLines);
 
         check(
           !(propertyName in cursor[1].properties),
@@ -286,58 +312,47 @@ function makeTree(fileLines) {
           fileLines
         );
 
-        const propertyValue = line.slice(3);
+        let value;
 
-        if (
-          !!propertyValue[0] &&
-          typeof propertyValue[0] === "object" &&
-          "text" in propertyValue[0]
-        ) {
-          check(
-            propertyValue.length === 1,
-            `Invalid syntax: Expected a new line after the closing quote.`,
-            L,
-            fileLines
-          );
+        const expression = line.slice(3);
+        const callable = expression[0];
 
-          cursor[1].properties[propertyName] = {
-            compiler: {
-              line: L + 1,
-            },
-            value: propertyValue[0],
-          };
-        } else if (typeof propertyValue[0] === "string") {
-          const callArgument = propertyValue.slice(1);
+        // TODO Handle basic if/then/else expressions.
 
-          if (
-            !!callArgument[0] &&
-            typeof callArgument[0] === "object" &&
-            "text" in callArgument[0]
-          ) {
-            check(
-              callArgument.length === 1,
-              `Invalid syntax: Expected a new line after the closing quote.`,
-              L,
-              fileLines
-            );
+        if (expression.length === 1) {
+          if (typeof callable !== "object") {
+            checkName(callable, "callable", L, fileLines);
+          }
 
-            cursor[1].properties[propertyName] = {
-              compiler: {
-                line: L + 1,
-              },
-              value: {
-                call: propertyValue[0],
-                argument: propertyValue[1],
-              },
+          value = typeof callable === "object" ? callable : { callable };
+        } else if (expression.length === 2) {
+          checkName(callable, "callable", L, fileLines);
+
+          const argument = expression.slice(1);
+
+          if (argument.length === 1) {
+            if (typeof callable !== "object") {
+              checkName(callable, "callable", L, fileLines);
+            }
+
+            value = {
+              callable,
+              argument:
+                typeof argument === "object"
+                  ? argument
+                  : { callable: argument },
             };
-          } else {
-            check(false, `Invalid call argument.`, L, fileLines);
-            // TODO Handle all possible types of call arguments.
           }
         } else {
           check(false, `Invalid property value.`, L, fileLines);
-          // TODO Handle all possible types of property values.
         }
+
+        cursor[1].properties[propertyName] = {
+          compiler: {
+            line: L + 1,
+          },
+          value,
+        };
       }
     }
   }
@@ -350,11 +365,11 @@ function makeTree(fileLines) {
   );
 
   console.log(
-    `\n 🌳 \x1b[90m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
+    `\n 🌳 \x1b[32m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
       tree,
       null,
       2
-    )}\n\n\n 🌿 \x1b[90m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
+    )}\n\n\n 🌿 \x1b[32m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
       tokens,
       null,
       2
