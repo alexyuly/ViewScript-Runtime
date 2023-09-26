@@ -2,6 +2,27 @@
 
 🏗️ **ViewScript** is a modern language for building web apps.
 
+## Current State
+
+🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
+
+ViewScript is currently a limited proof of concept. The three examples below.
+
+## Future Plans
+
+New features in the upcoming version, _ViewScript v0.1.0_:
+
+- Examples
+  - Nested HTML elements (atoms)
+  - Basic Todo List App
+- Functionality
+  - Atoms' `content` property accepts atoms and collections of text + atoms
+  - Define models
+    - Define properties (fields passed down)
+    - Define state (fields made automatically)
+  - Define properties in views
+  - _[more, to be continued...]_
+
 ## Code Examples
 
 Here are some quick examples you can use right now to get started.
@@ -97,12 +118,16 @@ Views can have state, like a "boolean" condition of _true_ or _false_.
 MODEL-NAME FIELD-NAME = VALUE
 ```
 
-A field refers to an instance of a model.
-
-Each field has
+A field refers to an instance of a model. Each field has
 
 - A model which determines the type of data it can hold
-- A value which initializes the field, possibly `empty`
+- A value which initializes the field
+
+Input properties can be conditionally bound to fields, using `if`, `then`, `else` syntax:
+
+```
+if CONDITIONAL-FIELD then POSITIVE-FIELD else NEGATIVE-FIELD
+```
 
 ## ViewScript Quirks
 
@@ -122,40 +147,22 @@ Indentation matters in ViewScript. Your indentation needs to be correct for your
 
 Some words are off-limits from use for names in your own code. They form the foundation of ViewScript and have singular meanings.
 
-### `Action`
-
-### `Catch`
-
-### `Collection`
-
-### `Condition`
-
-### `Else`
-
-### `Empty`
-
-### `False`
-
-### `If`
-
-### `Import`
-
-### `Model`
-
-### `Number`
-
-### `Optional`
-
-### `Output`
-
-### `Task`
-
-### `Text`
-
-### `Then`
-
-### `True`
-
-### `View`
-
-### `Window`
+- `Action`
+- `Catch`
+- `Collection`
+- `Condition`
+- `Else`
+- `Empty`
+- `False`
+- `If`
+- `Import`
+- `Model`
+- `Number`
+- `Optional`
+- `Output`
+- `Task`
+- `Text`
+- `Then`
+- `True`
+- `View`
+- `Window`
