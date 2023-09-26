@@ -20,8 +20,14 @@ New features in the upcoming version, _ViewScript v0.1.0_:
   - Define models
     - Define properties (fields passed down)
     - Define state (fields made automatically)
-  - Define properties in views
-  - _[more, to be continued...]_
+    - Define actions
+  - Define input properties in views
+  - Define output properties in views
+  - Define collection properties in views
+  - Element output properties accept arrows
+  - Make a new instance of a model
+  - Make a new instance of a view
+  - Map a collection of data to a list of UI elements
 
 ## Code Examples
 
