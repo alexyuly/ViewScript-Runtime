@@ -108,7 +108,15 @@ Each field has
 
 ### ViewScript is case-insensitive
 
+Keeping with the spirit of HTML and CSS, ViewScript code is case-insensitive. Certain cases are conventional in particular contexts. See the examples to get a feel for this. However, your code will compile regardless of case.
+
+Case matters in preserving the actual characters of literal text, like `"Hello, world!"`.
+
 ### ViewScript uses 3 spaces for indentation
+
+Four spaces feels wasteful of screen width, but two spaces is uncomfortable. While bucking web development norms, three spaces is an ideal compromise. We'll see if this proves to be a wise choice.
+
+Indentation matters in ViewScript. Your indentation needs to be correct for your code to compile. If not, the compiler will let you know about it immediately.
 
 ## Reserved Words
 
@@ -116,168 +124,38 @@ Some words are off-limits from use for names in your own code. They form the fou
 
 ### `Action`
 
-```
-Action FIELD-NAME = HANDLER
-
-Action FIELD-NAME = {
-   HANDLERS
-}
-
-Action FIELD-NAME ARGUMENT-MODEL-NAME = (ARGUMENT-NAME) ->
-   HANDLER
-
-Action FIELD-NAME ARGUMENT-MODEL-NAME = (ARGUMENT-NAME) -> {
-   HANDLERS
-}
-```
-
 ### `Catch`
-
-```
-Catch CONDITIONAL-FIELD
-
-Catch CONDITIONAL-FIELD {
-   HANDLERS
-}
-```
 
 ### `Collection`
 
-```
-MODEL-NAME collection FIELD-NAME
-
-MODEL-NAME collection FIELD-NAME = VALUE
-
-Optional MODEL-NAME collection FIELD-NAME = VALUE
-```
-
 ### `Condition`
-
-```
-Condition FIELD-NAME
-
-Condition FIELD-NAME = VALUE
-
-Condition FIELD-NAME ARGUMENT-MODEL-NAME = (ARGUMENT-NAME) ->
-   VALUE
-```
 
 ### `Else`
 
-```
-If CONDITIONAL-FIELD then POSITIVE-FIELD else NEGATIVE-FIELD
-```
-
 ### `Empty`
-
-```
-MODEL-NAME FIELD-NAME = empty
-```
 
 ### `False`
 
-```
-PROPERTY-NAME = false
-
-Condition FIELD-NAME = false
-```
-
 ### `If`
-
-```
-If CONDITIONAL-FIELD then POSITIVE-FIELD
-
-If CONDITIONAL-FIELD then POSITIVE-FIELD else NEGATIVE-FIELD
-```
 
 ### `Import`
 
-```
-Import FILE-NAME
-```
-
 ### `Model`
-
-```
-Model MODEL-NAME {
-   STEPS
-}
-```
 
 ### `Number`
 
-```
-Number FIELD-NAME
-
-Number FIELD-NAME = VALUE
-
-Number FIELD-NAME ARGUMENT-MODEL-NAME = (ARGUMENT-NAME) ->
-   VALUE
-```
-
 ### `Optional`
-
-```
-Optional MODEL-NAME FIELD-NAME
-
-Optional MODEL-NAME FIELD-NAME = VALUE
-```
 
 ### `Output`
 
-```
-Output FIELD-NAME
-
-Output FIELD-NAME ARGUMENT-MODEL-NAME
-
-Output FIELD-NAME optional ARGUMENT-MODEL-NAME
-```
-
 ### `Task`
-
-```
-Task TASK-NAME {
-   STEPS
-}
-```
 
 ### `Text`
 
-```
-Text FIELD-NAME
-
-Text FIELD-NAME = VALUE
-
-Text FIELD-NAME ARGUMENT-MODEL-NAME = (ARGUMENT-NAME) ->
-   VALUE
-```
-
 ### `Then`
-
-```
-If CONDITIONAL-FIELD then POSITIVE-FIELD
-
-If CONDITIONAL-FIELD then POSITIVE-FIELD else NEGATIVE-FIELD
-```
 
 ### `True`
 
-```
-PROPERTY-NAME = true
-
-Condition FIELD-NAME = true
-```
-
 ### `View`
 
-```
-View VIEW-NAME {
-   STEPS
-}
-```
-
 ### `Window`
-
-```
-Window
-```
