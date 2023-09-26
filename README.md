@@ -141,7 +141,7 @@ Case matters in preserving the actual characters of literal text, like `"Hello, 
 
 Four spaces feels wasteful of screen width, but two spaces is uncomfortable. While bucking web development norms, three spaces is an ideal compromise. We'll see if this proves to be a wise choice.
 
-Indentation matters in ViewScript. Your indentation needs to be correct for your code to compile. If not, the compiler will let you know about it immediately.
+Spacing and indentation matter in ViewScript. Your spacing and indentation need to be correct, for your code to compile. If not, the compiler will let you know about it immediately.
 
 ## Reserved Words
 
