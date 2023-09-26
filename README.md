@@ -16,7 +16,7 @@ New features in the upcoming version, _ViewScript v0.1.0_:
   - Nested HTML elements (atoms)
   - Basic Todo List App
 - Functionality
-  - Atoms' `content` property accepts atoms and collections of text + atoms
+  - Atoms' `content` property accepts elements and collections of text + elements
   - Define models
     - Define properties (fields passed down)
     - Define state (fields made automatically)
