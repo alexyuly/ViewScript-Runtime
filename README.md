@@ -4,15 +4,9 @@
 
 🧙🪄✨💖🌺
 
-ViewScript has three goals:
-
-_(Ok, we have more, but let's start somewhere...)_
-
-1. _Reduce the bloat_ of web apps, by improving dependency quality, bundle file sizes, and runtime performance.
-2. _Eliminate boilerplate code_ for web apps, by providing consistent, predictable design patterns for components and systems.
-3. _Elevate shared domain vocabulary_ and business logic in web app code, to better align with stakeholders across your organization.
-
 ### Code Examples
+
+Here are some quick examples you can use right now to get started.
 
 #### 🧑‍💻 Show a paragraph with text content:
 
@@ -23,18 +17,11 @@ View HelloWorld {
 }
 ```
 
-##### 💡 Tips
+##### 💡 Tip
 
-Curly braces surround a procedure, which is a sequence of steps to perform in order. In this example, there is just one step, to construct an HTML paragraph element.
+Curly braces surround a procedure, a sequence of steps performed in order.
 
-To construct an HTML element, use `<tag-name>`, followed by an indented list of properties.
-
-A property binds the given field or action to an object's input or output:
-
-- A parent object sends data from a field, down through a child's input, to control the child's behavior.
-- Conversely, a child object sends events up through its own output, into an action, to notify its parent of behaviors.
-
-In other words, a parent _actively controls_ its children, while a child _passively notifies_ its parents. Data has downward pressure, with parents sitting above children.
+In this example, there is just one step, to construct an HTML paragraph element, with some text content.
 
 #### 💁 Show an alert when a button is clicked:
 
@@ -79,9 +66,9 @@ View StylishHello {
 }
 ```
 
-##### 💡 Tips
+##### 💡 Tip
 
-Pass styles as properties to HTML elements. Skip the classes and selectors, and directly specify CSS properties for each element.
+Pass styles to HTML elements as properties, instead of using CSS classes.
 
 #### 👷 Build a very simple to-do list app, using many fundamental concepts:
 
