@@ -17,9 +17,9 @@ View HelloWorld {
 }
 ```
 
-##### 💡 Tip
+##### 💡 Tip 1
 
-Curly braces surround a procedure, a sequence of steps performed in order.
+Curly braces surround a procedure, a sequence of steps performed in order. A view is a kind of procedure that interacts with the browser's DOM, to render and respond to the UI.
 
 In this example, there is just one step, to construct an HTML paragraph element, with some text content.
 
@@ -33,6 +33,10 @@ View ClickMe {
 }
 ```
 
+💡 Tip 2
+
+Pass actions to output properties, to handle events like button clicks.
+
 #### 🧑‍🔬 Show text conditionally while an element is hovered:
 
 ```
@@ -45,6 +49,10 @@ View HoverMe {
       pointerleave = hovered.disable
 }
 ```
+
+💡 Tip 3
+
+
 
 #### 🧑‍🎨 Show a styled paragraph centered inside a full-screen container:
 
