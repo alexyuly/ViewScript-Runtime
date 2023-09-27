@@ -1,12 +1,12 @@
 # ViewScript
 
-🏗️ **ViewScript** is a modern language that compiles into HTML and JavaScript.
+🏗️ **ViewScript** is a modern language for web apps that compiles into HTML and JavaScript.
 
 ## Current State
 
 🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
 
-ViewScript is currently a limited proof of concept. The three code examples below demonstrate the range of available functionality.
+ViewScript is currently a limited proof of concept. The code examples below demonstrate the range of available functionality.
 
 ## Future Plans
 
