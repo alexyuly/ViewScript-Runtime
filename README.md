@@ -28,6 +28,28 @@ New features in the upcoming version, _ViewScript v0.1.0_:
   - Make a new instance of a model
   - Make a new instance of a view
   - Map a collection of data to a list of UI elements
+ 
+## Getting Started
+
+1. Install the ViewScript CLI globally:
+
+```
+npm install viewscript --global
+```
+
+2. Initialize a new ViewScript project named HelloWorld:
+
+```
+viewscript project HelloWorld
+```
+
+3. Start your ViewScript project in development mode using Webpack:
+
+```
+cd HelloWorld && npm start
+```
+
+Your default web browser should open now and show your new project's code compiled and running!
 
 ## Code Examples
 
