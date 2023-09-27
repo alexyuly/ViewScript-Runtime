@@ -1,70 +1,117 @@
-interface Listener<T> {
-  publish(value: T): void;
+class ViewScriptException extends Error {}
+
+interface Subscriber<T = unknown> {
+  dispatchEvent(value: T): void;
 }
 
-class Store<T> {
-  private model: string;
-  private value: T;
-  private readonly listeners: Array<Listener<T>> = [];
+abstract class Publisher<T = unknown> {
+  protected readonly listeners: Array<Subscriber<T>> = [];
 
-  constructor(model: string, value: T) {
-    this.model = model;
-    this.value = value;
-  }
+  abstract getValue(): T;
 
-  read() {
-    return this.value;
-  }
-
-  subscribe(listener: Listener<T>) {
+  addListener(listener: Subscriber<T>) {
     this.listeners.push(listener);
   }
 
-  protected update(value: T) {
-    this.value = value;
+  dispatchEvent(value: T) {
     this.listeners.forEach((listener) => {
-      listener.publish(value);
+      listener.dispatchEvent(value);
     });
   }
 }
 
-class ConditionStore extends Store<boolean> {
-  constructor(value: boolean) {
-    super("Condition", value);
+class Store<T = unknown> extends Publisher<T> {
+  private value: T;
+
+  constructor(value: T) {
+    super();
+    this.value = value;
   }
 
+  getValue() {
+    return this.value;
+  }
+
+  dispatchEvent(value: T) {
+    super.dispatchEvent(value);
+    this.value = value;
+  }
+}
+
+class ConditionStore extends Store<boolean> {
   disable() {
-    this.update(false);
+    this.dispatchEvent(false);
   }
 
   enable() {
-    this.update(true);
+    this.dispatchEvent(true);
   }
 
   toggle() {
-    this.update(!this.read());
+    this.dispatchEvent(!this.getValue());
   }
 }
 
-class Field {
+class Literal extends Publisher {
+  private value: any;
+
+  constructor(literal: Compiled.Literal) {
+    super();
+    this.value = literal.V;
+  }
+
+  getValue() {
+    return this.value;
+  }
+}
+
+// class Reference extends Publisher {
+//   private value: any;
+
+//   constructor(reference: Compiled.Reference) {
+//     super();
+//     this.value = literal.V;
+//   }
+
+//   getValue() {
+//     return this.value;
+//   }
+// }
+
+class Field extends Publisher {
+  readonly store: Store;
+
   constructor(field: Compiled.Field) {
-    if (field.N === "Condition") {
-      new ConditionStore(field.V.V as boolean);
+    super();
+
+    if (field.C === "Condition") {
+      this.store = new ConditionStore(field.V.V as boolean);
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct a field of unknown class \`${field.C}\``
+      );
     }
+
+    this.store.addListener(this);
+  }
+
+  getValue() {
+    return this.store.getValue();
   }
 }
 
-class Property {
-  constructor(property: Compiled.Property) {
-    // TODO
-  }
-}
+// class Property extends Publisher {
+//   constructor(property: Compiled.Property) {
+//     super();
+//     // TODO
+//   }
+// }
 
 class Atom {
   constructor(atom: Compiled.Atom) {
     // const element = document.createElement(atom.C);
     atom.P.forEach((property) => {
-      new Property(property);
+      // new Property(property);
     });
   }
 }
