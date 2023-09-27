@@ -2,7 +2,7 @@
 
 🏗️ **ViewScript** is a modern language for web apps that compiles into HTML and JavaScript.
 
-ℹ️ Please install [Node.js 18](https://nodejs.org/) to use ViewScript.
+ℹ️ Please install [Node.js 18](https://nodejs.org) to use ViewScript.
  
 ## Getting Started
 
@@ -18,7 +18,7 @@ npm install viewscript --global
 viewscript project HelloWorld
 ```
 
-3. Start your ViewScript project in development mode using Webpack:
+3. Start your ViewScript project in development mode using [Webpack](https://webpack.js.org):
 
 ```
 cd HelloWorld && npm start
