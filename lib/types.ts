@@ -46,10 +46,10 @@ namespace Compiled {
     V: Field | Reference | Conditional;
   };
 
-  export type Atom = {
-    /** kind: "atom" */
-    K: "a";
-    /** class (tag-name) */
+  export type Element = {
+    /** kind: "element" */
+    K: "e";
+    /** class (tag) */
     C: string;
     /** properties */
     P: Array<Property>;
@@ -61,7 +61,7 @@ namespace Compiled {
     /** name */
     N: string;
     /** body */
-    B: Array<Field | Atom>;
+    B: Array<Field | Element>;
   };
 
   export type App = {

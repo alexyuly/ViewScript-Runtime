@@ -9,45 +9,48 @@ abstract class Binding<T = unknown> {
 
   dispatchEvent(value: T) {
     this.listeners.forEach((listener) => {
-      listener.dispatchEvent(value);
+      listener.receiveEvent(value);
     });
   }
 
-  abstract getValue(): T;
+  abstract getValue(): T | undefined;
+
+  abstract receiveEvent(value: T): void;
 }
 
 class Store<T = unknown> extends Binding<T> {
-  private value: T;
+  readonly id: string;
+  private value?: T;
 
-  constructor(value: T) {
+  constructor(value?: T) {
     super();
 
-    this.value = value;
-  }
-
-  dispatchEvent(value: T) {
-    super.dispatchEvent(value);
-
+    this.id = window.crypto.randomUUID();
     this.value = value;
   }
 
   getValue() {
     return this.value;
   }
+
+  receiveEvent(value: T) {
+    this.value = value;
+    this.dispatchEvent(value);
+  }
 }
 
-class ConditionStore extends Store<boolean> {
-  disable() {
-    this.dispatchEvent(false);
-  }
+const bindOutput = <T>(action: (argument: T) => void) => {
+  return new (class extends Store<T | undefined> {
+    receiveEvent(argument: T) {
+      action(argument);
+    }
+  })();
+};
 
-  enable() {
-    this.dispatchEvent(true);
-  }
-
-  toggle() {
-    this.dispatchEvent(!this.getValue());
-  }
+class Condition extends Store<boolean> {
+  readonly disable = bindOutput(() => this.receiveEvent(true));
+  readonly enable = bindOutput(() => this.receiveEvent(false));
+  readonly toggle = bindOutput(() => this.receiveEvent(!this.getValue()));
 }
 
 class Field extends Binding {
@@ -57,7 +60,7 @@ class Field extends Binding {
     super();
 
     if (field.C === "Condition") {
-      this.store = new ConditionStore(field.V.V as boolean);
+      this.store = new Condition(field.V.V as boolean);
     } else {
       throw new ViewScriptException(
         `Cannot construct a field of unknown class \`${field.C}\``
@@ -67,31 +70,75 @@ class Field extends Binding {
     this.store.addListener(this);
   }
 
+  getChild(name: string): Binding {
+    if (this.store instanceof Condition) {
+      switch (name) {
+        case "disable":
+          return this.store.disable;
+        case "enable":
+          return this.store.enable;
+        case "toggle":
+          return this.store.toggle;
+      }
+    }
+
+    throw new ViewScriptException(
+      `Cannot getChild \`${name}\` of field with store ${this.store.id}`
+    );
+  }
+
   getValue() {
     return this.store.getValue();
+  }
+
+  receiveEvent(value: unknown) {
+    this.store.receiveEvent(value);
   }
 }
 
 class Reference extends Binding {
-  constructor(reference: Compiled.Reference) {
+  constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
     super();
 
-    // TODO
+    if (typeof reference.N === "string") {
+      fields[reference.N];
+    }
   }
 
   getValue() {
+    // TODO
+  }
+
+  receiveEvent(value: unknown) {
     // TODO
   }
 }
 
 class Conditional extends Binding {
-  constructor(conditional: Compiled.Conditional) {
+  private readonly query: Reference;
+  private readonly yes: Field;
+  private readonly zag: Field;
+
+  constructor(
+    conditional: Compiled.Conditional,
+    fields: Record<string, Field>
+  ) {
     super();
 
-    // TODO
+    this.query = new Reference(conditional.Q, fields);
+    this.yes = new Field(conditional.Y);
+    this.zag = new Field(conditional.Z);
+
+    this.query.addListener(this);
   }
 
+  dispatchEvent(value: unknown): void {}
+
   getValue() {
+    return this.query.getValue() ? this.yes.getValue() : this.zag.getValue();
+  }
+
+  receiveEvent(value: unknown) {
     // TODO
   }
 }
@@ -99,15 +146,15 @@ class Conditional extends Binding {
 class Property extends Binding {
   private readonly binding: Binding;
 
-  constructor(property: Compiled.Property) {
+  constructor(property: Compiled.Property, fields: Record<string, Field>) {
     super();
 
     if (property.V.K === "f") {
       this.binding = new Field(property.V);
     } else if (property.V.K === "r") {
-      this.binding = new Reference(property.V);
+      this.binding = new Reference(property.V, fields);
     } else if (property.V.K === "c") {
-      this.binding = new Conditional(property.V);
+      this.binding = new Conditional(property.V, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct a property of unknown kind "${
@@ -120,13 +167,16 @@ class Property extends Binding {
   getValue() {
     return this.binding.getValue();
   }
+
+  receiveEvent(value: unknown) {
+    this.binding.receiveEvent(value);
+  }
 }
 
-class Atom {
-  constructor(atom: Compiled.Atom, fields: Record<string, Field>) {
-    // const element = document.createElement(atom.C);
-    atom.P.forEach((property) => {
-      new Property(property);
+class Element {
+  constructor(element: Compiled.Element, fields: Record<string, Field>) {
+    element.P.forEach((property) => {
+      new Property(property, fields);
     });
   }
 }
@@ -138,8 +188,8 @@ class View {
     view.B.forEach((statement) => {
       if (statement.K === "f") {
         this.fields[statement.N] = new Field(statement);
-      } else if (statement.K === "a") {
-        new Atom(statement, this.fields);
+      } else if (statement.K === "e") {
+        new Element(statement, this.fields);
       }
     });
   }
