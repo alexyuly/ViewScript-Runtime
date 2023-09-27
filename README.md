@@ -18,7 +18,7 @@ npm install viewscript --global
 viewscript project HelloWorld
 ```
 
-3. Start your ViewScript project in development mode using [Webpack](https://webpack.js.org):
+3. Start your ViewScript project in development mode using [webpack](https://webpack.js.org):
 
 ```
 cd HelloWorld && npm start
