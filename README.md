@@ -28,7 +28,9 @@ Your default web browser should open now and show your new project's code compil
 
 🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
 
-ViewScript is currently a limited proof of concept. The code examples below demonstrate the range of available functionality. ViewScript v0.1.0 is under development to add more capabilities.
+ViewScript is currently a limited proof of concept. The code examples below demonstrate the range of available functionality.
+
+ViewScript v0.1.0 is under development to add more capabilities.
 
 ## Code Examples
 
