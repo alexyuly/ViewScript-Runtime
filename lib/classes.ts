@@ -1,9 +1,13 @@
 class ViewScriptException extends Error {}
 
-abstract class Binding<T = unknown> {
-  private readonly listeners: Array<Binding<T>> = [];
+interface Subscriber<T = unknown> {
+  receiveEvent(value: T): void;
+}
 
-  addListener(listener: Binding<T>) {
+abstract class Publisher<T = unknown> {
+  private readonly listeners: Array<Subscriber<T>> = [];
+
+  addListener(listener: Subscriber<T>) {
     this.listeners.push(listener);
   }
 
@@ -12,13 +16,12 @@ abstract class Binding<T = unknown> {
       listener.receiveEvent(value);
     });
   }
-
-  abstract getValue(): T | undefined;
-
-  abstract receiveEvent(value: T): void;
 }
 
-class Store<T = unknown> extends Binding<T> {
+abstract class Store<T = unknown>
+  extends Publisher<T>
+  implements Subscriber<T>
+{
   readonly id: string;
   private value?: T;
 
@@ -39,21 +42,25 @@ class Store<T = unknown> extends Binding<T> {
   }
 }
 
-const bindOutput = <T>(action: (argument: T) => void) => {
-  return new (class extends Store<T | undefined> {
-    receiveEvent(argument: T) {
-      action(argument);
-    }
-  })();
-};
+class Effect<T> implements Subscriber<T> {
+  private readonly sink: (argument: T) => void;
 
-class Condition extends Store<boolean> {
-  readonly disable = bindOutput(() => this.receiveEvent(true));
-  readonly enable = bindOutput(() => this.receiveEvent(false));
-  readonly toggle = bindOutput(() => this.receiveEvent(!this.getValue()));
+  constructor(sink: (argument: T) => void) {
+    this.sink = sink;
+  }
+
+  receiveEvent(argument: T) {
+    this.sink(argument);
+  }
 }
 
-class Field extends Binding {
+class Condition extends Store<boolean> {
+  readonly disable = new Effect(() => this.receiveEvent(true));
+  readonly enable = new Effect(() => this.receiveEvent(false));
+  readonly toggle = new Effect(() => this.receiveEvent(!this.getValue()));
+}
+
+class Field extends Publisher implements Subscriber {
   private readonly store: Store;
 
   constructor(field: Compiled.Field) {
@@ -70,33 +77,16 @@ class Field extends Binding {
     this.store.addListener(this);
   }
 
-  getChild(name: string): Binding {
-    if (this.store instanceof Condition) {
-      switch (name) {
-        case "disable":
-          return this.store.disable;
-        case "enable":
-          return this.store.enable;
-        case "toggle":
-          return this.store.toggle;
-      }
-    }
-
-    throw new ViewScriptException(
-      `Cannot getChild \`${name}\` of field with store ${this.store.id}`
-    );
-  }
-
   getValue() {
     return this.store.getValue();
   }
 
   receiveEvent(value: unknown) {
-    this.store.receiveEvent(value);
+    this.dispatchEvent(value);
   }
 }
 
-class Reference extends Binding {
+class Reference extends Publisher implements Subscriber {
   constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
     super();
 
@@ -105,16 +95,12 @@ class Reference extends Binding {
     }
   }
 
-  getValue() {
-    // TODO
-  }
-
   receiveEvent(value: unknown) {
     // TODO
   }
 }
 
-class Conditional extends Binding {
+class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly query: Reference;
   private readonly yes: Field;
   private readonly zag: Field;
@@ -132,19 +118,13 @@ class Conditional extends Binding {
     this.query.addListener(this);
   }
 
-  dispatchEvent(value: unknown): void {}
-
-  getValue() {
-    return this.query.getValue() ? this.yes.getValue() : this.zag.getValue();
-  }
-
-  receiveEvent(value: unknown) {
-    // TODO
+  receiveEvent(value: boolean) {
+    this.dispatchEvent(value ? this.yes.getValue() : this.zag.getValue());
   }
 }
 
-class Property extends Binding {
-  private readonly binding: Binding;
+class Property extends Publisher implements Subscriber {
+  private readonly binding: Publisher & Subscriber;
 
   constructor(property: Compiled.Property, fields: Record<string, Field>) {
     super();
@@ -162,10 +142,6 @@ class Property extends Binding {
         }"`
       );
     }
-  }
-
-  getValue() {
-    return this.binding.getValue();
   }
 
   receiveEvent(value: unknown) {
