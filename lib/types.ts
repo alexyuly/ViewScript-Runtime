@@ -6,15 +6,6 @@ namespace Compiled {
     V: unknown;
   };
 
-  export type Reference = {
-    /** kind: "reference" */
-    K: "r";
-    /** name or names */
-    N: string | Array<string>;
-    /** argument */
-    A?: Literal;
-  };
-
   export type Field = {
     /** kind: "field" */
     K: "f";
@@ -26,15 +17,24 @@ namespace Compiled {
     V: Literal;
   };
 
+  export type Reference = {
+    /** kind: "reference" */
+    K: "r";
+    /** name or names */
+    N: string | Array<string>;
+    /** argument */
+    A?: Field;
+  };
+
   export type Conditional = {
     /** kind: "conditional" */
     K: "c";
     /** query */
     Q: Reference;
     /** yes branch */
-    Y: Literal;
+    Y: Field;
     /** zag branch */
-    Z: Literal;
+    Z: Field;
   };
 
   export type Property = {
@@ -43,7 +43,7 @@ namespace Compiled {
     /** name */
     N: string;
     /** value */
-    V: Literal | Reference | Conditional;
+    V: Field | Reference | Conditional;
   };
 
   export type Atom = {

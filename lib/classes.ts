@@ -1,15 +1,9 @@
 class ViewScriptException extends Error {}
 
-interface Subscriber<T = unknown> {
-  dispatchEvent(value: T): void;
-}
+abstract class Binding<T = unknown> {
+  private readonly listeners: Array<Binding<T>> = [];
 
-abstract class Publisher<T = unknown> {
-  protected readonly listeners: Array<Subscriber<T>> = [];
-
-  abstract getValue(): T;
-
-  addListener(listener: Subscriber<T>) {
+  addListener(listener: Binding<T>) {
     this.listeners.push(listener);
   }
 
@@ -18,23 +12,27 @@ abstract class Publisher<T = unknown> {
       listener.dispatchEvent(value);
     });
   }
+
+  abstract getValue(): T;
 }
 
-class Store<T = unknown> extends Publisher<T> {
+class Store<T = unknown> extends Binding<T> {
   private value: T;
 
   constructor(value: T) {
     super();
+
+    this.value = value;
+  }
+
+  dispatchEvent(value: T) {
+    super.dispatchEvent(value);
+
     this.value = value;
   }
 
   getValue() {
     return this.value;
-  }
-
-  dispatchEvent(value: T) {
-    super.dispatchEvent(value);
-    this.value = value;
   }
 }
 
@@ -52,34 +50,8 @@ class ConditionStore extends Store<boolean> {
   }
 }
 
-class Literal extends Publisher {
-  private value: any;
-
-  constructor(literal: Compiled.Literal) {
-    super();
-    this.value = literal.V;
-  }
-
-  getValue() {
-    return this.value;
-  }
-}
-
-// class Reference extends Publisher {
-//   private value: any;
-
-//   constructor(reference: Compiled.Reference) {
-//     super();
-//     this.value = literal.V;
-//   }
-
-//   getValue() {
-//     return this.value;
-//   }
-// }
-
-class Field extends Publisher {
-  readonly store: Store;
+class Field extends Binding {
+  private readonly store: Store;
 
   constructor(field: Compiled.Field) {
     super();
@@ -100,29 +72,74 @@ class Field extends Publisher {
   }
 }
 
-// class Property extends Publisher {
-//   constructor(property: Compiled.Property) {
-//     super();
-//     // TODO
-//   }
-// }
+class Reference extends Binding {
+  constructor(reference: Compiled.Reference) {
+    super();
+
+    // TODO
+  }
+
+  getValue() {
+    // TODO
+  }
+}
+
+class Conditional extends Binding {
+  constructor(conditional: Compiled.Conditional) {
+    super();
+
+    // TODO
+  }
+
+  getValue() {
+    // TODO
+  }
+}
+
+class Property extends Binding {
+  private readonly binding: Binding;
+
+  constructor(property: Compiled.Property) {
+    super();
+
+    if (property.V.K === "f") {
+      this.binding = new Field(property.V);
+    } else if (property.V.K === "r") {
+      this.binding = new Reference(property.V);
+    } else if (property.V.K === "c") {
+      this.binding = new Conditional(property.V);
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct a property of unknown kind "${
+          (property.V as { K: unknown }).K
+        }"`
+      );
+    }
+  }
+
+  getValue() {
+    return this.binding.getValue();
+  }
+}
 
 class Atom {
-  constructor(atom: Compiled.Atom) {
+  constructor(atom: Compiled.Atom, fields: Record<string, Field>) {
     // const element = document.createElement(atom.C);
     atom.P.forEach((property) => {
-      // new Property(property);
+      new Property(property);
     });
   }
 }
 
 class View {
+  private readonly fields: Record<string, Field> = {};
+
   constructor(view: Compiled.View) {
     view.B.forEach((statement) => {
       if (statement.K === "f") {
-        new Field(statement);
+        this.fields[statement.N] = new Field(statement);
       } else if (statement.K === "a") {
-        new Atom(statement);
+        new Atom(statement, this.fields);
       }
     });
   }
