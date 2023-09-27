@@ -36,7 +36,7 @@ function printSource(fileLines, focusedLineNumber) {
   );
 
   console.log(
-    `\n 🌱 \x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
+    `\n🌱\x1b[32m\x1b[1m SOURCE\n\n\x1b[0m${fileLines
       .map(
         (line, L) =>
           `${new Array(
@@ -56,9 +56,9 @@ function check(condition, message, lineNumber, lines) {
     printSource(lines, lineNumber);
 
     console.log(
-      `\n 📣 \x1b[33m\x1b[1m ERROR \x1b[0m\n\n\x1b[31m There is an error on line ${
+      `\n📣\x1b[33m\x1b[1m ERROR \x1b[0m\n\n\x1b[31mThere is an error on line ${
         lineNumber + 1
-      }:\n\x1b[33m${lines[lineNumber]}\n\n\x1b[31m ${message}\n\x1b[0m`
+      }:\n\n\x1b[33m${lines[lineNumber]}\n\n\x1b[31m${message}\n\x1b[0m`
     );
     process.exitCode = 1;
     throw new ViewScriptCompileError(message);
@@ -71,11 +71,6 @@ function checkName(name, qualifier, lineNumber, lines) {
     `Invalid ${qualifier} name: Must not be literal text.`,
     lineNumber,
     lines
-  );
-
-  check(
-    /^([\w-])+$/.test(name),
-    `Invalid ${qualifier} name: Must contain only alphanumeric, underscore, and hyphen characters.`
   );
 
   check(
@@ -100,7 +95,7 @@ function makeTokens(fileLines) {
     const line = tokens[L];
 
     let consecutiveEmptyWords = 0;
-    let consecutiveTextParts = 0;
+    const consecutiveParts = { backtick: 0, quote: 0 };
 
     for (let W = 0; W < line.length; W++) {
       const word = line[W];
@@ -144,37 +139,47 @@ function makeTokens(fileLines) {
           consecutiveEmptyWords = 0;
         }
 
-        if (word[0] === '"') {
-          check(
-            consecutiveTextParts === 0 || word.length === 1,
-            `Invalid syntax: Expected a space after the closing quote.`,
-            L,
-            fileLines
-          );
-        } else if (
-          word[word.length - 1] === '"' &&
-          word[word.length - 2] !== "\\"
-        ) {
-          check(
-            consecutiveTextParts > 0,
-            `Invalid syntax: Expected a space before the opening quote.`,
-            L,
-            fileLines
-          );
-        }
-
-        if (word[0] === '"' && consecutiveTextParts === 0) {
-          if (word[word.length - 1] === '"' && word[word.length - 2] !== "\\") {
-            line.splice(W - consecutiveTextParts, consecutiveTextParts + 1, {
-              text: word.slice(1, word.length - 1),
-            });
-          } else {
-            consecutiveTextParts++;
+        function parseEnclosedSection(type, delimiter) {
+          if (word[0] === delimiter) {
+            check(
+              consecutiveParts[type] === 0 || word.length === 1,
+              `Invalid syntax: Expected a space after the closing ${type}.`,
+              L,
+              fileLines
+            );
+          } else if (
+            word[word.length - 1] === delimiter &&
+            word[word.length - 2] !== "\\"
+          ) {
+            check(
+              consecutiveParts[type] > 0,
+              `Invalid syntax: Expected a space before the opening ${type}.`,
+              L,
+              fileLines
+            );
           }
-        } else if (word[0] === '"' || word[word.length - 1] === '"') {
-          line.splice(W - consecutiveTextParts, consecutiveTextParts + 1, {
-            text: line
-              .slice(W - consecutiveTextParts, W + 1)
+
+          if (word[0] === delimiter && consecutiveParts[type] === 0) {
+            if (
+              word[word.length - 1] === delimiter &&
+              word[word.length - 2] !== "\\"
+            ) {
+              const text = word.slice(1, word.length - 1);
+
+              line.splice(
+                W - consecutiveParts[type],
+                consecutiveParts[type] + 1,
+                type === "quote" ? { text } : text
+              );
+            } else {
+              consecutiveParts[type]++;
+            }
+          } else if (
+            word[0] === delimiter ||
+            word[word.length - 1] === delimiter
+          ) {
+            const text = line
+              .slice(W - consecutiveParts[type], W + 1)
               .reduce(
                 (r, x, i, a) =>
                   r +
@@ -184,15 +189,24 @@ function makeTokens(fileLines) {
                     ? x.slice(0, x.length - 1)
                     : x + " "),
                 ""
-              ),
-          });
+              );
 
-          wordIndexOffset += consecutiveTextParts - 1;
+            line.splice(
+              W - consecutiveParts[type],
+              consecutiveParts[type] + 1,
+              type === "quote" ? { text } : text
+            );
 
-          consecutiveTextParts = 0;
-        } else if (consecutiveTextParts > 0) {
-          consecutiveTextParts++;
+            wordIndexOffset += consecutiveParts[type] - 1;
+
+            consecutiveParts[type] = 0;
+          } else if (consecutiveParts[type] > 0) {
+            consecutiveParts[type]++;
+          }
         }
+
+        parseEnclosedSection("backtick", "`");
+        parseEnclosedSection("quote", '"');
       }
 
       W -= wordIndexOffset;
@@ -413,11 +427,11 @@ function makeTree(fileLines) {
   );
 
   console.log(
-    `\n 🌳 \x1b[32m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
+    `\n🌳\x1b[32m\x1b[1m TREE \x1b[0m\n\n${JSON.stringify(
       tree,
       null,
       2
-    )}\n\n\n 🌿 \x1b[32m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
+    )}\n\n\n🌿\x1b[32m\x1b[1m TOKENS \x1b[0m\n\n${JSON.stringify(
       tokens,
       null,
       2
@@ -437,14 +451,14 @@ function main() {
   if (!filename) {
     const message = "You must provide the path to a file.";
     console.log(
-      `\n ⛔️ \x1b[31m\x1b[1m ERROR\n\n\x1b[0m\x1b[31m ${message}\n\x1b[0m`
+      `\n📣\x1b[33m\x1b[1m ERROR\n\n\x1b[0m\x1b[31m${message}\n\x1b[0m`
     );
     process.exitCode = 1;
     throw new ViewScriptCompileError(message);
   }
 
   console.log(
-    `\x1b[36m 💬  Compiling HTML and JavaScript from ${filename}\n\x1b[0m`
+    `💬\x1b[36m Compiling HTML and JavaScript from ${filename}\n\x1b[0m`
   );
 
   const fileContent = fs.readFileSync(path.resolve(filename), "utf8");
