@@ -1,33 +1,6 @@
 # ViewScript
 
 🏗️ **ViewScript** is a modern language for web apps that compiles into HTML and JavaScript.
-
-## Current State
-
-🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
-
-ViewScript is currently a limited proof of concept. The code examples below demonstrate the range of available functionality.
-
-## Future Plans
-
-New features in the upcoming version, _ViewScript v0.1.0_:
-
-- Examples
-  - Nested HTML elements (atoms)
-  - Basic Todo List App
-- Functionality
-  - Atoms' `content` property accepts elements and collections of text + elements
-  - Define models
-    - Define properties (fields passed down)
-    - Define state (fields made automatically)
-    - Define actions
-  - Define input properties in views
-  - Define output properties in views
-  - Define collection properties in views
-  - Element output properties accept arrows
-  - Make a new instance of a model
-  - Make a new instance of a view
-  - Map a collection of data to a list of UI elements
  
 ## Getting Started
 
@@ -50,6 +23,12 @@ cd HelloWorld && npm start
 ```
 
 Your default web browser should open now and show your new project's code compiled and running!
+
+## Current State
+
+🎉 **ViewScript v0.0.0** is the **first** and **latest version**, published September 30, 2023.
+
+ViewScript is currently a limited proof of concept. The code examples below demonstrate the range of available functionality. ViewScript v0.1.0 is under development to add more capabilities.
 
 ## Code Examples
 
