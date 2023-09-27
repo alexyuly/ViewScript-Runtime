@@ -1,17 +1,16 @@
 {
-  "name": "viewscript",
+  "name": "viewscript-runtime",
   "version": "0.0.0",
-  "description": "ViewScript",
-  "main": "main.mjs",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "ViewScript Runtime for web browsers",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/alexyuly/ViewScript.git"
   },
   "author": "Alex Yuly",
-  "license": "UNLICENSED",
-  "dependencies": {
-    "webpack": "5.88.2"
-  },
+  "license": "MIT",
+  "homepage": "https://github.com/alexyuly/ViewScript#readme",
   "devDependencies": {
-    "prettier": "3.0.3"
+    "prettier": "3.0.3",
+    "typescript": "5.2.2"
   }
 }

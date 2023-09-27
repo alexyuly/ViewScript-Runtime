@@ -1,4 +1,0 @@
-View `Show a paragraph of text` {
-   <p>
-      content = "Hello, world!"
-}
