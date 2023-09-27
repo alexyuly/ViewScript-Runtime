@@ -6,7 +6,7 @@
  
 ## Getting Started
 
-1. Install the ViewScript CLI globally:
+1. Install ViewScript globally:
 
 ```
 npm install viewscript --global
