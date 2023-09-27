@@ -1,102 +1,89 @@
 class ViewScriptException extends Error {}
 
 interface Subscriber<T = unknown> {
-  receiveEvent(value: T): void;
+  take(value: T): void;
 }
 
 abstract class Publisher<T = unknown> {
   private readonly listeners: Array<Subscriber<T>> = [];
 
-  addListener(listener: Subscriber<T>) {
-    this.listeners.push(listener);
+  publish(value: T) {
+    this.listeners.forEach((listener) => {
+      listener.take(value);
+    });
   }
 
-  dispatchEvent(value: T) {
-    this.listeners.forEach((listener) => {
-      listener.receiveEvent(value);
-    });
+  subscribe(listener: Subscriber<T>) {
+    this.listeners.push(listener);
   }
 }
 
-abstract class Store<T = unknown>
-  extends Publisher<T>
-  implements Subscriber<T>
-{
+class Field extends Publisher implements Subscriber {
   readonly id: string;
-  private value?: T;
 
-  constructor(value?: T) {
+  private members: Record<string, Publisher | Subscriber> = {};
+  private modelName: string;
+  private value?: unknown;
+
+  constructor(field: Compiled.Field) {
     super();
 
     this.id = window.crypto.randomUUID();
-    this.value = value;
+    this.modelName = field.C;
+    this.value = field.V.V;
+
+    if (this.modelName === "Condition") {
+      this.members.disable = { take: () => this.take(true) };
+      this.members.enable = { take: () => this.take(false) };
+      this.members.toggle = { take: () => this.take(!this.getValue()) };
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct a field of unknown class \`${this.modelName}\``
+      );
+    }
+  }
+
+  getMember(name: string) {
+    if (!(name in this.members)) {
+      throw new ViewScriptException(
+        `Cannot getMember \`${name}\` of field \`${this.id}\` of class \`${this.modelName}\``
+      );
+    }
+
+    return this.members[name];
   }
 
   getValue() {
     return this.value;
   }
 
-  receiveEvent(value: T) {
+  take(value: unknown) {
     this.value = value;
-    this.dispatchEvent(value);
-  }
-}
-
-class Effect<T> implements Subscriber<T> {
-  private readonly sink: (argument: T) => void;
-
-  constructor(sink: (argument: T) => void) {
-    this.sink = sink;
-  }
-
-  receiveEvent(argument: T) {
-    this.sink(argument);
-  }
-}
-
-class Condition extends Store<boolean> {
-  readonly disable = new Effect(() => this.receiveEvent(true));
-  readonly enable = new Effect(() => this.receiveEvent(false));
-  readonly toggle = new Effect(() => this.receiveEvent(!this.getValue()));
-}
-
-class Field extends Publisher implements Subscriber {
-  private readonly store: Store;
-
-  constructor(field: Compiled.Field) {
-    super();
-
-    if (field.C === "Condition") {
-      this.store = new Condition(field.V.V as boolean);
-    } else {
-      throw new ViewScriptException(
-        `Cannot construct a field of unknown class \`${field.C}\``
-      );
-    }
-
-    this.store.addListener(this);
-  }
-
-  getValue() {
-    return this.store.getValue();
-  }
-
-  receiveEvent(value: unknown) {
-    this.dispatchEvent(value);
+    this.publish(value);
   }
 }
 
 class Reference extends Publisher implements Subscriber {
+  private readonly binding: Publisher | Subscriber;
+
   constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
     super();
 
     if (typeof reference.N === "string") {
-      fields[reference.N];
+      this.binding = fields[reference.N];
+    } else {
+      this.binding = fields[reference.N[0]].getMember(reference.N[1]);
+    }
+
+    if ("subscribe" in this.binding) {
+      this.binding.subscribe(this);
+    } else {
+      this.subscribe(this.binding);
     }
   }
 
-  receiveEvent(value: unknown) {
-    // TODO
+  take(value: unknown) {
+    this.publish(value);
   }
 }
 
@@ -115,14 +102,15 @@ class Conditional extends Publisher implements Subscriber<boolean> {
     this.yes = new Field(conditional.Y);
     this.zag = new Field(conditional.Z);
 
-    this.query.addListener(this);
+    this.query.subscribe(this);
   }
 
-  receiveEvent(value: boolean) {
-    this.dispatchEvent(value ? this.yes.getValue() : this.zag.getValue());
+  take(value: boolean) {
+    this.publish(value ? this.yes.getValue() : this.zag.getValue());
   }
 }
 
+// TODO fix all this
 class Property extends Publisher implements Subscriber {
   private readonly binding: Publisher & Subscriber;
 
@@ -144,11 +132,12 @@ class Property extends Publisher implements Subscriber {
     }
   }
 
-  receiveEvent(value: unknown) {
-    this.binding.receiveEvent(value);
+  take(value: unknown) {
+    this.binding.take(value);
   }
 }
 
+// TODO fix all this
 class Element {
   constructor(element: Compiled.Element, fields: Record<string, Field>) {
     element.P.forEach((property) => {
