@@ -100,8 +100,6 @@ class Text extends Field<string> {
 }
 
 class Reference extends Binding {
-  private readonly member: Publisher | Subscriber;
-
   constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
     super();
 
@@ -120,24 +118,24 @@ class Reference extends Binding {
       return name;
     };
 
-    this.member = fields[getNextName()];
+    let port: Publisher | Subscriber = fields[getNextName()];
 
     while (names.length > 0) {
       const nextName = getNextName();
 
-      if (!(this.member instanceof Field)) {
+      if (!(port instanceof Field)) {
         throw new ViewScriptException(
           `Cannot dereference invalid name \`${reference.N}\``
         );
       }
 
-      this.member.getMember(nextName);
+      port = port.getMember(nextName);
     }
 
-    if ("subscribe" in this.member) {
-      this.member.subscribe(this);
+    if ("subscribe" in port) {
+      port.subscribe(this);
     } else {
-      this.subscribe(this.member);
+      this.subscribe(port);
     }
   }
 }
