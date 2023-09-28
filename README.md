@@ -35,6 +35,10 @@ View HelloWorld {
 
 > HelloWorld is a view, with one paragraph element, with content of "Hello, world!"
 
+- view
+  - element
+    - input = field
+
 ## Click a button to log
 
 ```
@@ -46,3 +50,8 @@ View `Click a button to log` {
 ```
 
 > "Click a button to log" is a view, with one button element, with content of "Click me!" and click handled by console logging "You clicked the button."
+
+- view
+  - element
+    - input = field
+    - output = reference field
