@@ -76,7 +76,8 @@ abstract class Field<T = unknown> extends Binding<T> {
   protected when(name: string, reducer: () => T) {
     this.members[name] = {
       take: () => {
-        this.take(reducer());
+        const nextValue = reducer();
+        this.take(nextValue);
       },
     };
   }
@@ -154,7 +155,8 @@ class Conditional extends Publisher implements Subscriber<boolean> {
     this.yes = Field.create(conditional.Y);
     this.zag = Field.create(conditional.Z);
 
-    new Reference(conditional.Q, fields).subscribe(this);
+    const query = new Reference(conditional.Q, fields);
+    query.subscribe(this);
   }
 
   take(value: boolean) {
@@ -163,17 +165,17 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 }
 
 class Input extends Binding {
-  private readonly publisher: Publisher;
-
   constructor(input: Compiled.Input, fields: Record<string, Field>) {
     super();
 
+    let publisher: Publisher;
+
     if (input.V.K === "f") {
-      this.publisher = Field.create(input.V);
+      publisher = Field.create(input.V);
     } else if (input.V.K === "r") {
-      this.publisher = new Reference(input.V, fields);
+      publisher = new Reference(input.V, fields);
     } else if (input.V.K === "c") {
-      this.publisher = new Conditional(input.V, fields);
+      publisher = new Conditional(input.V, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an input of unknown kind "${
@@ -182,18 +184,16 @@ class Input extends Binding {
       );
     }
 
-    this.publisher.subscribe(this);
+    publisher.subscribe(this);
   }
 }
 
 class Output extends Binding {
-  private readonly reference: Reference;
-
   constructor(output: Compiled.Output, fields: Record<string, Field>) {
     super();
 
-    this.reference = new Reference(output.V, fields);
-    this.subscribe(this.reference);
+    const subscriber = new Reference(output.V, fields);
+    this.subscribe(subscriber);
   }
 }
 
