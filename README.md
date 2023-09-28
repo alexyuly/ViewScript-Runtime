@@ -33,11 +33,9 @@ View HelloWorld {
 }
 ```
 
-> HelloWorld is a view, with one paragraph element, with content of "Hello, world!"
+**HelloWorld** is a view, with one paragraph element, with content of "Hello, world!".
 
-- view
-  - element
-    - input = field
+`<p>` is a paragraph element. It has one input named `content`, bound to a text field.
 
 ## Click a button to log
 
@@ -49,9 +47,4 @@ View `Click a button to log` {
 }
 ```
 
-> "Click a button to log" is a view, with one button element, with content of "Click me!" and click handled by console logging "You clicked the button."
-
-- view
-  - element
-    - input = field
-    - output = reference field
+**"Click a button to log"** is a view, with one button element, with content of "Click me!" and click handled by console logging "You clicked the button.".
