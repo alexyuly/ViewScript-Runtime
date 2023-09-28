@@ -14,7 +14,7 @@ namespace Compiled {
     /** kind: "reference" */
     K: "r";
     /** name or names */
-    N: string | Array<string>;
+    N: string | [string, string] | [string, string, string];
     /** argument */
     A?: Field;
   };
@@ -30,13 +30,22 @@ namespace Compiled {
     Z: Field;
   };
 
-  export type Property = {
-    /** kind: "property" */
-    K: "p";
+  export type Input = {
+    /** kind: "input" */
+    K: "i";
     /** name */
     N: string;
     /** value */
     V: Field | Reference | Conditional;
+  };
+
+  export type Output = {
+    /** kind: "output" */
+    K: "o";
+    /** name */
+    N: string;
+    /** value */
+    V: Reference;
   };
 
   export type Element = {
@@ -45,7 +54,7 @@ namespace Compiled {
     /** class (tag) */
     C: string;
     /** properties */
-    P: Array<Property>;
+    P: Array<Input | Output>;
   };
 
   export type View = {

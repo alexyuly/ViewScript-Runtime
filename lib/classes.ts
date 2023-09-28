@@ -18,7 +18,16 @@ abstract class Publisher<T = unknown> {
   }
 }
 
-class Field extends Publisher implements Subscriber {
+abstract class Binding<T = unknown>
+  extends Publisher<T>
+  implements Subscriber<T>
+{
+  take(value: T) {
+    this.publish(value);
+  }
+}
+
+class Field extends Binding {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName: string;
@@ -58,11 +67,12 @@ class Field extends Publisher implements Subscriber {
 
   take(value: unknown) {
     this.value = value;
-    this.publish(value);
+
+    super.take(value);
   }
 }
 
-class Reference extends Publisher implements Subscriber {
+class Reference extends Binding {
   private readonly binding: Publisher | Subscriber;
 
   constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
@@ -70,8 +80,16 @@ class Reference extends Publisher implements Subscriber {
 
     if (typeof reference.N === "string") {
       this.binding = fields[reference.N];
-    } else {
+    } else if (reference.N instanceof Array && reference.N.length === 2) {
       this.binding = fields[reference.N[0]].getMember(reference.N[1]);
+    } else if (reference.N instanceof Array && reference.N.length === 3) {
+      this.binding = (
+        fields[reference.N[0]].getMember(reference.N[1]) as Field
+      ).getMember(reference.N[2]);
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct a reference of invalid name "${reference.N}"`
+      );
     }
 
     if ("subscribe" in this.binding) {
@@ -79,10 +97,6 @@ class Reference extends Publisher implements Subscriber {
     } else {
       this.subscribe(this.binding);
     }
-  }
-
-  take(value: unknown) {
-    this.publish(value);
   }
 }
 
@@ -109,46 +123,58 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   }
 }
 
-// TODO How do we distinguish input and output properties?
-class Property extends Publisher implements Subscriber {
-  private readonly binding: Publisher & Subscriber;
+class Input extends Binding {
+  private readonly publisher: Publisher;
 
-  constructor(property: Compiled.Property, fields: Record<string, Field>) {
+  constructor(input: Compiled.Input, fields: Record<string, Field>) {
     super();
 
-    if (property.V.K === "f") {
-      this.binding = new Field(property.V);
-    } else if (property.V.K === "r") {
-      this.binding = new Reference(property.V, fields);
-      this.subscribe(this.binding);
-    } else if (property.V.K === "c") {
-      this.binding = new Conditional(property.V, fields);
+    if (input.V.K === "f") {
+      this.publisher = new Field(input.V);
+    } else if (input.V.K === "r") {
+      this.publisher = new Reference(input.V, fields);
+    } else if (input.V.K === "c") {
+      this.publisher = new Conditional(input.V, fields);
     } else {
       throw new ViewScriptException(
-        `Cannot construct a property of unknown kind "${
-          (property.V as { K: unknown }).K
+        `Cannot construct an input of unknown kind "${
+          (input.V as { K: unknown }).K
         }"`
       );
     }
 
-    this.binding.subscribe(this);
-  }
-
-  take(value: unknown) {
-    this.publish(value);
+    this.publisher.subscribe(this);
   }
 }
 
-// TODO Fix:
+class Output extends Binding {
+  private readonly reference: Reference;
+
+  constructor(output: Compiled.Output, fields: Record<string, Field>) {
+    super();
+
+    this.reference = new Reference(output.V, fields);
+    this.subscribe(this.reference);
+  }
+}
+
+// TODO Finish fixing this:
 class Element {
   constructor(element: Compiled.Element, fields: Record<string, Field>) {
+    const htmlElement = window.document.createElement(element.C);
+
     element.P.forEach((property) => {
-      new Property(property, fields);
+      if (property.K === "i") {
+        new Input(property, fields);
+      } else if (property.K === "o") {
+        new Output(property, fields);
+      }
     });
   }
 }
 
 class View {
+  // TODO Include window (with console.log) in fields, by default:
   private readonly fields: Record<string, Field> = {};
 
   constructor(view: Compiled.View) {
