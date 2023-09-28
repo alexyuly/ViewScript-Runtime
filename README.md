@@ -24,7 +24,7 @@ viewscript project HelloWorld
 cd HelloWorld && npm start
 ```
 
-## Hello, World!
+## HelloWorld
 
 ```
 View HelloWorld {
@@ -33,4 +33,16 @@ View HelloWorld {
 }
 ```
 
-HelloWorld is a view, with one paragraph element, with content of "Hello, world!"
+> HelloWorld is a view, with one paragraph element, with content of "Hello, world!"
+
+## Click a button to log
+
+```
+View `Click a button to log` {
+   <button>
+      content = "Click me!"
+      click = window.console.log "You clicked the button."
+}
+```
+
+> "Click a button to log" is a view, with one button element, with content of "Click me!" and click handled by console logging "You clicked the button."
