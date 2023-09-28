@@ -32,7 +32,7 @@ namespace Compiled {
     /** kind: "reference" */
     K: "r";
     /** name or names */
-    N: string | [string, string] | [string, string, string];
+    N: string | Array<string>;
     /** argument */
     A?: Field;
   };
