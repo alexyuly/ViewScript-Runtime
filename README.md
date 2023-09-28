@@ -33,8 +33,6 @@ View HelloWorld {
 }
 ```
 
-**HelloWorld** is a view, with one paragraph element, with content of "Hello, world!".
-
 `<p>` is a paragraph element. It has one input named `content`, bound to a text field.
 
 ## Log when button clicked
@@ -46,8 +44,6 @@ View `Log when button clicked` {
       click = window.console.log "You clicked the button."
 }
 ```
-
-**"Click a button to log"** is a view, with one button element, with content of "Click me!" and click events handled by console logging "You clicked the button.".
 
 ## Change styles when hovered
 
