@@ -1,1 +1,4 @@
-# ViewScript-Runtime v0.0.0
+# ViewScript
+Source code for the ViewScript Runtime
+
+Documentation and guide for ViewScript newcomers
