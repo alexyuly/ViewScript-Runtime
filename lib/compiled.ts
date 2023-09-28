@@ -63,7 +63,7 @@ export type Output = {
   V: Reference;
 };
 
-export function isOutput(node: any): node is Output {
+export function isOutput(node: unknown): node is Output {
   return (
     typeof node === "object" && node !== null && "K" in node && node.K === "o"
   );
@@ -77,6 +77,12 @@ export type Element = {
   /** properties */
   P: Array<Input | Output>;
 };
+
+export function isElement(node: unknown): node is Element {
+  return (
+    typeof node === "object" && node !== null && "K" in node && node.K === "e"
+  );
+}
 
 export type View = {
   /** kind: "view" */
