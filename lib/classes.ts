@@ -260,3 +260,8 @@ export class App {
     new View(app.B[0]);
   }
 }
+
+// TODO Add support for Models
+// TODO Add a built-in window model
+// TODO Add a built-in console model as a member of window
+// TODO Add a built-in log action as a member of window.console
