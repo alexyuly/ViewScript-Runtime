@@ -23,3 +23,16 @@ viewscript project HelloWorld
 ```
 cd HelloWorld && npm start
 ```
+
+## Hello, World!
+
+```
+View HelloWorld {
+   <p>
+      content = "Hello, world!"
+}
+```
+
+- `HelloWorld` is a view
+  - with one paragraph element
+    - with content of "Hello, world!"
