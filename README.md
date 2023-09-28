@@ -49,6 +49,7 @@ view("HelloWorld", [
 
 ### Log when button clicked
 
+ViewScript:
 ```
 View `Log when button clicked` {
    <button>
@@ -57,10 +58,21 @@ View `Log when button clicked` {
 }
 ```
 
+ViewScript-Bridge:
+```ts
+view("Log when button clicked", [
+    element("button", {
+        content: "Click me!",
+        click: $("window.console.log", "You clicked the button.")
+    })
+])
+```
+
 `<button>` is a button element. It has an output named `click`, bound to an action.
 
 ### Update section while hovered
 
+ViewScript:
 ```
 View `Update section while hovered` {
    Condition hovered = false
@@ -74,6 +86,22 @@ View `Update section while hovered` {
       pointerleave = hovered.disable
       pointerover = hovered.enable
 }
+```
+
+ViewScript-Bridge:
+```ts
+view("Update section while hovered", [
+    condition("hovered", false),
+    element("section", {
+        background: conditional($('hovered'), "black", "white"),
+        color: conditional($('hovered'), "white", "black"),
+        content: conditional($('hovered'), "I am hovered.", "Hover me!"),
+        font: "24px serif bold",
+        padding: "24px",
+        pointerleave: $("hovered.disable"),
+        pointerover: $("hovered.enable")
+    })
+])
 ```
 
 `hovered` is a condition field with a name, which allows it to be referenced repeatedly.
