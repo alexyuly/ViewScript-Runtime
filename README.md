@@ -28,11 +28,21 @@ cd HelloWorld && npm start
 
 ### HelloWorld
 
+ViewScript:
 ```
 View HelloWorld {
    <p>
       content = "Hello, world!"
 }
+```
+
+ViewScript-Bridge:
+```ts
+view("HelloWorld", [
+    element("p", {
+        content: "Hello, world!"
+    })
+])
 ```
 
 `<p>` is a paragraph element. It has an input named `content`, bound to a text field.
@@ -67,3 +77,21 @@ View `Update section while hovered` {
 ```
 
 `hovered` is a condition field with a name, which allows it to be referenced repeatedly.
+
+## Architecture
+
+### ViewScript-Runtime
+
+`ViewScript-Runtime` is the core runtime executable for web browsers, with zero dependencies.
+
+### ViewScript-Bridge
+
+`ViewScript-Bridge` is an ergonomic TypeScript API for using ViewScript incrementally in your existing projects.
+
+_It depends on ViewScript-Runtime._
+
+### ViewScript
+
+`ViewScript` is the Node.js developer interface for creating new purely ViewScript projects.
+
+_It depends on ViewScript-Runtime._
