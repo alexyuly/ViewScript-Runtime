@@ -180,7 +180,7 @@ class Input extends Binding {
       publisher = new Conditional(input.V, fields);
     } else {
       throw new ViewScriptException(
-        `Cannot construct an input of unknown kind "${
+        `Cannot construct an input with value of unknown kind "${
           (input.V as { K: unknown }).K
         }"`
       );
@@ -235,6 +235,12 @@ class Element {
           })();
 
         publisher.subscribe(new Output(property, fields));
+      } else {
+        throw new ViewScriptException(
+          `Cannot construct a property of unknown kind "${
+            (property as { K: unknown }).K
+          }"`
+        );
       }
     });
   }
@@ -250,6 +256,12 @@ class View {
         this.fields[statement.N] = Field.create(statement);
       } else if (statement.K === "e") {
         new Element(statement, this.fields);
+      } else {
+        throw new ViewScriptException(
+          `Cannot construct a statement of unknown kind "${
+            (statement as { K: unknown }).K
+          }"`
+        );
       }
     });
   }
