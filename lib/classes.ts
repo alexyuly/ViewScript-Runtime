@@ -27,7 +27,7 @@ abstract class Binding<T = unknown>
   }
 }
 
-abstract class Field extends Binding {
+abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName: string;
@@ -68,12 +68,12 @@ abstract class Field extends Binding {
     return this.value;
   }
 
-  take(value: unknown) {
+  take(value: T) {
     this.value = value;
     this.publish(value);
   }
 
-  protected when(name: string, reducer: () => boolean) {
+  protected when(name: string, reducer: () => T) {
     this.members[name] = {
       take: () => {
         this.take(reducer());
@@ -82,7 +82,7 @@ abstract class Field extends Binding {
   }
 }
 
-class Condition extends Field {
+class Condition extends Field<boolean> {
   constructor(field: Compiled.Condition) {
     super(field);
 
@@ -92,7 +92,7 @@ class Condition extends Field {
   }
 }
 
-class Text extends Field {
+class Text extends Field<string> {
   constructor(field: Compiled.Text) {
     super(field);
   }
