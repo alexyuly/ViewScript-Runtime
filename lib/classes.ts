@@ -250,24 +250,27 @@ class Element {
   }
 }
 
+class Console extends Field {
+  constructor() {
+    super({ K: "f", N: "console", C: "Console" });
+
+    this.when("log", (value) => window.console.log(value));
+  }
+}
+
+class Window extends Field {
+  constructor() {
+    super({ K: "f", N: "window", C: "Window" });
+
+    this.set("console", new Console());
+  }
+}
+
+const windowField = new Window();
+
 class View {
   private readonly fields: Record<string, Field> = {
-    window: new (class Window extends Field {
-      constructor() {
-        super({ K: "f", N: "window", C: "Window" });
-
-        this.set(
-          "console",
-          new (class Console extends Field {
-            constructor() {
-              super({ K: "f", N: "console", C: "Console" });
-
-              this.when("log", (value) => console.log(value));
-            }
-          })()
-        );
-      }
-    })(),
+    window: windowField,
   };
 
   constructor(view: Compiled.View) {
