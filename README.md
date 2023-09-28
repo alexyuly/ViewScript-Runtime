@@ -40,6 +40,8 @@ View HelloWorld {
 ViewScript-Bridge:
 
 ```ts
+import { view, element } from "viewscript-bridge";
+
 view("HelloWorld", [
   element("p", {
     content: "Hello, world!",
@@ -64,6 +66,8 @@ View `Log when button clicked` {
 ViewScript-Bridge:
 
 ```ts
+import { view, element, $ } from "viewscript-bridge";
+
 view("Log when button clicked", [
   element("button", {
     content: "Click me!",
@@ -96,6 +100,8 @@ View `Update section while hovered` {
 ViewScript-Bridge:
 
 ```ts
+import { view, condition, element, conditional, $ } from "viewscript-bridge";
+
 view("Update section while hovered", [
   condition("hovered", false),
   element("section", {
