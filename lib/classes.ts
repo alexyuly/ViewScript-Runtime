@@ -266,14 +266,12 @@ class Window extends Field {
   }
 }
 
-const windowField = new Window();
-
 class View {
-  private readonly fields: Record<string, Field> = {
-    window: windowField,
-  };
+  private readonly fields;
 
-  constructor(view: Compiled.View) {
+  constructor(view: Compiled.View, fields: Record<string, Field>) {
+    this.fields = fields;
+
     view.B.forEach((statement) => {
       if (statement.K === "f") {
         this.fields[statement.N] = Field.create(statement);
@@ -292,6 +290,8 @@ class View {
 
 export class App {
   constructor(app: Compiled.App) {
-    new View(app.B[0]);
+    new View(app.B[0], {
+      window: new Window(),
+    });
   }
 }
