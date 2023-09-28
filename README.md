@@ -37,10 +37,10 @@ View HelloWorld {
 
 `<p>` is a paragraph element. It has one input named `content`, bound to a text field.
 
-## Click a button to log
+## Log when button clicked
 
 ```
-View `Click a button to log` {
+View `Log when button clicked` {
    <button>
       content = "Click me!"
       click = window.console.log "You clicked the button."
@@ -48,3 +48,20 @@ View `Click a button to log` {
 ```
 
 **"Click a button to log"** is a view, with one button element, with content of "Click me!" and click events handled by console logging "You clicked the button.".
+
+## Change styles when hovered
+
+```
+View `Change styles when hovered` {
+   Condition hovered = false
+
+   <section>
+      background = if hovered then "black" else "white"
+      color = if hovered then "white" else "black"
+      content = if hovered then "I am hovered." else "Hover me!"
+      font = "24px serif bold"
+      padding = "24px"
+      pointerleave = hovered.disable
+      pointerover = hovered.enable
+}
+```
