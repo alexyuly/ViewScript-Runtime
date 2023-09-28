@@ -1,11 +1,4 @@
 namespace Compiled {
-  export type Literal = {
-    /** kind: "literal" */
-    K: "l";
-    /** value */
-    V: unknown;
-  };
-
   export type Field = {
     /** kind: "field" */
     K: "f";
@@ -14,7 +7,7 @@ namespace Compiled {
     /** class (model) */
     C: string;
     /** value */
-    V: Literal;
+    V: unknown;
   };
 
   export type Reference = {

@@ -20,9 +20,8 @@ abstract class Publisher<T = unknown> {
 
 class Field extends Publisher implements Subscriber {
   readonly id: string;
-
-  private members: Record<string, Publisher | Subscriber> = {};
-  private modelName: string;
+  private readonly members: Record<string, Publisher | Subscriber> = {};
+  private readonly modelName: string;
   private value?: unknown;
 
   constructor(field: Compiled.Field) {
@@ -30,7 +29,7 @@ class Field extends Publisher implements Subscriber {
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.C;
-    this.value = field.V.V;
+    this.value = field.V;
 
     if (this.modelName === "Condition") {
       this.members.disable = { take: () => this.take(true) };
@@ -110,7 +109,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   }
 }
 
-// TODO fix all this
+// TODO How do we distinguish input and output properties?
 class Property extends Publisher implements Subscriber {
   private readonly binding: Publisher & Subscriber;
 
@@ -121,6 +120,7 @@ class Property extends Publisher implements Subscriber {
       this.binding = new Field(property.V);
     } else if (property.V.K === "r") {
       this.binding = new Reference(property.V, fields);
+      this.subscribe(this.binding);
     } else if (property.V.K === "c") {
       this.binding = new Conditional(property.V, fields);
     } else {
@@ -130,14 +130,16 @@ class Property extends Publisher implements Subscriber {
         }"`
       );
     }
+
+    this.binding.subscribe(this);
   }
 
   take(value: unknown) {
-    this.binding.take(value);
+    this.publish(value);
   }
 }
 
-// TODO fix all this
+// TODO Fix:
 class Element {
   constructor(element: Compiled.Element, fields: Record<string, Field>) {
     element.P.forEach((property) => {
