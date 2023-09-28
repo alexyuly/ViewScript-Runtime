@@ -1,4 +1,4 @@
-import { cssPropertyNames } from "./cssPropertyNames";
+import { cssSupports } from "./cssSupports";
 
 class ViewScriptException extends Error {}
 
@@ -211,7 +211,7 @@ class Element {
           take = (value) => {
             htmlElement.textContent = value as string;
           };
-        } else if (cssPropertyNames.includes(property.N)) {
+        } else if (cssSupports(property.N)) {
           take = (value) => {
             htmlElement.style.setProperty(property.N, value as string);
           };
