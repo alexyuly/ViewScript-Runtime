@@ -1,3 +1,5 @@
+import { cssPropertyNames } from "./cssPropertyNames";
+
 class ViewScriptException extends Error {}
 
 interface Subscriber<T = unknown> {
@@ -38,7 +40,11 @@ abstract class Field<T = unknown> extends Binding<T> {
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.C;
-    this.value = field.V as T; // The ViewScript compiler enforces the type safety of this value.
+
+    setTimeout(() => {
+      // Set a timeout, so that consumers can receive the initial value via subscription.
+      this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
+    });
   }
 
   static create(field: Compiled.Field) {
@@ -193,16 +199,42 @@ class Output extends Binding {
   }
 }
 
-// TODO Finish fixing this:
 class Element {
   constructor(element: Compiled.Element, fields: Record<string, Field>) {
     const htmlElement = window.document.createElement(element.C);
 
     element.P.forEach((property) => {
       if (property.K === "i") {
-        new Input(property, fields);
+        let take: (value: unknown) => void;
+
+        if (property.N === "content") {
+          take = (value) => {
+            htmlElement.textContent = value as string;
+          };
+        } else if (cssPropertyNames.includes(property.N)) {
+          take = (value) => {
+            htmlElement.style.setProperty(property.N, value as string);
+          };
+        } else {
+          throw new ViewScriptException(
+            `Cannot bind an input to atomic element property \`${property.N}\``
+          );
+        }
+
+        new Input(property, fields).subscribe({ take });
       } else if (property.K === "o") {
-        new Output(property, fields);
+        const publisher =
+          new (class HtmlEventPublisher extends Publisher<Event> {
+            constructor() {
+              super();
+
+              htmlElement.addEventListener(property.N, (event) => {
+                this.publish(event);
+              });
+            }
+          })();
+
+        publisher.subscribe(new Output(property, fields));
       }
     });
   }
