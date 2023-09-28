@@ -4,4 +4,22 @@
 
 ℹ️ Please install [Node.js 18](https://nodejs.org) to use ViewScript.
 
-🚧 _Coming soon..._
+## Start
+
+1. Install ViewScript
+
+```
+npm install viewscript --global
+```
+
+2. Create a new project
+
+```
+viewscript project HelloWorld
+```
+
+3. Run your app
+
+```
+cd HelloWorld && npm start
+```
