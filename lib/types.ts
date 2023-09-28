@@ -10,6 +10,24 @@ namespace Compiled {
     V: unknown;
   };
 
+  export type Condition = Field & {
+    C: "Condition";
+  };
+
+  export type Text = Field & {
+    C: "Text";
+  };
+
+  export function isCondition(
+    field: Compiled.Field
+  ): field is Compiled.Condition {
+    return field.C === "Condition";
+  }
+
+  export function isText(field: Compiled.Field): field is Compiled.Text {
+    return field.C === "Text";
+  }
+
   export type Reference = {
     /** kind: "reference" */
     K: "r";

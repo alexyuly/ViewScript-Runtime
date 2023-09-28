@@ -27,7 +27,7 @@ abstract class Binding<T = unknown>
   }
 }
 
-class Field extends Binding {
+abstract class Field extends Binding {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName: string;
@@ -39,16 +39,19 @@ class Field extends Binding {
     this.id = window.crypto.randomUUID();
     this.modelName = field.C;
     this.value = field.V;
+  }
 
-    if (this.modelName === "Condition") {
-      this.members.disable = { take: () => this.take(true) };
-      this.members.enable = { take: () => this.take(false) };
-      this.members.toggle = { take: () => this.take(!this.getValue()) };
-    } else {
-      throw new ViewScriptException(
-        `Cannot construct a field of unknown class \`${this.modelName}\``
-      );
+  static create(field: Compiled.Field) {
+    if (Compiled.isCondition(field)) {
+      return new Condition(field);
     }
+    if (Compiled.isText(field)) {
+      return new Text(field);
+    }
+
+    throw new ViewScriptException(
+      `Cannot construct a field of unknown class \`${field.C}\``
+    );
   }
 
   getMember(name: string) {
@@ -67,41 +70,78 @@ class Field extends Binding {
 
   take(value: unknown) {
     this.value = value;
+    this.publish(value);
+  }
 
-    super.take(value);
+  protected when(name: string, reducer: () => boolean) {
+    this.members[name] = {
+      take: () => {
+        this.take(reducer());
+      },
+    };
+  }
+}
+
+class Condition extends Field {
+  constructor(field: Compiled.Condition) {
+    super(field);
+
+    this.when("disable", () => true);
+    this.when("enable", () => false);
+    this.when("toggle", () => !this.getValue());
+  }
+}
+
+class Text extends Field {
+  constructor(field: Compiled.Text) {
+    super(field);
   }
 }
 
 class Reference extends Binding {
-  private readonly binding: Publisher | Subscriber;
+  private readonly member: Publisher | Subscriber;
 
   constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
     super();
 
-    if (typeof reference.N === "string") {
-      this.binding = fields[reference.N];
-    } else if (reference.N instanceof Array && reference.N.length === 2) {
-      this.binding = fields[reference.N[0]].getMember(reference.N[1]);
-    } else if (reference.N instanceof Array && reference.N.length === 3) {
-      this.binding = (
-        fields[reference.N[0]].getMember(reference.N[1]) as Field
-      ).getMember(reference.N[2]);
-    } else {
-      throw new ViewScriptException(
-        `Cannot construct a reference of invalid name "${reference.N}"`
-      );
+    const names =
+      typeof reference.N === "string" ? [reference.N] : [...reference.N];
+
+    const getNextName = () => {
+      const name = names.shift();
+
+      if (!name) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid name \`${reference.N}\``
+        );
+      }
+
+      return name;
+    };
+
+    this.member = fields[getNextName()];
+
+    while (names.length > 0) {
+      const nextName = getNextName();
+
+      if (!(this.member instanceof Field)) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid name \`${reference.N}\``
+        );
+      }
+
+      this.member.getMember(nextName);
     }
 
-    if ("subscribe" in this.binding) {
-      this.binding.subscribe(this);
+    if ("subscribe" in this.member) {
+      this.member.subscribe(this);
     } else {
-      this.subscribe(this.binding);
+      this.subscribe(this.member);
     }
   }
 }
 
 class Conditional extends Publisher implements Subscriber<boolean> {
-  private readonly query: Reference;
   private readonly yes: Field;
   private readonly zag: Field;
 
@@ -111,11 +151,10 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   ) {
     super();
 
-    this.query = new Reference(conditional.Q, fields);
-    this.yes = new Field(conditional.Y);
-    this.zag = new Field(conditional.Z);
+    this.yes = Field.create(conditional.Y);
+    this.zag = Field.create(conditional.Z);
 
-    this.query.subscribe(this);
+    new Reference(conditional.Q, fields).subscribe(this);
   }
 
   take(value: boolean) {
@@ -130,7 +169,7 @@ class Input extends Binding {
     super();
 
     if (input.V.K === "f") {
-      this.publisher = new Field(input.V);
+      this.publisher = Field.create(input.V);
     } else if (input.V.K === "r") {
       this.publisher = new Reference(input.V, fields);
     } else if (input.V.K === "c") {
@@ -180,7 +219,7 @@ class View {
   constructor(view: Compiled.View) {
     view.B.forEach((statement) => {
       if (statement.K === "f") {
-        this.fields[statement.N] = new Field(statement);
+        this.fields[statement.N] = Field.create(statement);
       } else if (statement.K === "e") {
         new Element(statement, this.fields);
       }
