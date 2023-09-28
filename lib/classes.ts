@@ -204,8 +204,10 @@ class Output extends Binding {
   }
 }
 
-class Element {
+class Element extends Publisher<HTMLElement> {
   constructor(element: Compiled.Element, fields: Record<string, Field>) {
+    super();
+
     const htmlElement = window.document.createElement(element.C);
 
     element.P.forEach((property) => {
@@ -248,6 +250,11 @@ class Element {
         );
       }
     });
+
+    setTimeout(() => {
+      // Set a timeout, so that consumers can receive the initial value via subscription.
+      this.publish(htmlElement);
+    });
   }
 }
 
@@ -277,7 +284,11 @@ class View {
       if (statement.K === "f") {
         this.fields[statement.N] = Field.create(statement);
       } else if (statement.K === "e") {
-        new Element(statement, this.fields);
+        new Element(statement, this.fields).subscribe({
+          take: (htmlElement) => {
+            document.body.appendChild(htmlElement);
+          },
+        });
       } else {
         throw new ViewScriptException(
           `Cannot construct a statement of unknown kind "${
@@ -296,6 +307,3 @@ export class App {
     });
   }
 }
-
-// TODO The Element class should publish an event with its created HTMLElement
-// TODO The View class should subscribe to its Elements' above events, and add the elements to the DOM
