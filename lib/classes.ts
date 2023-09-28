@@ -31,14 +31,14 @@ abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName: string;
-  private value?: unknown;
+  private value?: T;
 
   constructor(field: Compiled.Field) {
     super();
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.C;
-    this.value = field.V;
+    this.value = field.V as T; // The ViewScript compiler enforces the type safety of this value.
   }
 
   static create(field: Compiled.Field) {
