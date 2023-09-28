@@ -7,7 +7,7 @@ namespace Compiled {
     /** class (model) */
     C: string;
     /** value */
-    V: unknown;
+    V?: unknown;
   };
 
   export type Condition = Field & {

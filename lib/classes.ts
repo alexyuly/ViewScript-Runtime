@@ -32,7 +32,7 @@ abstract class Binding<T = unknown>
 abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelName: string;
+  private readonly modelName?: string;
   private value?: T;
 
   constructor(field: Compiled.Field) {
@@ -74,15 +74,19 @@ abstract class Field<T = unknown> extends Binding<T> {
     return this.value;
   }
 
+  protected set(name: string, field: Field) {
+    this.members[name] = field;
+  }
+
   take(value: T) {
     this.value = value;
     this.publish(value);
   }
 
-  protected when(name: string, reducer: () => T) {
+  protected when(name: string, reducer: (argument: unknown) => T) {
     this.members[name] = {
-      take: () => {
-        const nextValue = reducer();
+      take: (event) => {
+        const nextValue = reducer(event);
         this.take(nextValue);
       },
     };
@@ -247,8 +251,32 @@ class Element {
 }
 
 class View {
-  // TODO Include window (with console.log) in fields, by default:
-  private readonly fields: Record<string, Field> = {};
+  private readonly fields: Record<string, Field> = {
+    window: new (class Window extends Field {
+      constructor() {
+        super({
+          K: "f",
+          N: "window",
+          C: "Window",
+        });
+
+        this.set(
+          "console",
+          new (class Console extends Field {
+            constructor() {
+              super({
+                K: "f",
+                N: "console",
+                C: "Console",
+              });
+
+              this.when("log", (value) => console.log(value));
+            }
+          })()
+        );
+      }
+    })(),
+  };
 
   constructor(view: Compiled.View) {
     view.B.forEach((statement) => {
@@ -272,8 +300,3 @@ export class App {
     new View(app.B[0]);
   }
 }
-
-// TODO Add support for Models
-// TODO Add a built-in window model
-// TODO Add a built-in console model as a member of window
-// TODO Add a built-in log action as a member of window.console
