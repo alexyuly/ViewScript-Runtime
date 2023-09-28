@@ -33,6 +33,6 @@ View HelloWorld {
 }
 ```
 
-- `HelloWorld` is a view
-  - with one paragraph element
-    - with content of "Hello, world!"
+HelloWorld is a view
+   with one paragraph element
+      with content of "Hello, world!"
