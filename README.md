@@ -47,4 +47,4 @@ View `Click a button to log` {
 }
 ```
 
-**"Click a button to log"** is a view, with one button element, with content of "Click me!" and click handled by console logging "You clicked the button.".
+**"Click a button to log"** is a view, with one button element, with content of "Click me!" and click events handled by console logging "You clicked the button.".
