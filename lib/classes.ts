@@ -254,21 +254,13 @@ class View {
   private readonly fields: Record<string, Field> = {
     window: new (class Window extends Field {
       constructor() {
-        super({
-          K: "f",
-          N: "window",
-          C: "Window",
-        });
+        super({ K: "f", N: "window", C: "Window" });
 
         this.set(
           "console",
           new (class Console extends Field {
             constructor() {
-              super({
-                K: "f",
-                N: "console",
-                C: "Console",
-              });
+              super({ K: "f", N: "console", C: "Console" });
 
               this.when("log", (value) => console.log(value));
             }
