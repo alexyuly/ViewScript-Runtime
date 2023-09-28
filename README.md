@@ -112,14 +112,19 @@ view("Update section while hovered", [
 
 `ViewScript-Runtime` is the core runtime executable for web browsers, with zero dependencies.
 
+It is open source, available under the MIT License.
+
 ### ViewScript-Bridge
 
 `ViewScript-Bridge` is an ergonomic TypeScript API for using ViewScript incrementally in your existing projects.
 
-_It depends on ViewScript-Runtime._
+It is open source, available under the MIT License. It depends on ViewScript-Runtime.
 
 ### ViewScript
 
 `ViewScript` is the Node.js developer interface for creating new purely ViewScript projects.
 
-_It depends on ViewScript-Runtime._
+It is closed source, free for use, and neither modification nor distribution are allowed. It depends on ViewScript-Runtime.
+
+_(TODO: Specifically, which license should I use for this?)_
+_(TODO: How do I best obfuscate/protect my Node.js source code?)_
