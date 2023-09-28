@@ -86,8 +86,8 @@ class Condition extends Field<boolean> {
   constructor(field: Compiled.Condition) {
     super(field);
 
-    this.when("disable", () => true);
-    this.when("enable", () => false);
+    this.when("disable", () => false);
+    this.when("enable", () => true);
     this.when("toggle", () => !this.getValue());
   }
 }
