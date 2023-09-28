@@ -1,3 +1,4 @@
+import * as Compiled from "./compiled";
 import { cssSupports } from "./cssSupports";
 
 class ViewScriptException extends Error {}
