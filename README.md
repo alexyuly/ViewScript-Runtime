@@ -1,4 +1,5 @@
 # ViewScript
+
 Source code for the ViewScript Runtime
 
-Documentation and guide for ViewScript newcomers
+Public documentation for ViewScript-Toolkit
