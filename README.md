@@ -45,10 +45,10 @@ View `Log when button clicked` {
 }
 ```
 
-## Change styles when hovered
+## Update section while hovered
 
 ```
-View `Change styles when hovered` {
+View `Update section while hovered` {
    Condition hovered = false
 
    <section>
