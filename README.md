@@ -24,7 +24,9 @@ viewscript project HelloWorld
 cd HelloWorld && npm start
 ```
 
-## HelloWorld
+## Examples
+
+### HelloWorld
 
 ```
 View HelloWorld {
@@ -35,7 +37,7 @@ View HelloWorld {
 
 `<p>` is a paragraph element. It has an input named `content`, bound to a text field.
 
-## Log when button clicked
+### Log when button clicked
 
 ```
 View `Log when button clicked` {
@@ -47,7 +49,7 @@ View `Log when button clicked` {
 
 `<button>` is a button element. It has an output named `click`, bound to an action.
 
-## Update section while hovered
+### Update section while hovered
 
 ```
 View `Update section while hovered` {
