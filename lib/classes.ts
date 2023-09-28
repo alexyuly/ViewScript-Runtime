@@ -296,3 +296,6 @@ export class App {
     });
   }
 }
+
+// TODO The Element class should publish an event with its created HTMLElement
+// TODO The View class should subscribe to its Elements' above events, and add the elements to the DOM
