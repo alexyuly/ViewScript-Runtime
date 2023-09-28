@@ -121,15 +121,13 @@ class Reference extends Binding {
     let port: Publisher | Subscriber = fields[getNextName()];
 
     while (names.length > 0) {
-      const nextName = getNextName();
-
       if (!(port instanceof Field)) {
         throw new ViewScriptException(
           `Cannot dereference invalid name \`${reference.N}\``
         );
       }
 
-      port = port.getMember(nextName);
+      port = port.getMember(getNextName());
     }
 
     if ("subscribe" in port) {
