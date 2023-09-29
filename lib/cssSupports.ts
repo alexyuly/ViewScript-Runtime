@@ -1,9 +1,11 @@
 const cssPropertyNames = [
   "background",
   "border",
+  "border-radius",
   "color",
   "cursor",
   "font",
+  "font-size",
   "margin",
   "padding",
 ];

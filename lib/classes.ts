@@ -43,7 +43,6 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.modelName = field.C;
 
     setTimeout(() => {
-      // Set a timeout, so that consumers can receive the initial value via subscription.
       this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
     });
   }
@@ -257,7 +256,6 @@ class Element extends Publisher<HTMLElement> {
     });
 
     setTimeout(() => {
-      // Set a timeout, so that consumers can receive the initial value via subscription.
       this.publish(htmlElement);
     });
   }
