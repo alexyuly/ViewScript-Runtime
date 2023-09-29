@@ -113,6 +113,8 @@ class Text extends Field<string> {
 }
 
 class Reference extends Binding {
+  private readonly port: Publisher | Subscriber;
+
   constructor(reference: types.Reference, fields: Record<string, Field>) {
     super();
 
@@ -131,28 +133,28 @@ class Reference extends Binding {
       return name;
     };
 
-    let port: Publisher | Subscriber = fields[getNextName()];
+    this.port = fields[getNextName()];
 
     while (names.length > 0) {
-      if (!(port instanceof Field)) {
+      if (!(this.port instanceof Field)) {
         throw new ViewScriptException(
           `Cannot dereference invalid name \`${reference.N}\``
         );
       }
 
-      port = port.getMember(getNextName());
+      this.port = this.port.getMember(getNextName());
     }
 
-    if (typeof port !== "object" || port === null) {
+    if (typeof this.port !== "object" || this.port === null) {
       throw new ViewScriptException(
         `Cannot dereference invalid name \`${reference.N}\``
       );
     }
 
-    if ("subscribe" in port) {
-      port.subscribe(this);
+    if ("subscribe" in this.port) {
+      this.port.subscribe(this);
     } else {
-      this.subscribe(port);
+      this.subscribe(this.port);
     }
   }
 }
@@ -160,6 +162,7 @@ class Reference extends Binding {
 class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly yes: Field;
   private readonly zag: Field;
+  private readonly query: Reference;
 
   constructor(conditional: types.Conditional, fields: Record<string, Field>) {
     super();
@@ -167,8 +170,8 @@ class Conditional extends Publisher implements Subscriber<boolean> {
     this.yes = Field.create(conditional.Y);
     this.zag = Field.create(conditional.Z);
 
-    const query = new Reference(conditional.Q, fields);
-    query.subscribe(this);
+    this.query = new Reference(conditional.Q, fields);
+    this.query.subscribe(this);
   }
 
   take(value: boolean) {
@@ -177,17 +180,17 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 }
 
 class Input extends Binding {
+  private readonly publisher: Publisher;
+
   constructor(input: types.Input, fields: Record<string, Field>) {
     super();
 
-    let publisher: Publisher;
-
     if (input.V.K === "f") {
-      publisher = Field.create(input.V);
+      this.publisher = Field.create(input.V);
     } else if (input.V.K === "r") {
-      publisher = new Reference(input.V, fields);
+      this.publisher = new Reference(input.V, fields);
     } else if (input.V.K === "c") {
-      publisher = new Conditional(input.V, fields);
+      this.publisher = new Conditional(input.V, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an input with value of unknown kind "${
@@ -196,20 +199,24 @@ class Input extends Binding {
       );
     }
 
-    publisher.subscribe(this);
+    this.publisher.subscribe(this);
   }
 }
 
 class Output extends Binding {
+  private readonly subscriber: Subscriber;
+
   constructor(output: types.Output, fields: Record<string, Field>) {
     super();
 
-    const subscriber = new Reference(output.V, fields);
-    this.subscribe(subscriber);
+    this.subscriber = new Reference(output.V, fields);
+    this.subscribe(this.subscriber);
   }
 }
 
 class Element extends Publisher<HTMLElement> {
+  private readonly properties: Record<string, Input | Output> = {};
+
   constructor(element: types.Element, fields: Record<string, Field>) {
     super();
 
@@ -246,7 +253,9 @@ class Element extends Publisher<HTMLElement> {
           };
         }
 
-        new Input(property, fields).subscribe({ take });
+        const input = new Input(property, fields);
+        this.properties[property.N] = input;
+        input.subscribe({ take });
       } else if (property.K === "o") {
         const publisher = new (class OutputPublisher extends Publisher {
           constructor() {
@@ -259,7 +268,9 @@ class Element extends Publisher<HTMLElement> {
           }
         })();
 
-        publisher.subscribe(new Output(property, fields));
+        const output = new Output(property, fields);
+        this.properties[property.N] = output;
+        publisher.subscribe(output);
       } else {
         throw new ViewScriptException(
           `Cannot construct a property of unknown kind "${
@@ -281,21 +292,28 @@ class Console extends Field {
   }
 }
 
-class Window extends Field {
+class Browser extends Field {
   constructor() {
-    super({ K: "f", N: "window", C: "Window" });
+    super({ K: "f", N: "browser", C: "Browser" });
 
     this.set("console", new Console());
   }
 }
 
 class View {
+  private readonly elements: Array<Element> = [];
+  private readonly fields: Record<string, Field>;
+
   constructor(view: types.View, fields: Record<string, Field>) {
+    this.fields = fields;
+
     view.B.forEach((statement) => {
       if (statement.K === "f") {
-        fields[statement.N] = Field.create(statement);
+        this.fields[statement.N] = Field.create(statement);
       } else if (statement.K === "e") {
-        new Element(statement, fields).subscribe({
+        const element = new Element(statement, this.fields);
+        this.elements.push(element);
+        element.subscribe({
           take: (htmlElement) => {
             window.document.body.appendChild(htmlElement);
             window.console.log(
@@ -316,9 +334,15 @@ class View {
 }
 
 export class RunnableApp {
+  private readonly views: Array<View> = [];
+
   constructor(app: types.App) {
-    new View(app.B[0], {
-      window: new Window(),
+    const view = new View(app.B[0], {
+      browser: new Browser(),
     });
+    this.views.push(view);
+
+    window.console.log(`[VSR] 🍏 app started:`);
+    window.console.log(this);
   }
 }
