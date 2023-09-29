@@ -5,7 +5,7 @@
 ## Start
 
 ```
-npm install viewscript --global
+npm install viewscript-toolkit --global
 
 viewscript create YourProjectName
 
