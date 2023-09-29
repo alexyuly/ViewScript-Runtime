@@ -13,17 +13,9 @@ export type Condition = Field & {
   C: "Condition";
 };
 
-export function isCondition(field: Field): field is Condition {
-  return field.C === "Condition";
-}
-
 export type Text = Field & {
   C: "Text";
 };
-
-export function isText(field: Field): field is Text {
-  return field.C === "Text";
-}
 
 export type Reference = {
   /** kind: "reference" */
@@ -63,12 +55,6 @@ export type Output = {
   V: Reference;
 };
 
-export function isOutput(node: unknown): node is Output {
-  return (
-    typeof node === "object" && node !== null && "K" in node && node.K === "o"
-  );
-}
-
 export type Element = {
   /** kind: "element" */
   K: "e";
@@ -77,12 +63,6 @@ export type Element = {
   /** properties */
   P: Array<Input | Output>;
 };
-
-export function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" && node !== null && "K" in node && node.K === "e"
-  );
-}
 
 export type View = {
   /** kind: "view" */
@@ -99,3 +79,23 @@ export type App = {
   /** body */
   B: [View];
 };
+
+export function isElement(node: unknown): node is Element {
+  return (
+    typeof node === "object" && node !== null && "K" in node && node.K === "e"
+  );
+}
+
+export function isFieldCondition(field: Field): field is Condition {
+  return field.C === "Condition";
+}
+
+export function isFieldText(field: Field): field is Text {
+  return field.C === "Text";
+}
+
+export function isOutput(node: unknown): node is Output {
+  return (
+    typeof node === "object" && node !== null && "K" in node && node.K === "o"
+  );
+}

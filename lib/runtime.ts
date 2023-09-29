@@ -1,5 +1,5 @@
-import * as Compiled from "./compiled";
-import { cssSupports } from "./cssSupports";
+import * as style from "./style";
+import * as types from "./types";
 
 class ViewScriptException extends Error {}
 
@@ -46,7 +46,7 @@ abstract class Field<T = unknown> extends Binding<T> {
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName?: string;
 
-  constructor(field: Compiled.Field) {
+  constructor(field: types.Field) {
     super();
 
     this.id = window.crypto.randomUUID();
@@ -54,11 +54,11 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
   }
 
-  static create(field: Compiled.Field) {
-    if (Compiled.isCondition(field)) {
+  static create(field: types.Field) {
+    if (types.isFieldCondition(field)) {
       return new Condition(field);
     }
-    if (Compiled.isText(field)) {
+    if (types.isFieldText(field)) {
       return new Text(field);
     }
 
@@ -96,7 +96,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 }
 
 class Condition extends Field<boolean> {
-  constructor(field: Compiled.Condition) {
+  constructor(field: types.Condition) {
     super(field);
 
     this.when("disable", () => false);
@@ -106,13 +106,13 @@ class Condition extends Field<boolean> {
 }
 
 class Text extends Field<string> {
-  constructor(field: Compiled.Text) {
+  constructor(field: types.Text) {
     super(field);
   }
 }
 
 class Reference extends Binding {
-  constructor(reference: Compiled.Reference, fields: Record<string, Field>) {
+  constructor(reference: types.Reference, fields: Record<string, Field>) {
     super();
 
     const names =
@@ -160,10 +160,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly yes: Field;
   private readonly zag: Field;
 
-  constructor(
-    conditional: Compiled.Conditional,
-    fields: Record<string, Field>
-  ) {
+  constructor(conditional: types.Conditional, fields: Record<string, Field>) {
     super();
 
     this.yes = Field.create(conditional.Y);
@@ -179,7 +176,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 }
 
 class Input extends Binding {
-  constructor(input: Compiled.Input, fields: Record<string, Field>) {
+  constructor(input: types.Input, fields: Record<string, Field>) {
     super();
 
     let publisher: Publisher;
@@ -203,7 +200,7 @@ class Input extends Binding {
 }
 
 class Output extends Binding {
-  constructor(output: Compiled.Output, fields: Record<string, Field>) {
+  constructor(output: types.Output, fields: Record<string, Field>) {
     super();
 
     const subscriber = new Reference(output.V, fields);
@@ -212,7 +209,7 @@ class Output extends Binding {
 }
 
 class Element extends Publisher<HTMLElement> {
-  constructor(element: Compiled.Element, fields: Record<string, Field>) {
+  constructor(element: types.Element, fields: Record<string, Field>) {
     super();
 
     const htmlElement = window.document.createElement(element.C);
@@ -225,17 +222,17 @@ class Element extends Publisher<HTMLElement> {
         if (property.N === "content") {
           take = (value) => {
             htmlElement.textContent = value as string;
-            window.console.log(`[DOM] 💧 ${element.C} textContent <-`, value);
+            window.console.log(`[DOM] 💧 ${element.C} textContent =`, value);
           };
-        } else if (cssSupports(property.N)) {
+        } else if (style.supports(property.N)) {
           take = (value) => {
             htmlElement.style.setProperty(property.N, value as string);
-            window.console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
+            window.console.log(`[DOM] 💧 ${element.C} ${property.N} =`, value);
           };
         } else {
           take = (value) => {
             htmlElement.setAttribute(property.N, value as string);
-            window.console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
+            window.console.log(`[DOM] 💧 ${element.C} ${property.N} =`, value);
           };
         }
 
@@ -247,7 +244,7 @@ class Element extends Publisher<HTMLElement> {
 
             htmlElement.addEventListener(property.N, (event) => {
               window.console.log(`[DOM] 🔥 ${element.C} ${property.N}`);
-              this.publish((property as Compiled.Output).V.A?.V);
+              this.publish((property as types.Output).V.A?.V);
             });
           }
         })();
@@ -283,16 +280,12 @@ class Window extends Field {
 }
 
 class View {
-  private readonly fields;
-
-  constructor(view: Compiled.View, fields: Record<string, Field>) {
-    this.fields = fields;
-
+  constructor(view: types.View, fields: Record<string, Field>) {
     view.B.forEach((statement) => {
       if (statement.K === "f") {
-        this.fields[statement.N] = Field.create(statement);
+        fields[statement.N] = Field.create(statement);
       } else if (statement.K === "e") {
-        new Element(statement, this.fields).subscribe({
+        new Element(statement, fields).subscribe({
           take: (htmlElement) => {
             window.document.body.appendChild(htmlElement);
             window.console.log(
@@ -312,8 +305,8 @@ class View {
   }
 }
 
-export class App {
-  constructor(app: Compiled.App) {
+export class RunnableApp {
+  constructor(app: types.App) {
     new View(app.B[0], {
       window: new Window(),
     });

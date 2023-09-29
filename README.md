@@ -29,7 +29,7 @@ View HelloWorld {
    <p>
       content = "Hello, world!"
       font = "18px cursive"
-      margin = "0 0 24px"
+      margin = "24px"
 }
 ```
 
@@ -45,7 +45,7 @@ View `Log when button clicked` {
       content = "Click me!"
       cursor = "pointer"
       font-size = "18px"
-      margin = "0 0 24px"
+      margin = "24px"
       padding = "12px"
 }
 ```
@@ -62,7 +62,7 @@ View `Update section while hovered` {
       color = if hovered then "white" else "black"
       content = if hovered then "I am hovered." else "Hover me!"
       font = "bold 24px serif"
-      margin = "0 0 24px"
+      margin = "24px"
       padding = "24px"
       pointerleave = hovered.disable
       pointerover = hovered.enable
