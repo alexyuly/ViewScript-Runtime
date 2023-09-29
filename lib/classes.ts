@@ -236,16 +236,15 @@ class Element extends Publisher<HTMLElement> {
 
         new Input(property, fields).subscribe({ take });
       } else if (property.K === "o") {
-        const publisher =
-          new (class HtmlEventPublisher extends Publisher<Event> {
-            constructor() {
-              super();
+        const publisher = new (class HtmlEventPublisher extends Publisher {
+          constructor() {
+            super();
 
-              htmlElement.addEventListener(property.N, (event) => {
-                this.publish(event);
-              });
-            }
-          })();
+            htmlElement.addEventListener(property.N, () => {
+              this.publish((property as Compiled.Output).V.A?.V);
+            });
+          }
+        })();
 
         publisher.subscribe(new Output(property, fields));
       } else {
