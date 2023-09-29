@@ -213,7 +213,16 @@ class Element extends Publisher<HTMLElement> {
   constructor(element: types.Element, fields: Record<string, Field>) {
     super();
 
-    const htmlElement = window.document.createElement(element.C);
+    // TODO Add support for rendering views, not just HTML elements.
+
+    if (!/^<[\w-]+>$/g.test(element.C)) {
+      throw new ViewScriptException(
+        `Cannot construct an element of invalid tag name \`${element.C}\``
+      );
+    }
+
+    const tagName = element.C.slice(1, element.C.length - 1);
+    const htmlElement = window.document.createElement(tagName);
     window.console.log(`[DOM] 🔩 ${element.C} created`, htmlElement);
 
     element.P.forEach((property) => {
