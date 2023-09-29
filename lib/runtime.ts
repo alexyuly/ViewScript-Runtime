@@ -58,6 +58,7 @@ abstract class Field<T = unknown> extends Binding<T> {
     if (types.isFieldCondition(field)) {
       return new Condition(field);
     }
+
     if (types.isFieldText(field)) {
       return new Text(field);
     }
