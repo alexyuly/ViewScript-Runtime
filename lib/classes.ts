@@ -141,6 +141,12 @@ class Reference extends Binding {
       port = port.getMember(getNextName());
     }
 
+    if (typeof port !== "object" || port === null) {
+      throw new ViewScriptException(
+        `Cannot dereference invalid name \`${reference.N}\``
+      );
+    }
+
     if ("subscribe" in port) {
       port.subscribe(this);
     } else {
