@@ -16,6 +16,8 @@ npm start
 
 ## Examples
 
+[View Source...](https://github.com/alexyuly/ViewScript-Toolkit/tree/main/examples/bridge/src)
+
 ### HelloWorld
 
 ```ts
