@@ -8,15 +8,22 @@ interface Subscriber<T = unknown> {
 }
 
 abstract class Publisher<T = unknown> {
+  private lastValue: T | undefined;
   private readonly listeners: Array<Subscriber<T>> = [];
 
   publish(value: T) {
+    this.lastValue = value;
+
     this.listeners.forEach((listener) => {
       listener.take(value);
     });
   }
 
   subscribe(listener: Subscriber<T>) {
+    if (this.lastValue !== undefined) {
+      listener.take(this.lastValue);
+    }
+
     this.listeners.push(listener);
   }
 }
@@ -41,10 +48,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.C;
-
-    setTimeout(() => {
-      this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
-    });
+    this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
   }
 
   static create(field: Compiled.Field) {
@@ -258,9 +262,7 @@ class Element extends Publisher<HTMLElement> {
       }
     });
 
-    setTimeout(() => {
-      this.publish(htmlElement);
-    });
+    this.publish(htmlElement);
   }
 }
 
