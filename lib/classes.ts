@@ -239,7 +239,7 @@ class Element extends Publisher<HTMLElement> {
 
         new Input(property, fields).subscribe({ take });
       } else if (property.K === "o") {
-        const publisher = new (class HtmlEventPublisher extends Publisher {
+        const publisher = new (class OutputPublisher extends Publisher {
           constructor() {
             super();
 
