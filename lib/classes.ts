@@ -216,6 +216,7 @@ class Element extends Publisher<HTMLElement> {
     super();
 
     const htmlElement = window.document.createElement(element.C);
+    window.console.log(`[DOM] 🔩 ${element.C} created`, htmlElement);
 
     element.P.forEach((property) => {
       if (property.K === "i") {
@@ -223,18 +224,19 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.N === "content") {
           take = (value) => {
-            console.log(`[DOM] 💧 ${element.C} textContent <-`, value);
             htmlElement.textContent = value as string;
+            window.console.log(`[DOM] 💧 ${element.C} textContent <-`, value);
           };
         } else if (cssSupports(property.N)) {
           take = (value) => {
-            console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
             htmlElement.style.setProperty(property.N, value as string);
+            window.console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
           };
         } else {
-          throw new ViewScriptException(
-            `Cannot bind an input to atomic element property \`${property.N}\``
-          );
+          take = (value) => {
+            htmlElement.setAttribute(property.N, value as string);
+            window.console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
+          };
         }
 
         new Input(property, fields).subscribe({ take });
@@ -244,7 +246,7 @@ class Element extends Publisher<HTMLElement> {
             super();
 
             htmlElement.addEventListener(property.N, (event) => {
-              console.log(`[DOM] 🔥 ${element.C} ${property.N} ->`, event);
+              window.console.log(`[DOM] 🔥 ${element.C} ${property.N}`);
               this.publish((property as Compiled.Output).V.A?.V);
             });
           }
@@ -292,7 +294,11 @@ class View {
       } else if (statement.K === "e") {
         new Element(statement, this.fields).subscribe({
           take: (htmlElement) => {
-            document.body.appendChild(htmlElement);
+            window.document.body.appendChild(htmlElement);
+            window.console.log(
+              `[DOM] 🔧 ${statement.C} appended to body`,
+              htmlElement
+            );
           },
         });
       } else {
