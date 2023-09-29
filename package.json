@@ -1,8 +1,8 @@
 {
   "name": "viewscript-runtime",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "ViewScript's Web Browser Runtime",
-  "main": "dist/index.d.ts",
+  "main": "dist/index.js",
   "author": "Alex Yuly",
   "license": "MIT",
   "homepage": "https://github.com/alexyuly/ViewScript-Runtime#readme",
