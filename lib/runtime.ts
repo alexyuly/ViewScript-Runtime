@@ -113,13 +113,17 @@ class Text extends Field<string> {
 }
 
 class Reference extends Binding {
+  private readonly argument?: Field;
+  private readonly names: Array<string>;
   private readonly port: Publisher | Subscriber;
 
   constructor(reference: types.Reference, fields: Record<string, Field>) {
     super();
 
-    const names =
-      typeof reference.N === "string" ? [reference.N] : [...reference.N];
+    this.argument = reference.A && Field.create(reference.A);
+    this.names = typeof reference.N === "string" ? [reference.N] : reference.N;
+
+    const names = [...this.names];
 
     const getNextName = () => {
       const name = names.shift();
@@ -156,6 +160,10 @@ class Reference extends Binding {
     } else {
       this.subscribe(this.port);
     }
+  }
+
+  getArgumentValue() {
+    return this.argument?.getValue();
   }
 }
 
@@ -204,13 +212,17 @@ class Input extends Binding {
 }
 
 class Output extends Binding {
-  private readonly subscriber: Subscriber;
+  private readonly subscriber: Reference;
 
   constructor(output: types.Output, fields: Record<string, Field>) {
     super();
 
     this.subscriber = new Reference(output.V, fields);
     this.subscribe(this.subscriber);
+  }
+
+  getArgumentValue() {
+    return this.subscriber.getArgumentValue();
   }
 }
 
@@ -257,19 +269,23 @@ class Element extends Publisher<HTMLElement> {
         this.properties[property.N] = input;
         input.subscribe({ take });
       } else if (property.K === "o") {
-        const publisher = new (class OutputPublisher extends Publisher {
+        const output = new Output(property, fields);
+        this.properties[property.N] = output;
+
+        class ElementOutputPublisher extends Publisher {
           constructor() {
             super();
 
-            htmlElement.addEventListener(property.N, (event) => {
+            htmlElement.addEventListener(property.N, () => {
+              // TODO Add support for processing the Event passed to this listener.
+
               window.console.log(`[DOM] 🔥 ${element.C} ${property.N}`);
-              this.publish((property as types.Output).V.A?.V);
+              this.publish(output.getArgumentValue());
             });
           }
-        })();
+        }
 
-        const output = new Output(property, fields);
-        this.properties[property.N] = output;
+        const publisher = new ElementOutputPublisher();
         publisher.subscribe(output);
       } else {
         throw new ViewScriptException(
@@ -334,12 +350,11 @@ class View {
 }
 
 export class RunnableApp {
+  private static readonly browser = new Browser();
   private readonly views: Array<View> = [];
 
   constructor(app: types.App) {
-    const view = new View(app.B[0], {
-      browser: new Browser(),
-    });
+    const view = new View(app.B[0], { browser: RunnableApp.browser });
     this.views.push(view);
 
     window.console.log(`[VSR] 🏃 The following app is now running:`);
