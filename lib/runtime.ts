@@ -215,7 +215,7 @@ class Element extends Publisher<HTMLElement> {
 
     // TODO Add support for rendering views, not just HTML elements.
 
-    if (!/^<[\w-]+>$/g.test(element.C)) {
+    if (!/^<[\w-.]+>$/g.test(element.C)) {
       throw new ViewScriptException(
         `Cannot construct an element of invalid tag name \`${element.C}\``
       );
