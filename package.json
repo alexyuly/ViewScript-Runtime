@@ -1,14 +1,14 @@
 {
   "name": "viewscript-runtime",
   "version": "0.0.1",
-  "description": "ViewScript Runtime for web browsers",
+  "description": "ViewScript's Web Browser Runtime",
   "main": "dist/index.d.ts",
   "author": "Alex Yuly",
   "license": "MIT",
-  "homepage": "https://github.com/alexyuly/ViewScript#readme",
+  "homepage": "https://github.com/alexyuly/ViewScript-Runtime#readme",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/alexyuly/ViewScript.git"
+    "url": "git+ssh://git@github.com:alexyuly/ViewScript-Runtime.git"
   },
   "scripts": {
     "build": "tsc",
