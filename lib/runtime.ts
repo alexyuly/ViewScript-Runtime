@@ -342,7 +342,7 @@ export class RunnableApp {
     });
     this.views.push(view);
 
-    window.console.log(`[VSR] 🍏 app started:`);
+    window.console.log(`[VSR] 🏃 The following app is now running:`);
     window.console.log(this);
   }
 }
