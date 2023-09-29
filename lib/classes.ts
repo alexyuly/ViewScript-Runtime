@@ -223,12 +223,12 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.N === "content") {
           take = (value) => {
-            console.log(`[DOM] <${element.C}> textContent <<`, value);
+            console.log(`[DOM] 💧 ${element.C} textContent <-`, value);
             htmlElement.textContent = value as string;
           };
         } else if (cssSupports(property.N)) {
           take = (value) => {
-            console.log(`[DOM] <${element.C}> ${property.N} <<`, value);
+            console.log(`[DOM] 💧 ${element.C} ${property.N} <-`, value);
             htmlElement.style.setProperty(property.N, value as string);
           };
         } else {
@@ -244,7 +244,7 @@ class Element extends Publisher<HTMLElement> {
             super();
 
             htmlElement.addEventListener(property.N, (event) => {
-              console.log(`[DOM] <${element.C}> ${property.N} >>`, event);
+              console.log(`[DOM] 🔥 ${element.C} ${property.N} ->`, event);
               this.publish((property as Compiled.Output).V.A?.V);
             });
           }
