@@ -18,4 +18,4 @@ npm start
 
 Target the ViewScript-Runtime using an ergonomic TypeScript API.
 
-📙 [**ViewScript-Bridge: Start**](https://github.com/alexyuly/ViewScript-Bridge/tree/main#start)
+📙 [**ViewScript-Bridge: Readme**](https://github.com/alexyuly/ViewScript-Bridge#readme)
