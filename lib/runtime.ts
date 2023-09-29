@@ -63,6 +63,10 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new Text(field);
     }
 
+    // TODO Support creating numeric fields.
+    // TODO Support creating complex fields.
+    // TODO Support creating collection fields.
+
     throw new ViewScriptException(
       `Cannot construct a field of unknown class \`${field.C}\``
     );
