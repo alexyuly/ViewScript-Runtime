@@ -11,6 +11,10 @@ abstract class Publisher<T = unknown> {
   private lastValue: T | undefined;
   private readonly listeners: Array<Subscriber<T>> = [];
 
+  getValue() {
+    return this.lastValue;
+  }
+
   publish(value: T) {
     this.lastValue = value;
 
@@ -41,7 +45,6 @@ abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName?: string;
-  private value?: T;
 
   constructor(field: Compiled.Field) {
     super();
@@ -74,16 +77,11 @@ abstract class Field<T = unknown> extends Binding<T> {
     return this.members[name];
   }
 
-  getValue() {
-    return this.value;
-  }
-
   protected set(name: string, field: Field) {
     this.members[name] = field;
   }
 
   take(value: T) {
-    this.value = value;
     this.publish(value);
   }
 
