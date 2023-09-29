@@ -250,6 +250,9 @@ class Element extends Publisher<HTMLElement> {
 
     element.P.forEach((property) => {
       if (property.K === "i") {
+        const input = new Input(property, fields);
+        this.properties[property.N] = input;
+
         let take: (value: unknown) => void;
 
         if (property.N === "content") {
@@ -269,8 +272,6 @@ class Element extends Publisher<HTMLElement> {
           };
         }
 
-        const input = new Input(property, fields);
-        this.properties[property.N] = input;
         input.subscribe({ take });
       } else if (property.K === "o") {
         const output = new Output(property, fields);
