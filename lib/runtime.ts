@@ -51,8 +51,8 @@ abstract class Field<T = unknown> extends Binding<T> {
     super();
 
     this.id = window.crypto.randomUUID();
-    this.modelName = field.C;
-    this.take(field.V as T); // The ViewScript compiler enforces the type safety of this value.
+    this.modelName = field.model;
+    this.take(field.value as T); // The ViewScript compiler enforces the type safety of this value.
   }
 
   static create(field: types.Field) {
@@ -73,7 +73,7 @@ abstract class Field<T = unknown> extends Binding<T> {
     // TODO Support creating collection fields.
 
     throw new ViewScriptException(
-      `Cannot construct a field of unknown class \`${field.C}\``
+      `Cannot construct a field of unknown class \`${field.model}\``
     );
   }
 
@@ -135,8 +135,9 @@ class Reference extends Binding {
   constructor(reference: types.Reference, fields: Record<string, Field>) {
     super();
 
-    this.argument = reference.A && Field.create(reference.A);
-    this.names = typeof reference.N === "string" ? [reference.N] : reference.N;
+    this.argument = reference.argument && Field.create(reference.argument);
+    this.names =
+      typeof reference.name === "string" ? [reference.name] : reference.name;
 
     const names = [...this.names];
 
@@ -145,7 +146,7 @@ class Reference extends Binding {
 
       if (!name) {
         throw new ViewScriptException(
-          `Cannot dereference invalid name \`${reference.N}\``
+          `Cannot dereference invalid name \`${reference.name}\``
         );
       }
 
@@ -157,7 +158,7 @@ class Reference extends Binding {
     while (names.length > 0) {
       if (!(this.port instanceof Field)) {
         throw new ViewScriptException(
-          `Cannot dereference invalid name \`${reference.N}\``
+          `Cannot dereference invalid name \`${reference.name}\``
         );
       }
 
@@ -166,7 +167,7 @@ class Reference extends Binding {
 
     if (typeof this.port !== "object" || this.port === null) {
       throw new ViewScriptException(
-        `Cannot dereference invalid name \`${reference.N}\``
+        `Cannot dereference invalid name \`${reference.name}\``
       );
     }
 
@@ -183,22 +184,22 @@ class Reference extends Binding {
 }
 
 class Conditional extends Publisher implements Subscriber<boolean> {
-  private readonly yes: Field;
-  private readonly zag: Field;
-  private readonly query: Reference;
+  private readonly condition: Reference;
+  private readonly positive: Field;
+  private readonly negative: Field;
 
   constructor(conditional: types.Conditional, fields: Record<string, Field>) {
     super();
 
-    this.yes = Field.create(conditional.Y);
-    this.zag = Field.create(conditional.Z);
+    this.positive = Field.create(conditional.positive);
+    this.negative = Field.create(conditional.negative);
 
-    this.query = new Reference(conditional.Q, fields);
-    this.query.subscribe(this);
+    this.condition = new Reference(conditional.condition, fields);
+    this.condition.subscribe(this);
   }
 
   take(value: boolean) {
-    this.publish(value ? this.yes.getValue() : this.zag.getValue());
+    this.publish(value ? this.positive.getValue() : this.negative.getValue());
   }
 }
 
@@ -208,16 +209,16 @@ class Input extends Binding {
   constructor(input: types.Input, fields: Record<string, Field>) {
     super();
 
-    if (input.V.K === "f") {
-      this.publisher = Field.create(input.V);
-    } else if (input.V.K === "r") {
-      this.publisher = new Reference(input.V, fields);
-    } else if (input.V.K === "c") {
-      this.publisher = new Conditional(input.V, fields);
+    if (input.value.kind === "field") {
+      this.publisher = Field.create(input.value);
+    } else if (input.value.kind === "reference") {
+      this.publisher = new Reference(input.value, fields);
+    } else if (input.value.kind === "conditional") {
+      this.publisher = new Conditional(input.value, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an input with value of unknown kind "${
-          (input.V as { K: unknown }).K
+          (input.value as { K: unknown }).K
         }"`
       );
     }
@@ -232,7 +233,7 @@ class Output extends Binding {
   constructor(output: types.Output, fields: Record<string, Field>) {
     super();
 
-    this.subscriber = new Reference(output.V, fields);
+    this.subscriber = new Reference(output.value, fields);
     this.subscribe(this.subscriber);
   }
 
@@ -249,30 +250,33 @@ class Element extends Publisher<HTMLElement> {
 
     // TODO Add support for rendering views, not just HTML elements.
 
-    if (!/^<[\w-.]+>$/g.test(element.C)) {
+    if (!/^<[\w-.]+>$/g.test(element.view)) {
       throw new ViewScriptException(
-        `Cannot construct an element of invalid tag name \`${element.C}\``
+        `Cannot construct an element of invalid tag name \`${element.view}\``
       );
     }
 
-    const tagName = element.C.slice(1, element.C.length - 1);
+    const tagName = element.view.slice(1, element.view.length - 1);
     const htmlElement = window.document.createElement(tagName);
-    window.console.log(`[DOM] 🔩 ${element.C} created`, htmlElement);
+    window.console.log(`[DOM] 🔩 ${element.view} created`, htmlElement);
 
-    element.P.forEach((property) => {
-      if (property.K === "i") {
+    element.properties.forEach((property) => {
+      if (property.kind === "input") {
         // TODO Add support for input properties which are lists.
 
         const input = new Input(property, fields);
-        this.properties[property.N] = input;
+        this.properties[property.name] = input;
 
         let take: (value: unknown) => void;
 
-        if (property.N === "content") {
+        if (property.name === "content") {
           take = (value) => {
             if (typeof value === "string") {
               htmlElement.textContent = value as string;
-              window.console.log(`[DOM] 💧 ${element.C} textContent =`, value);
+              window.console.log(
+                `[DOM] 💧 ${element.view} textContent =`,
+                value
+              );
             } else {
               const childElementValue = value as types.Element;
               const childElement = new Element(childElementValue, fields);
@@ -283,31 +287,37 @@ class Element extends Publisher<HTMLElement> {
               });
             }
           };
-        } else if (style.supports(property.N)) {
+        } else if (style.supports(property.name)) {
           take = (value) => {
-            htmlElement.style.setProperty(property.N, value as string);
-            window.console.log(`[DOM] 💧 ${element.C} ${property.N} =`, value);
+            htmlElement.style.setProperty(property.name, value as string);
+            window.console.log(
+              `[DOM] 💧 ${element.view} ${property.name} =`,
+              value
+            );
           };
         } else {
           take = (value) => {
-            htmlElement.setAttribute(property.N, value as string);
-            window.console.log(`[DOM] 💧 ${element.C} ${property.N} =`, value);
+            htmlElement.setAttribute(property.name, value as string);
+            window.console.log(
+              `[DOM] 💧 ${element.view} ${property.name} =`,
+              value
+            );
           };
         }
 
         input.subscribe({ take });
-      } else if (property.K === "o") {
+      } else if (property.kind === "output") {
         const output = new Output(property, fields);
-        this.properties[property.N] = output;
+        this.properties[property.name] = output;
 
         class ElementOutputPublisher extends Publisher {
           constructor() {
             super();
 
-            htmlElement.addEventListener(property.N, () => {
+            htmlElement.addEventListener(property.name, () => {
               // TODO Add support for processing the Event passed to this listener.
 
-              window.console.log(`[DOM] 🔥 ${element.C} ${property.N}`);
+              window.console.log(`[DOM] 🔥 ${element.view} ${property.name}`);
               this.publish(output.getArgumentValue());
             });
           }
@@ -330,7 +340,7 @@ class Element extends Publisher<HTMLElement> {
 
 class Console extends Field {
   constructor() {
-    super({ K: "f", N: "console", C: "Console" });
+    super({ kind: "field", name: "console", model: "Console" });
 
     this.when("log", (value) => window.console.log(value));
   }
@@ -338,7 +348,7 @@ class Console extends Field {
 
 class Browser extends Field {
   constructor() {
-    super({ K: "f", N: "browser", C: "Browser" });
+    super({ kind: "field", name: "browser", model: "Browser" });
 
     this.set("console", new Console());
   }
@@ -351,10 +361,10 @@ class View {
   constructor(view: types.View, fields: Record<string, Field>) {
     this.fields = fields;
 
-    view.B.forEach((statement) => {
-      if (statement.K === "f") {
-        this.fields[statement.N] = Field.create(statement);
-      } else if (statement.K === "e") {
+    view.body.forEach((statement) => {
+      if (statement.kind === "field") {
+        this.fields[statement.name] = Field.create(statement);
+      } else if (statement.kind === "element") {
         const element = new Element(statement, this.fields);
         this.elements.push(element);
         element.subscribe({
@@ -378,7 +388,7 @@ export class RunningApp {
   private readonly views: Array<View> = [];
 
   constructor(app: types.App) {
-    const view = new View(app.B[0], { browser: RunningApp.browser });
+    const view = new View(app.body[0], { browser: RunningApp.browser });
     this.views.push(view);
 
     window.console.log(`[VSR] 🏃 This app is now running:`);

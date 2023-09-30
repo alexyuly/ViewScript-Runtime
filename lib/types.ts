@@ -1,112 +1,93 @@
 export type Field = {
-  /** kind: "field" */
-  K: "f";
-  /** name */
-  N: string;
-  /** class (model) */
-  C: string;
-  /** value */
-  V?: unknown;
+  kind: "field";
+  name: string;
+  model: string;
+  value?: unknown;
 };
 
 export type Condition = Field & {
-  C: "Condition";
-  V: boolean;
+  model: "Condition";
+  value: boolean;
 };
 
 export type ElementField = Field & {
-  C: "Element";
-  V: Element;
+  model: "Element";
+  value: Element;
 };
 
 export type Text = Field & {
-  C: "Text";
-  V: string;
+  model: "Text";
+  value: string;
 };
 
 export type Reference = {
-  /** kind: "reference" */
-  K: "r";
-  /** name or names */
-  N: string | Array<string>;
-  /** argument */
-  A?: Field;
+  kind: "reference";
+  name: string | Array<string>;
+  argument?: Field;
 };
 
 export type Conditional = {
-  /** kind: "conditional" */
-  K: "c";
-  /** query */
-  Q: Reference;
-  /** yes branch */
-  Y: Field;
-  /** zag branch */
-  Z: Field;
+  kind: "conditional";
+  condition: Reference;
+  positive: Field;
+  negative: Field;
 };
 
 export type Input = {
-  /** kind: "input" */
-  K: "i";
-  /** name */
-  N: string;
-  /** value */
-  V: Field | Reference | Conditional;
+  kind: "input";
+  name: string;
+  value: Field | Reference | Conditional;
 };
 
 export type Output = {
-  /** kind: "output" */
-  K: "o";
-  /** name */
-  N: string;
-  /** value */
-  V: Reference;
+  kind: "output";
+  name: string;
+  value: Reference;
 };
 
 export type Element = {
-  /** kind: "element" */
-  K: "e";
-  /** class (tag) */
-  C: string;
-  /** properties */
-  P: Array<Input | Output>;
+  kind: "element";
+  view: string;
+  properties: Array<Input | Output>;
 };
 
 export type View = {
-  /** kind: "view" */
-  K: "v";
-  /** name */
-  N: string;
-  /** body */
-  B: Array<Field | Element>;
+  kind: "view";
+  name: string;
+  body: Array<Field | Element>;
 };
 
 export type App = {
-  /** kind */
-  K: "ViewScript v0.0.4 App";
-  /** body */
-  B: [View];
+  kind: "ViewScript v0.0.4 App";
+  body: [View];
 };
 
 export function isConditionField(field: Field): field is Condition {
-  return field.C === "Condition";
+  return field.model === "Condition";
 }
 
 export function isElement(node: unknown): node is Element {
   return (
-    typeof node === "object" && node !== null && "K" in node && node.K === "e"
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "element"
   );
 }
 
 export function isElementField(field: Field): field is ElementField {
-  return field.C === "Element";
+  return field.model === "Element";
 }
 
 export function isOutput(node: unknown): node is Output {
   return (
-    typeof node === "object" && node !== null && "K" in node && node.K === "o"
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "output"
   );
 }
 
 export function isTextField(field: Field): field is Text {
-  return field.C === "Text";
+  return field.model === "Text";
 }
