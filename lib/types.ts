@@ -75,7 +75,7 @@ export type View = {
 
 export type App = {
   /** kind */
-  K: "ViewScript v0.0.1 App";
+  K: "ViewScript v0.0.4 App";
   /** body */
   B: [View];
 };
