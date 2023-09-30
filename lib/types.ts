@@ -11,10 +11,17 @@ export type Field = {
 
 export type Condition = Field & {
   C: "Condition";
+  V: boolean;
+};
+
+export type ElementField = Field & {
+  C: "Element";
+  V: Element;
 };
 
 export type Text = Field & {
   C: "Text";
+  V: string;
 };
 
 export type Reference = {
@@ -80,22 +87,26 @@ export type App = {
   B: [View];
 };
 
+export function isConditionField(field: Field): field is Condition {
+  return field.C === "Condition";
+}
+
 export function isElement(node: unknown): node is Element {
   return (
     typeof node === "object" && node !== null && "K" in node && node.K === "e"
   );
 }
 
-export function isFieldCondition(field: Field): field is Condition {
-  return field.C === "Condition";
-}
-
-export function isFieldText(field: Field): field is Text {
-  return field.C === "Text";
+export function isElementField(field: Field): field is ElementField {
+  return field.C === "Element";
 }
 
 export function isOutput(node: unknown): node is Output {
   return (
     typeof node === "object" && node !== null && "K" in node && node.K === "o"
   );
+}
+
+export function isTextField(field: Field): field is Text {
+  return field.C === "Text";
 }

@@ -1,3 +1,4 @@
+import * as dom from "./dom";
 import * as style from "./style";
 import * as types from "./types";
 
@@ -55,12 +56,16 @@ abstract class Field<T = unknown> extends Binding<T> {
   }
 
   static create(field: types.Field) {
-    if (types.isFieldCondition(field)) {
+    if (types.isConditionField(field)) {
       return new Condition(field);
     }
 
-    if (types.isFieldText(field)) {
+    if (types.isTextField(field)) {
       return new Text(field);
+    }
+
+    if (types.isElementField(field)) {
+      return new ElementField(field);
     }
 
     // TODO Support creating numeric fields.
@@ -112,6 +117,12 @@ class Condition extends Field<boolean> {
 
 class Text extends Field<string> {
   constructor(field: types.Text) {
+    super(field);
+  }
+}
+
+class ElementField extends Field<HTMLElement> {
+  constructor(field: types.ElementField) {
     super(field);
   }
 }
@@ -250,6 +261,8 @@ class Element extends Publisher<HTMLElement> {
 
     element.P.forEach((property) => {
       if (property.K === "i") {
+        // TODO Add support for input properties which are lists.
+
         const input = new Input(property, fields);
         this.properties[property.N] = input;
 
@@ -257,8 +270,18 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.N === "content") {
           take = (value) => {
-            htmlElement.textContent = value as string;
-            window.console.log(`[DOM] 💧 ${element.C} textContent =`, value);
+            if (typeof value === "string") {
+              htmlElement.textContent = value as string;
+              window.console.log(`[DOM] 💧 ${element.C} textContent =`, value);
+            } else {
+              const childElementValue = value as types.Element;
+              const childElement = new Element(childElementValue, fields);
+              childElement.subscribe({
+                take: (childHtmlElement) => {
+                  dom.append(childHtmlElement, htmlElement);
+                },
+              });
+            }
           };
         } else if (style.supports(property.N)) {
           take = (value) => {
@@ -336,11 +359,7 @@ class View {
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
-            window.document.body.appendChild(htmlElement);
-            window.console.log(
-              `[DOM] 🔧 ${statement.C} appended to body`,
-              htmlElement
-            );
+            dom.append(htmlElement, window.document.body);
           },
         });
       } else {
@@ -354,15 +373,15 @@ class View {
   }
 }
 
-export class RunnableApp {
+export class RunningApp {
   private static readonly browser = new Browser();
   private readonly views: Array<View> = [];
 
   constructor(app: types.App) {
-    const view = new View(app.B[0], { browser: RunnableApp.browser });
+    const view = new View(app.B[0], { browser: RunningApp.browser });
     this.views.push(view);
 
-    window.console.log(`[VSR] 🏃 The following app is now running:`);
+    window.console.log(`[VSR] 🏃 This app is now running:`);
     window.console.log(this);
   }
 }
