@@ -52,7 +52,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.model;
-    this.take(field.value as T); // The ViewScript compiler enforces the type safety of this value.
+    this.take(field.value as T);
   }
 
   static create(field: types.Field) {
