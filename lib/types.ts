@@ -59,7 +59,7 @@ export type View = {
 };
 
 export type App = {
-  kind: "ViewScript v0.0.4 App";
+  kind: "ViewScript v0.1.0 App";
   body: [View];
 };
 
