@@ -1,23 +1,20 @@
-export type Field = {
+export type Field<T = unknown> = {
   kind: "field";
   name: string;
   model: string;
-  value?: unknown;
+  value?: T;
 };
 
-export type Condition = Field & {
+export type Condition = Field<boolean> & {
   model: "Condition";
-  value: boolean;
 };
 
-export type ElementField = Field & {
+export type ElementField = Field<Element> & {
   model: "Element";
-  value: Element;
 };
 
-export type Text = Field & {
+export type Text = Field<string> & {
   model: "Text";
-  value: string;
 };
 
 export type Reference = {

@@ -47,12 +47,15 @@ abstract class Field<T = unknown> extends Binding<T> {
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName?: string;
 
-  constructor(field: types.Field) {
+  constructor(field: types.Field<T>) {
     super();
 
     this.id = window.crypto.randomUUID();
     this.modelName = field.model;
-    this.take(field.value as T);
+
+    if (field.value !== undefined) {
+      this.take(field.value);
+    }
   }
 
   static create(field: types.Field) {
@@ -121,7 +124,7 @@ class Text extends Field<string> {
   }
 }
 
-class ElementField extends Field<HTMLElement> {
+class ElementField extends Field<types.Element> {
   constructor(field: types.ElementField) {
     super(field);
   }
