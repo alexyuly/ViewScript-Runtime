@@ -4,6 +4,7 @@ export const create = (tagName: string) => {
     `[DOM] 🔩 <${tagName.toLowerCase()}> created`,
     htmlElement
   );
+  return htmlElement;
 };
 
 export const append = (element: HTMLElement, child: HTMLElement) => {

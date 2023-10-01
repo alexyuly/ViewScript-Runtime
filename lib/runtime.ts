@@ -221,7 +221,7 @@ class Input extends Binding {
     } else {
       throw new ViewScriptException(
         `Cannot construct an input with value of unknown kind "${
-          (input.value as { K: unknown }).K
+          (input.value as { kind: unknown }).kind
         }"`
       );
     }
@@ -260,8 +260,7 @@ class Element extends Publisher<HTMLElement> {
     }
 
     const tagName = element.view.slice(1, element.view.length - 1);
-    const htmlElement = window.document.createElement(tagName);
-    window.console.log(`[DOM] 🔩 ${element.view} created`, htmlElement);
+    const htmlElement = Dom.create(tagName);
 
     element.properties.forEach((property) => {
       if (property.kind === "input") {
@@ -316,7 +315,7 @@ class Element extends Publisher<HTMLElement> {
       } else {
         throw new ViewScriptException(
           `Cannot construct a property of unknown kind "${
-            (property as { K: unknown }).K
+            (property as { kind: unknown }).kind
           }"`
         );
       }
@@ -357,13 +356,13 @@ class View {
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
-            Dom.append(htmlElement, window.document.body);
+            Dom.append(window.document.body, htmlElement);
           },
         });
       } else {
         throw new ViewScriptException(
           `Cannot construct a statement of unknown kind "${
-            (statement as { K: unknown }).K
+            (statement as { kind: unknown }).kind
           }"`
         );
       }
