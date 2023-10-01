@@ -279,7 +279,7 @@ class Element extends Publisher<HTMLElement> {
               const childElement = new Element(childElementValue, fields);
               childElement.subscribe({
                 take: (childHtmlElement) => {
-                  Dom.append(childHtmlElement, htmlElement);
+                  Dom.append(htmlElement, childHtmlElement);
                 },
               });
             } else {
