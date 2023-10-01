@@ -1,6 +1,6 @@
-import * as dom from "./dom";
-import * as style from "./style";
-import * as types from "./types";
+import * as Dom from "./dom";
+import * as Style from "./style";
+import * as Types from "./types";
 
 class ViewScriptException extends Error {}
 
@@ -47,7 +47,7 @@ abstract class Field<T = unknown> extends Binding<T> {
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelName?: string;
 
-  constructor(field: types.Field<T>) {
+  constructor(field: Types.Field<T>) {
     super();
 
     this.id = window.crypto.randomUUID();
@@ -58,16 +58,16 @@ abstract class Field<T = unknown> extends Binding<T> {
     }
   }
 
-  static create(field: types.Field) {
-    if (types.isConditionField(field)) {
+  static create(field: Types.Field) {
+    if (Types.isConditionField(field)) {
       return new Condition(field);
     }
 
-    if (types.isTextField(field)) {
+    if (Types.isTextField(field)) {
       return new Text(field);
     }
 
-    if (types.isElementField(field)) {
+    if (Types.isElementField(field)) {
       return new ElementField(field);
     }
 
@@ -109,7 +109,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 }
 
 class Condition extends Field<boolean> {
-  constructor(field: types.Condition) {
+  constructor(field: Types.Condition) {
     super(field);
 
     this.when("disable", () => false);
@@ -119,13 +119,13 @@ class Condition extends Field<boolean> {
 }
 
 class Text extends Field<string> {
-  constructor(field: types.Text) {
+  constructor(field: Types.Text) {
     super(field);
   }
 }
 
-class ElementField extends Field<types.Element> {
-  constructor(field: types.ElementField) {
+class ElementField extends Field<Types.Element> {
+  constructor(field: Types.ElementField) {
     super(field);
   }
 }
@@ -135,7 +135,7 @@ class Reference extends Binding {
   private readonly names: Array<string>;
   private readonly port: Publisher | Subscriber;
 
-  constructor(reference: types.Reference, fields: Record<string, Field>) {
+  constructor(reference: Types.Reference, fields: Record<string, Field>) {
     super();
 
     this.argument = reference.argument && Field.create(reference.argument);
@@ -191,7 +191,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(conditional: types.Conditional, fields: Record<string, Field>) {
+  constructor(conditional: Types.Conditional, fields: Record<string, Field>) {
     super();
 
     this.positive = Field.create(conditional.positive);
@@ -209,7 +209,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 class Input extends Binding {
   private readonly publisher: Publisher;
 
-  constructor(input: types.Input, fields: Record<string, Field>) {
+  constructor(input: Types.Input, fields: Record<string, Field>) {
     super();
 
     if (input.value.kind === "field") {
@@ -233,7 +233,7 @@ class Input extends Binding {
 class Output extends Binding {
   private readonly subscriber: Reference;
 
-  constructor(output: types.Output, fields: Record<string, Field>) {
+  constructor(output: Types.Output, fields: Record<string, Field>) {
     super();
 
     this.subscriber = new Reference(output.value, fields);
@@ -248,7 +248,7 @@ class Output extends Binding {
 class Element extends Publisher<HTMLElement> {
   private readonly properties: Record<string, Input | Output> = {};
 
-  constructor(element: types.Element, fields: Record<string, Field>) {
+  constructor(element: Types.Element, fields: Record<string, Field>) {
     super();
 
     // TODO Add support for rendering views, not just HTML elements.
@@ -274,37 +274,25 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.name === "content") {
           take = (value) => {
-            if (typeof value === "string") {
-              htmlElement.textContent = value as string;
-              window.console.log(
-                `[DOM] 💧 ${element.view} textContent =`,
-                value
-              );
-            } else {
-              const childElementValue = value as types.Element;
+            if (Types.isElement(value)) {
+              const childElementValue = value as Types.Element;
               const childElement = new Element(childElementValue, fields);
               childElement.subscribe({
                 take: (childHtmlElement) => {
-                  dom.append(childHtmlElement, htmlElement);
+                  Dom.append(childHtmlElement, htmlElement);
                 },
               });
+            } else {
+              Dom.textContent(htmlElement, value as string | null);
             }
           };
-        } else if (style.supports(property.name)) {
+        } else if (Style.supports(property.name)) {
           take = (value) => {
-            htmlElement.style.setProperty(property.name, value as string);
-            window.console.log(
-              `[DOM] 💧 ${element.view} ${property.name} =`,
-              value
-            );
+            Dom.styleProp(htmlElement, property.name, value as string | null);
           };
         } else {
           take = (value) => {
-            htmlElement.setAttribute(property.name, value as string);
-            window.console.log(
-              `[DOM] 💧 ${element.view} ${property.name} =`,
-              value
-            );
+            Dom.attribute(htmlElement, property.name, value as string | null);
           };
         }
 
@@ -317,10 +305,7 @@ class Element extends Publisher<HTMLElement> {
           constructor() {
             super();
 
-            htmlElement.addEventListener(property.name, () => {
-              // TODO Add support for processing the Event passed to this listener.
-
-              window.console.log(`[DOM] 🔥 ${element.view} ${property.name}`);
+            Dom.listen(htmlElement, property.name, () => {
               this.publish(output.getArgumentValue());
             });
           }
@@ -361,7 +346,7 @@ class View {
   private readonly elements: Array<Element> = [];
   private readonly fields: Record<string, Field>;
 
-  constructor(view: types.View, fields: Record<string, Field>) {
+  constructor(view: Types.View, fields: Record<string, Field>) {
     this.fields = fields;
 
     view.body.forEach((statement) => {
@@ -372,7 +357,7 @@ class View {
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
-            dom.append(htmlElement, window.document.body);
+            Dom.append(htmlElement, window.document.body);
           },
         });
       } else {
@@ -390,7 +375,7 @@ export class RunningApp {
   private static readonly browser = new Browser();
   private readonly views: Array<View> = [];
 
-  constructor(app: types.App) {
+  constructor(app: Types.App) {
     const view = new View(app.body[0], { browser: RunningApp.browser });
     this.views.push(view);
 
