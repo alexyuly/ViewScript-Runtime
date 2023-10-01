@@ -9,12 +9,16 @@ export type Condition = Field<boolean> & {
   model: "Condition";
 };
 
-export type ElementField = Field<Element> & {
-  model: "Element";
+export type Count = Field<number> & {
+  model: "Count";
 };
 
 export type Text = Field<string> & {
   model: "Text";
+};
+
+export type ElementField = Field<Element> & {
+  model: "Element";
 };
 
 export type Reference = {
@@ -61,6 +65,10 @@ export type App = {
 
 export function isConditionField(field: Field): field is Condition {
   return field.model === "Condition";
+}
+
+export function isCountField(field: Field): field is Count {
+  return field.model === "Count";
 }
 
 export function isElement(node: unknown): node is Element {

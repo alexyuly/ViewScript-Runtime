@@ -63,6 +63,10 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new Condition(field);
     }
 
+    if (Types.isCountField(field)) {
+      return new Count(field);
+    }
+
     if (Types.isTextField(field)) {
       return new Text(field);
     }
@@ -71,7 +75,6 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new ElementField(field);
     }
 
-    // TODO Support creating numeric fields.
     // TODO Support creating complex fields.
     // TODO Support creating collection fields.
 
@@ -98,9 +101,9 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.publish(value);
   }
 
-  protected when(name: string, reducer: (argument: unknown) => T) {
+  protected when<A = unknown>(name: string, reducer: (argument: A) => T) {
     this.members[name] = {
-      take: (event) => {
+      take: (event: A) => {
         const nextValue = reducer(event);
         this.take(nextValue);
       },
@@ -115,6 +118,14 @@ class Condition extends Field<boolean> {
     this.when("disable", () => false);
     this.when("enable", () => true);
     this.when("toggle", () => !this.getValue());
+  }
+}
+
+class Count extends Field<number> {
+  constructor(field: Types.Count) {
+    super(field);
+
+    this.when("add", (amount: number) => (this.getValue() ?? 0) + amount);
   }
 }
 
