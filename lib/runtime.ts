@@ -119,10 +119,6 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.members[name] = field;
   }
 
-  take(value: T) {
-    this.publish(value);
-  }
-
   protected when<A = unknown>(name: string, reducer: (argument: A) => T) {
     this.members[name] = {
       take: (event: A) => {
