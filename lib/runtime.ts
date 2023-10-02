@@ -303,8 +303,7 @@ class Element extends Publisher<HTMLElement> {
         if (property.name === "content") {
           take = (value) => {
             if (Types.isElement(value)) {
-              const childElementValue = value as Types.Element;
-              const childElement = new Element(childElementValue, fields);
+              const childElement = new Element(value, fields);
               childElement.subscribe({
                 take: (childHtmlElement) => {
                   Dom.append(htmlElement, childHtmlElement);
