@@ -42,9 +42,7 @@ abstract class Publisher<T = unknown> {
 
 /**
  * Takes values and publishes them again.
- * This is useful for classes that need to
- * forward values, while managing other
- * responsibilities.
+ * This is useful for classes that need to forward values, while managing other duties.
  */
 abstract class Binding<T = unknown>
   extends Publisher<T>
@@ -57,12 +55,9 @@ abstract class Binding<T = unknown>
 
 /**
  * An instance of a model of type T.
- * The Model class doesn't exist yet, but
- * it will be the base class for all native
- * and custom data types. Since custom data
- * types don't exist yet, models aren't yet
- * realized. Instead, they are hacked into
- * fields for now, to be worked on later.
+ * The Model class doesn't exist yet. It will be the base for all native and custom data types.
+ * Since custom data types don't exist yet, models aren't implemented yet.
+ * Instead, they are hacked into fields for now, to be worked on later.
  */
 abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
@@ -115,6 +110,11 @@ abstract class Field<T = unknown> extends Binding<T> {
     return this.members[name];
   }
 
+  publish(value: T) {
+    window.console.log(`[VSR] set ${this.modelName} field ${this.id} =`, value);
+    super.publish(value);
+  }
+
   protected set(name: string, field: Field) {
     this.members[name] = field;
   }
@@ -129,6 +129,9 @@ abstract class Field<T = unknown> extends Binding<T> {
   }
 }
 
+/**
+ * A field that stores a boolean.
+ */
 class Condition extends Field<boolean> {
   constructor(field: Types.Condition) {
     super(field);
@@ -139,6 +142,9 @@ class Condition extends Field<boolean> {
   }
 }
 
+/**
+ * A field that stores a number.
+ */
 class Count extends Field<number> {
   constructor(field: Types.Count) {
     super(field);
@@ -147,18 +153,27 @@ class Count extends Field<number> {
   }
 }
 
+/**
+ * A field that stores a string.
+ */
 class Text extends Field<string> {
   constructor(field: Types.Text) {
     super(field);
   }
 }
 
+/**
+ * A field that stores an element AST object (see Types.Element).
+ */
 class ElementField extends Field<Types.Element> {
   constructor(field: Types.ElementField) {
     super(field);
   }
 }
 
+/**
+ * A binding to a field or action based on its name or path within the given fields.
+ */
 class Reference extends Binding {
   private readonly argument?: Field;
   private readonly names: Array<string>;
@@ -406,7 +421,7 @@ export class RunningApp {
     const view = new View(app.body[0], { browser: RunningApp.browser });
     this.views.push(view);
 
-    window.console.log(`[VSR] 🏃 This app is now running:`);
+    window.console.log(`[VSR] 🏃 started app:`);
     window.console.log(this);
   }
 }

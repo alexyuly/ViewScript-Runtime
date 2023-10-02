@@ -1,16 +1,13 @@
 export const create = (tagName: string) => {
   const htmlElement = window.document.createElement(tagName.toLowerCase());
-  window.console.log(
-    `[DOM] 🔩 <${tagName.toLowerCase()}> created`,
-    htmlElement
-  );
+  window.console.log(`[DOM] new <${tagName.toLowerCase()}>`, htmlElement);
   return htmlElement;
 };
 
 export const append = (element: HTMLElement, child: HTMLElement) => {
   element.appendChild(child);
   window.console.log(
-    `[DOM] 🔧 <${child.tagName.toLowerCase()}> appended to <${element.tagName.toLowerCase()}>`,
+    `[DOM] set <${element.tagName.toLowerCase()}> add child <${child.tagName.toLowerCase()}>`,
     child
   );
 };
@@ -18,7 +15,7 @@ export const append = (element: HTMLElement, child: HTMLElement) => {
 export const textContent = (element: HTMLElement, value: string | null) => {
   element.textContent = value === null ? null : String(value);
   window.console.log(
-    `[DOM] 💧 <${element.tagName.toLowerCase()}> textContent =`,
+    `[DOM] set <${element.tagName.toLowerCase()}> textContent =`,
     value
   );
 };
@@ -30,7 +27,7 @@ export const styleProp = (
 ) => {
   element.style.setProperty(name, value === null ? null : String(value));
   window.console.log(
-    `[DOM] 💧 <${element.tagName.toLowerCase()}> ${name} =`,
+    `[DOM] set <${element.tagName.toLowerCase()}> ${name} =`,
     value
   );
 };
@@ -42,7 +39,7 @@ export const attribute = (
 ) => {
   element.setAttribute(name, value === null ? "" : String(value));
   window.console.log(
-    `[DOM] 💧 <${element.tagName.toLowerCase()}> ${name} =`,
+    `[DOM] set <${element.tagName.toLowerCase()}> ${name} =`,
     value
   );
 };
@@ -55,7 +52,9 @@ export const listen = (
   element.addEventListener(event, () => {
     // TODO Add support for processing the Event passed to this listener.
 
-    window.console.log(`[DOM] 🔥 <${element.tagName.toLowerCase()}> ${event}`);
+    window.console.log(
+      `[DOM] get ${event} from <${element.tagName.toLowerCase()}>`
+    );
     callback();
   });
 };
