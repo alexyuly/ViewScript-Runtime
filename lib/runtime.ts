@@ -4,10 +4,17 @@ import * as Types from "./types";
 
 class ViewScriptException extends Error {}
 
+/**
+ * Takes values from a publisher.
+ */
 interface Subscriber<T = unknown> {
   take(value: T): void;
 }
 
+/**
+ * Publishes values to subscribers.
+ * Stores the publicly readable last value.
+ */
 abstract class Publisher<T = unknown> {
   private lastValue: T | undefined;
   private readonly listeners: Array<Subscriber<T>> = [];
@@ -33,6 +40,12 @@ abstract class Publisher<T = unknown> {
   }
 }
 
+/**
+ * Takes values and publishes them again.
+ * This is useful for classes that need to
+ * forward values, while managing other
+ * responsibilities.
+ */
 abstract class Binding<T = unknown>
   extends Publisher<T>
   implements Subscriber<T>
@@ -42,6 +55,15 @@ abstract class Binding<T = unknown>
   }
 }
 
+/**
+ * An instance of a model of type T.
+ * The Model class doesn't exist yet, but
+ * it will be the base class for all native
+ * and custom data types. Since custom data
+ * types don't exist yet, models aren't yet
+ * realized. Instead, they are hacked into
+ * fields for now, to be worked on later.
+ */
 abstract class Field<T = unknown> extends Binding<T> {
   readonly id: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
