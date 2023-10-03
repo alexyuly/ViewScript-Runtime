@@ -93,7 +93,10 @@ abstract class Field<T = unknown> extends Binding<T> {
     }
 
     // TODO Support creating complex fields.
-    // TODO Support creating collection fields.
+
+    if (Types.isCollectionField(field)) {
+      return new Collection(field);
+    }
 
     throw new ViewScriptException(
       `Cannot construct a field of unknown class \`${field.model}\``
@@ -173,6 +176,12 @@ class Text extends Field<string> {
  */
 class ElementField extends Field<Types.Element> {
   constructor(field: Types.ElementField) {
+    super(field);
+  }
+}
+
+class Collection extends Field<Array<unknown>> {
+  constructor(field: Types.Collection) {
     super(field);
   }
 }
@@ -314,8 +323,6 @@ class Element extends Publisher<HTMLElement> {
 
     element.properties.forEach((property) => {
       if (property.kind === "input") {
-        // TODO Add support for input properties which are lists.
-
         const input = new Input(property, fields);
         this.properties[property.name] = input;
 
@@ -323,16 +330,22 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.name === "content") {
           take = (value) => {
-            if (Types.isElement(value)) {
-              const childElement = new Element(value, fields);
-              childElement.subscribe({
-                take: (childHtmlElement) => {
-                  Dom.append(htmlElement, childHtmlElement);
-                },
-              });
-            } else {
-              Dom.textContent(htmlElement, value as string | null);
-            }
+            htmlElement.innerText = "";
+            const populate = (child = value) => {
+              if (child instanceof Array) {
+                child.forEach(populate);
+              } else if (Types.isElement(child)) {
+                const childElement = new Element(child, fields);
+                childElement.subscribe({
+                  take: (childHtmlElement) => {
+                    Dom.append(htmlElement, childHtmlElement);
+                  },
+                });
+              } else {
+                Dom.append(htmlElement, child as string | null);
+              }
+            };
+            populate();
           };
         } else if (Style.supports(property.name)) {
           take = (value) => {

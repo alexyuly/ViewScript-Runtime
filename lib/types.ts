@@ -21,6 +21,10 @@ export type ElementField = Field<Element> & {
   model: "Element";
 };
 
+export type Collection = Field<Array<unknown>> & {
+  model: "Collection";
+};
+
 export type Reference = {
   kind: "reference";
   name: string | Array<string>;
@@ -62,6 +66,10 @@ export type App = {
   kind: "ViewScript v0.1.0 App";
   body: [View];
 };
+
+export function isCollectionField(field: Field): field is Collection {
+  return field.model === "Collection";
+}
 
 export function isConditionField(field: Field): field is Condition {
   return field.model === "Condition";

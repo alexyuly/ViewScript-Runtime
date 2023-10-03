@@ -4,19 +4,19 @@ export const create = (tagName: string) => {
   return htmlElement;
 };
 
-export const append = (element: HTMLElement, child: HTMLElement) => {
-  element.appendChild(child);
-  window.console.log(
-    `[DOM] 🌿 Append <${child.tagName.toLowerCase()}> to <${element.tagName.toLowerCase()}>`,
-    child
-  );
-};
+export const append = (
+  element: HTMLElement,
+  child: HTMLElement | string | null
+) => {
+  if (child instanceof Node) {
+    element.appendChild(child);
+  } else if (child !== null) {
+    element.insertAdjacentHTML("beforeend", child);
+  }
 
-export const textContent = (element: HTMLElement, value: string | null) => {
-  element.textContent = value === null ? null : String(value);
   window.console.log(
-    `[DOM] 💧 Update <${element.tagName.toLowerCase()}> textContent =`,
-    value
+    `[DOM] 🌿 Append to <${element.tagName.toLowerCase()}>:`,
+    child
   );
 };
 
