@@ -111,7 +111,10 @@ abstract class Field<T = unknown> extends Binding<T> {
   }
 
   publish(value: T) {
-    window.console.log(`[VSR] set ${this.modelName} field ${this.id} =`, value);
+    window.console.log(
+      `[VSR] ⛰️ Set ${this.modelName} field ${this.id} =`,
+      value
+    );
     super.publish(value);
   }
 
@@ -123,7 +126,10 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.members[name] = {
       take: (event: A) => {
         const nextValue = reducer(event);
-        this.take(nextValue);
+
+        if (nextValue !== undefined) {
+          this.take(nextValue);
+        }
       },
     };
   }
@@ -421,7 +427,7 @@ export class RunningApp {
     const view = new View(app.body[0], { browser: RunningApp.browser });
     this.views.push(view);
 
-    window.console.log(`[VSR] 🏃 started app:`);
+    window.console.log(`[VSR] 🏃 Started app:`);
     window.console.log(this);
   }
 }

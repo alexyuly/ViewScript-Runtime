@@ -1,13 +1,13 @@
 export const create = (tagName: string) => {
   const htmlElement = window.document.createElement(tagName.toLowerCase());
-  window.console.log(`[DOM] new <${tagName.toLowerCase()}>`, htmlElement);
+  window.console.log(`[DOM] 🌱 Create <${tagName.toLowerCase()}>`, htmlElement);
   return htmlElement;
 };
 
 export const append = (element: HTMLElement, child: HTMLElement) => {
   element.appendChild(child);
   window.console.log(
-    `[DOM] set <${element.tagName.toLowerCase()}> add child <${child.tagName.toLowerCase()}>`,
+    `[DOM] 🌿 Append <${child.tagName.toLowerCase()}> to <${element.tagName.toLowerCase()}>`,
     child
   );
 };
@@ -15,7 +15,7 @@ export const append = (element: HTMLElement, child: HTMLElement) => {
 export const textContent = (element: HTMLElement, value: string | null) => {
   element.textContent = value === null ? null : String(value);
   window.console.log(
-    `[DOM] set <${element.tagName.toLowerCase()}> textContent =`,
+    `[DOM] 💧 Update <${element.tagName.toLowerCase()}> textContent =`,
     value
   );
 };
@@ -27,7 +27,7 @@ export const styleProp = (
 ) => {
   element.style.setProperty(name, value === null ? null : String(value));
   window.console.log(
-    `[DOM] set <${element.tagName.toLowerCase()}> ${name} =`,
+    `[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`,
     value
   );
 };
@@ -39,7 +39,7 @@ export const attribute = (
 ) => {
   element.setAttribute(name, value === null ? "" : String(value));
   window.console.log(
-    `[DOM] set <${element.tagName.toLowerCase()}> ${name} =`,
+    `[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`,
     value
   );
 };
@@ -53,7 +53,7 @@ export const listen = (
     // TODO Add support for processing the Event passed to this listener.
 
     window.console.log(
-      `[DOM] get ${event} from <${element.tagName.toLowerCase()}>`
+      `[DOM] 🔥 Fire ${event} on <${element.tagName.toLowerCase()}>`
     );
     callback();
   });
