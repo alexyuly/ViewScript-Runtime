@@ -427,7 +427,7 @@ export class RunningApp {
     const view = new View(app.body[0], { browser: RunningApp.browser });
     this.views.push(view);
 
-    window.console.log(`[VSR] 🏃 Started app:`);
+    window.console.log(`[VSR] 🟢 Start app:`);
     window.console.log(this);
   }
 }
