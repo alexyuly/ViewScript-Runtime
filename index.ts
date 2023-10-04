@@ -1,2 +1,2 @@
+export * from "./lib/abstract";
 export { RunningApp } from "./lib/runtime";
-export * from "./lib/types";
