@@ -64,7 +64,7 @@ export type View = {
 
 export type App = {
   kind: "ViewScript v0.1.0 App";
-  body: [View];
+  body: Array<View>;
 };
 
 export function isCollectionField(field: Field): field is Collection {

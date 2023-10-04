@@ -194,7 +194,7 @@ class Reference extends Binding {
   private readonly names: Array<string>;
   private readonly port: Publisher | Subscriber;
 
-  constructor(reference: Types.Reference, fields: Record<string, Field>) {
+  constructor(reference: Types.Reference, scope: Record<string, Field | View>) {
     super();
 
     this.argument = reference.argument && Field.create(reference.argument);
@@ -215,7 +215,15 @@ class Reference extends Binding {
       return name;
     };
 
-    this.port = fields[getNextName()];
+    const member = scope[getNextName()];
+
+    if (member instanceof View) {
+      throw new ViewScriptException(
+        `Cannot dereference invalid name \`${reference.name}\``
+      );
+    }
+
+    this.port = member;
 
     while (names.length > 0) {
       if (!(this.port instanceof Field)) {
@@ -250,13 +258,16 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(conditional: Types.Conditional, fields: Record<string, Field>) {
+  constructor(
+    conditional: Types.Conditional,
+    scope: Record<string, Field | View>
+  ) {
     super();
 
     this.positive = Field.create(conditional.positive);
     this.negative = Field.create(conditional.negative);
 
-    this.condition = new Reference(conditional.condition, fields);
+    this.condition = new Reference(conditional.condition, scope);
     this.condition.subscribe(this);
   }
 
@@ -268,15 +279,15 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 class Input extends Binding {
   private readonly publisher: Publisher;
 
-  constructor(input: Types.Input, fields: Record<string, Field>) {
+  constructor(input: Types.Input, scope: Record<string, Field | View>) {
     super();
 
     if (input.value.kind === "field") {
       this.publisher = Field.create(input.value);
     } else if (input.value.kind === "reference") {
-      this.publisher = new Reference(input.value, fields);
+      this.publisher = new Reference(input.value, scope);
     } else if (input.value.kind === "conditional") {
-      this.publisher = new Conditional(input.value, fields);
+      this.publisher = new Conditional(input.value, scope);
     } else {
       throw new ViewScriptException(
         `Cannot construct an input with value of unknown kind "${
@@ -292,10 +303,10 @@ class Input extends Binding {
 class Output extends Binding {
   private readonly subscriber: Reference;
 
-  constructor(output: Types.Output, fields: Record<string, Field>) {
+  constructor(output: Types.Output, scope: Record<string, Field | View>) {
     super();
 
-    this.subscriber = new Reference(output.value, fields);
+    this.subscriber = new Reference(output.value, scope);
     this.subscribe(this.subscriber);
   }
 
@@ -308,7 +319,7 @@ class Element extends Publisher<HTMLElement> {
   private children: Array<Element> = [];
   private readonly properties: Record<string, Input | Output> = {};
 
-  constructor(element: Types.Element, fields: Record<string, Field>) {
+  constructor(element: Types.Element, scope: Record<string, View | Field>) {
     super();
 
     // TODO Add support for rendering views, not just HTML elements.
@@ -324,7 +335,7 @@ class Element extends Publisher<HTMLElement> {
 
     element.properties.forEach((property) => {
       if (property.kind === "input") {
-        const input = new Input(property, fields);
+        const input = new Input(property, scope);
         this.properties[property.name] = input;
 
         let take: (value: unknown) => void;
@@ -339,7 +350,7 @@ class Element extends Publisher<HTMLElement> {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Types.isElement(child)) {
-                const childElement = new Element(child, fields);
+                const childElement = new Element(child, scope);
                 this.children.push(childElement);
                 childElement.subscribe({
                   take: (childHtmlElement) => {
@@ -367,7 +378,7 @@ class Element extends Publisher<HTMLElement> {
 
         input.subscribe({ take });
       } else if (property.kind === "output") {
-        const output = new Output(property, fields);
+        const output = new Output(property, scope);
         this.properties[property.name] = output;
 
         class ElementOutputPublisher extends Publisher {
@@ -413,16 +424,16 @@ class Browser extends Field {
 
 class View {
   private readonly elements: Array<Element> = [];
-  private readonly fields: Record<string, Field>;
+  private readonly scope: Record<string, Field | View>;
 
-  constructor(view: Types.View, fields: Record<string, Field>) {
-    this.fields = fields;
+  constructor(view: Types.View, scope: Record<string, Field | View>) {
+    this.scope = scope;
 
     view.body.forEach((statement) => {
       if (statement.kind === "field") {
-        this.fields[statement.name] = Field.create(statement);
+        this.scope[statement.name] = Field.create(statement);
       } else if (statement.kind === "element") {
-        const element = new Element(statement, this.fields);
+        const element = new Element(statement, this.scope);
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
@@ -442,11 +453,16 @@ class View {
 
 export class RunningApp {
   private static readonly browser = new Browser();
-  private readonly views: Array<View> = [];
+
+  private readonly scope: Record<string, Field | View> = {
+    browser: RunningApp.browser,
+  };
 
   constructor(app: Types.App) {
-    const view = new View(app.body[0], { browser: RunningApp.browser });
-    this.views.push(view);
+    app.body.forEach((member) => {
+      const view = new View(member, { ...this.scope });
+      this.scope[member.name] = view;
+    });
 
     window.console.log(`[VSR] 🟢 Start app:`);
     window.console.log(this);
