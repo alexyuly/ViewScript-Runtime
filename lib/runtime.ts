@@ -332,7 +332,7 @@ class ElementOutputPublisher extends Publisher {
 }
 
 class Element extends Publisher<HTMLElement> {
-  private children: Array<Element> = [];
+  private children: Array<Element | string> = [];
   private readonly properties: Record<string, Input | Output> = {};
 
   constructor(element: Abstract.Element, scope: Record<string, View | Field>) {
@@ -372,8 +372,10 @@ class Element extends Publisher<HTMLElement> {
                     htmlElementChildren.push(htmlElementChild);
                   },
                 });
-              } else if (child !== null) {
-                htmlElementChildren.push(child as string);
+              } else if (child !== null && child !== undefined) {
+                const textContent = String(child);
+                this.children.push(textContent);
+                htmlElementChildren.push(textContent);
               }
             };
 
