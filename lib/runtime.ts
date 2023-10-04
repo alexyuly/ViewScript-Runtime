@@ -344,25 +344,25 @@ class Element extends Publisher<HTMLElement> {
           take = (value) => {
             this.children = [];
 
-            const children: Array<HTMLElement | string> = [];
+            const htmlElementChildren: Array<HTMLElement | string> = [];
             const populate = (child = value) => {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Types.isElement(child)) {
-                const childElement = new Element(child, scope);
-                this.children.push(childElement);
-                childElement.subscribe({
-                  take: (childHtmlElement) => {
-                    children.push(childHtmlElement);
+                const elementChild = new Element(child, scope);
+                this.children.push(elementChild);
+                elementChild.subscribe({
+                  take: (htmlElementChild) => {
+                    htmlElementChildren.push(htmlElementChild);
                   },
                 });
               } else if (child !== null) {
-                children.push(child as string);
+                htmlElementChildren.push(child as string);
               }
             };
 
             populate();
-            Dom.populate(htmlElement, children);
+            Dom.populate(htmlElement, htmlElementChildren);
           };
         } else if (Style.supports(property.name)) {
           take = (value) => {
