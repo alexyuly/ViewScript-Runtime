@@ -305,6 +305,7 @@ class Output extends Binding {
 }
 
 class Element extends Publisher<HTMLElement> {
+  private children: Array<HTMLElement | string> = [];
   private readonly properties: Record<string, Input | Output> = {};
 
   constructor(element: Types.Element, fields: Record<string, Field>) {
@@ -330,7 +331,8 @@ class Element extends Publisher<HTMLElement> {
 
         if (property.name === "content") {
           take = (value) => {
-            htmlElement.innerText = "";
+            this.children = [];
+
             const populate = (child = value) => {
               if (child instanceof Array) {
                 child.forEach(populate);
@@ -338,14 +340,17 @@ class Element extends Publisher<HTMLElement> {
                 const childElement = new Element(child, fields);
                 childElement.subscribe({
                   take: (childHtmlElement) => {
-                    Dom.append(htmlElement, childHtmlElement);
+                    this.children.push(childHtmlElement);
                   },
                 });
-              } else {
-                Dom.append(htmlElement, child as string | null);
+              } else if (child !== null) {
+                this.children.push(child as string);
               }
             };
+
             populate();
+
+            htmlElement.replaceChildren(...this.children);
           };
         } else if (Style.supports(property.name)) {
           take = (value) => {
