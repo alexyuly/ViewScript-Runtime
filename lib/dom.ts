@@ -54,11 +54,8 @@ export const listen = (
   });
 };
 
-export const render = (element: HTMLElement) => {
-  window.document.body.appendChild(element);
+export const render = (elements: Array<HTMLElement>) => {
+  window.document.body.append(...elements);
 
-  window.console.log(
-    `[DOM] 🪴 Render <${element.tagName.toLowerCase()}>:`,
-    element
-  );
+  window.console.log(`[DOM] 🪴 Render:`, elements);
 };

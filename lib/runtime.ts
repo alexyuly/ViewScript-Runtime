@@ -420,22 +420,27 @@ class Browser extends Field {
   }
 }
 
-class View {
+class View extends Publisher<Array<HTMLElement>> {
   private readonly elements: Array<Element> = [];
   private readonly scope: Record<string, Field | View>;
 
   constructor(view: Types.View, scope: Record<string, Field | View>) {
+    super();
+
     this.scope = scope;
+
+    const htmlElements: Array<HTMLElement> = [];
 
     view.body.forEach((statement) => {
       if (statement.kind === "field") {
-        this.scope[statement.name] = Field.create(statement);
+        const field = Field.create(statement);
+        this.scope[statement.name] = field;
       } else if (statement.kind === "element") {
         const element = new Element(statement, this.scope);
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
-            Dom.render(htmlElement);
+            htmlElements.push(htmlElement);
           },
         });
       } else {
@@ -446,6 +451,8 @@ class View {
         );
       }
     });
+
+    this.publish(htmlElements);
   }
 }
 
@@ -460,6 +467,11 @@ export class RunningApp {
     app.body.forEach((member) => {
       const view = new View(member, { ...this.scope });
       this.scope[member.name] = view;
+      view.subscribe({
+        take: (htmlElements) => {
+          Dom.render(htmlElements);
+        },
+      });
     });
 
     window.console.log(`[VSR] 🟢 Start app:`);
