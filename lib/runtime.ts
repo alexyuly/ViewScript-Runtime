@@ -305,7 +305,7 @@ class Output extends Binding {
 }
 
 class Element extends Publisher<HTMLElement> {
-  private children: Array<HTMLElement | string> = [];
+  private children: Array<Element> = [];
   private readonly properties: Record<string, Input | Output> = {};
 
   constructor(element: Types.Element, fields: Record<string, Field>) {
@@ -333,24 +333,27 @@ class Element extends Publisher<HTMLElement> {
           take = (value) => {
             this.children = [];
 
+            const children: Array<HTMLElement | string> = [];
+
             const populate = (child = value) => {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Types.isElement(child)) {
                 const childElement = new Element(child, fields);
+                this.children.push(childElement);
                 childElement.subscribe({
                   take: (childHtmlElement) => {
-                    this.children.push(childHtmlElement);
+                    children.push(childHtmlElement);
                   },
                 });
               } else if (child !== null) {
-                this.children.push(child as string);
+                children.push(child as string);
               }
             };
 
             populate();
 
-            htmlElement.replaceChildren(...this.children);
+            htmlElement.replaceChildren(...children);
           };
         } else if (Style.supports(property.name)) {
           take = (value) => {
