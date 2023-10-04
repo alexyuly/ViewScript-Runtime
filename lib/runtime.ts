@@ -345,7 +345,6 @@ class Element extends Publisher<HTMLElement> {
             this.children = [];
 
             const children: Array<HTMLElement | string> = [];
-
             const populate = (child = value) => {
               if (child instanceof Array) {
                 child.forEach(populate);
@@ -363,8 +362,7 @@ class Element extends Publisher<HTMLElement> {
             };
 
             populate();
-
-            htmlElement.replaceChildren(...children);
+            Dom.populate(htmlElement, children);
           };
         } else if (Style.supports(property.name)) {
           take = (value) => {
@@ -437,7 +435,7 @@ class View {
         this.elements.push(element);
         element.subscribe({
           take: (htmlElement) => {
-            Dom.append(window.document.body, htmlElement);
+            Dom.render(htmlElement);
           },
         });
       } else {

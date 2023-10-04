@@ -4,19 +4,14 @@ export const create = (tagName: string) => {
   return htmlElement;
 };
 
-export const append = (
+export const populate = (
   element: HTMLElement,
-  child: HTMLElement | string | null
+  children: Array<HTMLElement | string>
 ) => {
-  if (child instanceof Node) {
-    element.appendChild(child);
-  } else if (child !== null) {
-    element.insertAdjacentHTML("beforeend", child);
-  }
-
+  element.replaceChildren(...children);
   window.console.log(
-    `[DOM] 🌿 Append to <${element.tagName.toLowerCase()}>:`,
-    child
+    `[DOM] 🌿 Populate <${element.tagName.toLowerCase()}>`,
+    children
   );
 };
 
@@ -57,4 +52,13 @@ export const listen = (
     );
     callback();
   });
+};
+
+export const render = (element: HTMLElement) => {
+  window.document.body.appendChild(element);
+
+  window.console.log(
+    `[DOM] 🪴 Render <${element.tagName.toLowerCase()}>:`,
+    element
+  );
 };
