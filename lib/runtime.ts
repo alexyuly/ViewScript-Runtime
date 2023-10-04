@@ -23,7 +23,7 @@ abstract class Publisher<T = unknown> {
     return this.lastValue;
   }
 
-  publish(value: T) {
+  protected publish(value: T) {
     this.lastValue = value;
 
     this.listeners.forEach((listener) => {
@@ -113,7 +113,7 @@ abstract class Field<T = unknown> extends Binding<T> {
     return this.members[name];
   }
 
-  publish(value: T) {
+  protected publish(value: T) {
     window.console.log(
       `[VSR] ⛰️ Set ${this.modelName} field ${this.id} =`,
       value
