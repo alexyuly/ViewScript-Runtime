@@ -45,7 +45,7 @@ export const listen = (
   callback: () => void
 ) => {
   element.addEventListener(event, () => {
-    // TODO Add support for processing the Event passed to this listener.
+    // TODO Handle events passed to this listener.
 
     window.console.log(
       `[DOM] 🔥 Fire ${event} on <${element.tagName.toLowerCase()}>`
@@ -57,5 +57,5 @@ export const listen = (
 export const render = (elements: Array<HTMLElement>) => {
   window.document.body.append(...elements);
 
-  window.console.log(`[DOM] 🪴 Render:`, elements);
+  window.console.log(`[DOM] 🪴 Render elements:`, elements);
 };
