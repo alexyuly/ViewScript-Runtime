@@ -1,5 +1,6 @@
 export type Field<T = unknown> = {
   kind: "field";
+  fieldKey: string;
   modelKey: string;
   name?: string;
   value?: T;

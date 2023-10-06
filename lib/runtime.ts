@@ -60,17 +60,17 @@ abstract class Binding<T = unknown>
  * Instead, they are hacked into fields for now, to be worked on later.
  */
 abstract class Field<T = unknown> extends Binding<T> {
-  readonly fieldId: string;
-  readonly fieldName?: string;
+  readonly fieldKey: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey?: string;
+  readonly name?: string;
 
   constructor(field: Abstract.Field<T>) {
     super();
 
-    this.fieldId = window.crypto.randomUUID();
-    this.fieldName = field.name;
+    this.fieldKey = field.fieldKey;
     this.modelKey = field.modelKey;
+    this.name = field.name;
 
     if (field.value !== undefined) {
       this.take(field.value);
@@ -108,7 +108,7 @@ abstract class Field<T = unknown> extends Binding<T> {
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.fieldName}\``
+        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.name}\``
       );
     }
 
@@ -117,7 +117,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 
   protected publish(value: T) {
     window.console.log(
-      `[VSR] ⛰️ Set ${this.modelKey} field ${this.fieldName} =`,
+      `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
       value
     );
     super.publish(value);
@@ -193,7 +193,7 @@ class Collection extends Field<Array<unknown>> {
  */
 class Reference extends Binding {
   private readonly argument?: Field;
-  private readonly names: Array<string>;
+  private readonly keyPath: Array<string>;
   private readonly port: Publisher | Subscriber;
 
   constructor(reference: Abstract.Reference, fields: Record<string, Field>) {
@@ -201,33 +201,33 @@ class Reference extends Binding {
 
     this.argument =
       reference.argumentBinding && Field.create(reference.argumentBinding);
-    this.names = reference.keyPath;
+    this.keyPath = reference.keyPath;
 
-    const names = [...this.names];
+    const keyPath = [...this.keyPath];
 
-    const getNextName = () => {
-      const name = names.shift();
+    const getNextKey = () => {
+      const key = keyPath.shift();
 
-      if (!name) {
+      if (!key) {
         throw new ViewScriptException(
           `Cannot dereference invalid keyPath \`${reference.keyPath}\``
         );
       }
 
-      return name;
+      return key;
     };
 
-    const field = fields[getNextName()];
+    const field = fields[getNextKey()];
     this.port = field;
 
-    while (names.length > 0) {
+    while (keyPath.length > 0) {
       if (!(this.port instanceof Field)) {
         throw new ViewScriptException(
           `Cannot dereference invalid keyPath \`${reference.keyPath}\``
         );
       }
 
-      this.port = this.port.getMember(getNextName());
+      this.port = this.port.getMember(getNextKey());
     }
 
     if (typeof this.port !== "object" || this.port === null) {
@@ -410,7 +410,7 @@ class Element extends Publisher<HTMLElement> {
 
 class Console extends Field {
   constructor() {
-    super({ kind: "field", modelKey: "Console" });
+    super({ kind: "field", fieldKey: "console", modelKey: "Console" });
 
     this.when("log", (value) => window.console.log(value));
   }
@@ -418,7 +418,7 @@ class Console extends Field {
 
 class Browser extends Field {
   constructor() {
-    super({ kind: "field", modelKey: "Browser" });
+    super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
 
     this.set("console", new Console());
   }
