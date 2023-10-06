@@ -1,6 +1,6 @@
 {
   "name": "viewscript-runtime",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ViewScript's Web Browser Runtime",
   "main": "dist/index.js",
   "author": "Alex Yuly",
