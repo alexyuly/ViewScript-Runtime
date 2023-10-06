@@ -326,9 +326,12 @@ class ElementOutputPublisher extends Publisher {
 class Element extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Input | Output> = {};
+  private readonly viewKey: string;
 
   constructor(element: Abstract.Element, fields: Record<string, Field>) {
     super();
+
+    this.viewKey = element.viewKey;
 
     // TODO Add support for rendering views, not just HTML elements.
 
