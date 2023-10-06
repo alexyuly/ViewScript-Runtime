@@ -116,10 +116,13 @@ abstract class Field<T = unknown> extends Binding<T> {
   }
 
   protected publish(value: T) {
-    window.console.log(
-      `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
-      value
-    );
+    if (this.name !== undefined) {
+      window.console.log(
+        `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
+        value
+      );
+    }
+
     super.publish(value);
   }
 
