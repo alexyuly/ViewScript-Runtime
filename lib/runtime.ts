@@ -60,22 +60,24 @@ abstract class Binding<T = unknown>
  * Instead, they are hacked into fields for now, to be worked on later.
  */
 abstract class Field<T = unknown> extends Binding<T> {
-  readonly id: string;
+  readonly fieldId: string;
+  readonly fieldName?: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelName?: string;
+  private readonly modelKey?: string;
 
   constructor(field: Abstract.Field<T>) {
     super();
 
-    this.id = window.crypto.randomUUID();
-    this.modelName = field.model;
+    this.fieldId = window.crypto.randomUUID();
+    this.fieldName = field.name;
+    this.modelKey = field.modelKey;
 
     if (field.value !== undefined) {
       this.take(field.value);
     }
   }
 
-  static create(field: Abstract.Field) {
+  static create(field: Abstract.Field): Field {
     if (Abstract.isConditionField(field)) {
       return new Condition(field);
     }
@@ -99,14 +101,14 @@ abstract class Field<T = unknown> extends Binding<T> {
     // TODO Support creating complex fields, using models.
 
     throw new ViewScriptException(
-      `Cannot construct a field of unknown class \`${field.model}\``
+      `Cannot construct a field of unknown modelKey \`${field.modelKey}\``
     );
   }
 
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot getMember \`${name}\` of field \`${this.id}\` of class \`${this.modelName}\``
+        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.fieldName}\``
       );
     }
 
@@ -115,7 +117,7 @@ abstract class Field<T = unknown> extends Binding<T> {
 
   protected publish(value: T) {
     window.console.log(
-      `[VSR] ⛰️ Set ${this.modelName} field ${this.id} =`,
+      `[VSR] ⛰️ Set ${this.modelKey} field ${this.fieldName} =`,
       value
     );
     super.publish(value);
@@ -194,15 +196,12 @@ class Reference extends Binding {
   private readonly names: Array<string>;
   private readonly port: Publisher | Subscriber;
 
-  constructor(
-    reference: Abstract.Reference,
-    scope: Record<string, Field | View>
-  ) {
+  constructor(reference: Abstract.Reference, fields: Record<string, Field>) {
     super();
 
-    this.argument = reference.argument && Field.create(reference.argument);
-    this.names =
-      typeof reference.name === "string" ? [reference.name] : reference.name;
+    this.argument =
+      reference.argumentBinding && Field.create(reference.argumentBinding);
+    this.names = reference.keyPath;
 
     const names = [...this.names];
 
@@ -211,27 +210,20 @@ class Reference extends Binding {
 
       if (!name) {
         throw new ViewScriptException(
-          `Cannot dereference invalid name \`${reference.name}\``
+          `Cannot dereference invalid keyPath \`${reference.keyPath}\``
         );
       }
 
       return name;
     };
 
-    const member = scope[getNextName()];
-
-    if (member instanceof View) {
-      throw new ViewScriptException(
-        `Cannot dereference invalid name \`${reference.name}\``
-      );
-    }
-
-    this.port = member;
+    const field = fields[getNextName()];
+    this.port = field;
 
     while (names.length > 0) {
       if (!(this.port instanceof Field)) {
         throw new ViewScriptException(
-          `Cannot dereference invalid name \`${reference.name}\``
+          `Cannot dereference invalid keyPath \`${reference.keyPath}\``
         );
       }
 
@@ -240,7 +232,7 @@ class Reference extends Binding {
 
     if (typeof this.port !== "object" || this.port === null) {
       throw new ViewScriptException(
-        `Cannot dereference invalid name \`${reference.name}\``
+        `Cannot dereference invalid keyPath \`${reference.keyPath}\``
       );
     }
 
@@ -263,14 +255,14 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 
   constructor(
     conditional: Abstract.Conditional,
-    scope: Record<string, Field | View>
+    fields: Record<string, Field>
   ) {
     super();
 
     this.positive = Field.create(conditional.positive);
     this.negative = Field.create(conditional.negative);
 
-    this.condition = new Reference(conditional.condition, scope);
+    this.condition = new Reference(conditional.condition, fields);
     this.condition.subscribe(this);
   }
 
@@ -282,19 +274,19 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 class Input extends Binding {
   private readonly publisher: Publisher;
 
-  constructor(input: Abstract.Input, scope: Record<string, Field | View>) {
+  constructor(input: Abstract.Input, fields: Record<string, Field>) {
     super();
 
-    if (input.value.kind === "field") {
-      this.publisher = Field.create(input.value);
-    } else if (input.value.kind === "reference") {
-      this.publisher = new Reference(input.value, scope);
-    } else if (input.value.kind === "conditional") {
-      this.publisher = new Conditional(input.value, scope);
+    if (input.dataBinding.kind === "field") {
+      this.publisher = Field.create(input.dataBinding);
+    } else if (input.dataBinding.kind === "reference") {
+      this.publisher = new Reference(input.dataBinding, fields);
+    } else if (input.dataBinding.kind === "conditional") {
+      this.publisher = new Conditional(input.dataBinding, fields);
     } else {
       throw new ViewScriptException(
-        `Cannot construct an input with value of unknown kind "${
-          (input.value as { kind: unknown }).kind
+        `Cannot construct an input with dataBinding of unknown kind "${
+          (input.dataBinding as { kind: unknown }).kind
         }"`
       );
     }
@@ -306,10 +298,10 @@ class Input extends Binding {
 class Output extends Binding {
   private readonly subscriber: Reference;
 
-  constructor(output: Abstract.Output, scope: Record<string, Field | View>) {
+  constructor(output: Abstract.Output, fields: Record<string, Field>) {
     super();
 
-    this.subscriber = new Reference(output.value, scope);
+    this.subscriber = new Reference(output.dataBinding, fields);
     this.subscribe(this.subscriber);
   }
 
@@ -335,28 +327,28 @@ class Element extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Input | Output> = {};
 
-  constructor(element: Abstract.Element, scope: Record<string, View | Field>) {
+  constructor(element: Abstract.Element, fields: Record<string, Field>) {
     super();
 
     // TODO Add support for rendering views, not just HTML elements.
 
-    if (!/^<[\w-.]+>$/g.test(element.view)) {
+    if (!/^<[\w-.]+>$/g.test(element.viewKey)) {
       throw new ViewScriptException(
-        `Cannot construct an element of invalid tag name \`${element.view}\``
+        `Cannot construct an element of invalid tag name \`${element.viewKey}\``
       );
     }
 
-    const tagName = element.view.slice(1, element.view.length - 1);
+    const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
     const htmlElement = Dom.create(tagName);
 
-    element.properties.forEach((property) => {
+    Object.entries(element.properties).forEach(([propertyKey, property]) => {
       if (property.kind === "input") {
-        const input = new Input(property, scope);
-        this.properties[property.name] = input;
+        const input = new Input(property, fields);
+        this.properties[propertyKey] = input;
 
         let take: (value: unknown) => void;
 
-        if (property.name === "content") {
+        if (propertyKey === "content") {
           take = (value) => {
             this.children = [];
 
@@ -365,7 +357,7 @@ class Element extends Publisher<HTMLElement> {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Abstract.isElement(child)) {
-                const elementChild = new Element(child, scope);
+                const elementChild = new Element(child, fields);
                 this.children.push(elementChild);
                 elementChild.subscribe({
                   take: (htmlElementChild) => {
@@ -382,24 +374,24 @@ class Element extends Publisher<HTMLElement> {
             populate();
             Dom.populate(htmlElement, htmlElementChildren);
           };
-        } else if (Style.supports(property.name)) {
+        } else if (Style.supports(propertyKey)) {
           take = (value) => {
-            Dom.styleProp(htmlElement, property.name, value as string | null);
+            Dom.styleProp(htmlElement, propertyKey, value as string | null);
           };
         } else {
           take = (value) => {
-            Dom.attribute(htmlElement, property.name, value as string | null);
+            Dom.attribute(htmlElement, propertyKey, value as string | null);
           };
         }
 
         input.subscribe({ take });
       } else if (property.kind === "output") {
-        const output = new Output(property, scope);
-        this.properties[property.name] = output;
+        const output = new Output(property, fields);
+        this.properties[propertyKey] = output;
 
         const publisher = new ElementOutputPublisher(
           htmlElement,
-          property.name,
+          propertyKey,
           output
         );
         publisher.subscribe(output);
@@ -418,7 +410,7 @@ class Element extends Publisher<HTMLElement> {
 
 class Console extends Field {
   constructor() {
-    super({ kind: "field", name: "console", model: "Console" });
+    super({ kind: "field", modelKey: "Console" });
 
     this.when("log", (value) => window.console.log(value));
   }
@@ -426,64 +418,51 @@ class Console extends Field {
 
 class Browser extends Field {
   constructor() {
-    super({ kind: "field", name: "browser", model: "Browser" });
+    super({ kind: "field", modelKey: "Browser" });
 
     this.set("console", new Console());
   }
 }
 
-class View extends Publisher<Array<HTMLElement>> {
-  private readonly elements: Array<Element> = [];
-  private readonly scope: Record<string, Field | View>;
+class View extends Binding<HTMLElement> {
+  private readonly element: Element;
+  private readonly fields: Record<string, Field>;
 
-  constructor(view: Abstract.View, scope: Record<string, Field | View>) {
+  constructor(view: Abstract.View, fields: Record<string, Field>) {
     super();
 
-    this.scope = scope;
+    this.fields = fields;
 
-    const htmlElements: Array<HTMLElement> = [];
+    if (view.fields) {
+      Object.entries(view.fields).forEach(([fieldKey, abstractField]) => {
+        const field = Field.create(abstractField);
+        this.fields[fieldKey] = field;
+      });
+    }
 
-    view.body.forEach((statement) => {
-      if (statement.kind === "field") {
-        const field = Field.create(statement);
-        this.scope[statement.name] = field;
-      } else if (statement.kind === "element") {
-        const element = new Element(statement, this.scope);
-        this.elements.push(element);
-        element.subscribe({
-          take: (htmlElement) => {
-            htmlElements.push(htmlElement);
-          },
-        });
-      } else {
-        throw new ViewScriptException(
-          `Cannot construct a statement of unknown kind "${
-            (statement as { kind: unknown }).kind
-          }"`
-        );
-      }
-    });
-
-    this.publish(htmlElements);
+    this.element = new Element(view.element, this.fields);
+    this.element.subscribe(this);
   }
 }
 
 export class RunningApp {
   private static readonly browser = new Browser();
 
-  private readonly scope: Record<string, Field | View> = {
+  private readonly fields: Record<string, Field> = {
     browser: RunningApp.browser,
   };
 
+  private readonly view: View;
+
   constructor(app: Abstract.App) {
-    app.body.forEach((member) => {
-      const view = new View(member, { ...this.scope });
-      this.scope[member.name] = view;
-      view.subscribe({
-        take: (htmlElements) => {
-          Dom.render(htmlElements);
-        },
-      });
+    this.view = new View(app.view, {
+      ...this.fields,
+    });
+
+    this.view.subscribe({
+      take: (htmlElement) => {
+        Dom.render(htmlElement);
+      },
     });
 
     window.console.log(`[VSR] 🟢 Start app:`);

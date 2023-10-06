@@ -1,34 +1,34 @@
 export type Field<T = unknown> = {
   kind: "field";
-  name: string;
-  model: string;
+  modelKey: string;
+  name?: string;
   value?: T;
 };
 
 export type Condition = Field<boolean> & {
-  model: "Condition";
+  modelKey: "Condition";
 };
 
 export type Count = Field<number> & {
-  model: "Count";
+  modelKey: "Count";
 };
 
 export type Text = Field<string> & {
-  model: "Text";
+  modelKey: "Text";
 };
 
 export type ElementField = Field<Element> & {
-  model: "Element";
+  modelKey: "Element";
 };
 
 export type Collection = Field<Array<unknown>> & {
-  model: "Collection";
+  modelKey: "Collection";
 };
 
 export type Reference = {
   kind: "reference";
-  name: string | Array<string>;
-  argument?: Field;
+  keyPath: Array<string>;
+  argumentBinding?: Field;
 };
 
 export type Conditional = {
@@ -40,43 +40,41 @@ export type Conditional = {
 
 export type Input = {
   kind: "input";
-  name: string;
-  value: Field | Reference | Conditional;
+  dataBinding: Field | Reference | Conditional;
 };
 
 export type Output = {
   kind: "output";
-  name: string;
-  value: Reference;
+  dataBinding: Reference;
 };
 
 export type Element = {
   kind: "element";
-  view: string;
-  properties: Array<Input | Output>;
+  viewKey: string;
+  properties: Record<string, Input | Output>;
 };
 
 export type View = {
   kind: "view";
-  name: string;
-  body: Array<Field | Element>;
+  fields?: Record<string, Field>;
+  element: Element;
 };
 
 export type App = {
   kind: "ViewScript v0.2.0 App";
-  body: Array<View>;
+  view: View;
 };
 
 export function isCollectionField(field: Field): field is Collection {
-  return field.model === "Collection";
+  return field.modelKey === "Collection";
 }
 
 export function isConditionField(field: Field): field is Condition {
-  return field.model === "Condition";
+  return field.modelKey === "Condition";
 }
 
 export function isCountField(field: Field): field is Count {
-  return field.model === "Count";
+  return field.modelKey === "Count";
 }
 
 export function isElement(node: unknown): node is Element {
@@ -89,7 +87,7 @@ export function isElement(node: unknown): node is Element {
 }
 
 export function isElementField(field: Field): field is ElementField {
-  return field.model === "Element";
+  return field.modelKey === "Element";
 }
 
 export function isOutput(node: unknown): node is Output {
@@ -102,5 +100,5 @@ export function isOutput(node: unknown): node is Output {
 }
 
 export function isTextField(field: Field): field is Text {
-  return field.model === "Text";
+  return field.modelKey === "Text";
 }
