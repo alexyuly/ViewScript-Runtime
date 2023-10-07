@@ -98,7 +98,7 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new Collection(field);
     }
 
-    // TODO Support creating complex fields, using models.
+    // TODO Create complex fields, using models.
 
     throw new ViewScriptException(
       `Cannot construct a field of unknown modelKey \`${field.modelKey}\``
@@ -331,86 +331,115 @@ class Element extends Publisher<HTMLElement> {
   private readonly properties: Record<string, Input | Output> = {};
   private readonly viewKey: string;
 
-  constructor(element: Abstract.Element, fields: Record<string, Field>) {
+  constructor(
+    element: Abstract.Element,
+    views: Record<string, Abstract.View>,
+    fields: Record<string, Field>
+  ) {
     super();
 
     this.viewKey = element.viewKey;
 
-    // TODO Add support for rendering views, not just HTML elements.
+    if (/^<[\w-.]+>$/g.test(this.viewKey)) {
+      const tagName = this.viewKey.slice(1, this.viewKey.length - 1);
+      const htmlElement = Dom.create(tagName);
 
-    if (!/^<[\w-.]+>$/g.test(element.viewKey)) {
-      throw new ViewScriptException(
-        `Cannot construct an element of invalid tag name \`${element.viewKey}\``
-      );
-    }
+      if (element.properties) {
+        Object.entries(element.properties).forEach(
+          ([propertyKey, property]) => {
+            if (property.kind === "input") {
+              const input = new Input(property, fields);
+              this.properties[propertyKey] = input;
 
-    const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
-    const htmlElement = Dom.create(tagName);
+              let take: (value: unknown) => void;
 
-    Object.entries(element.properties).forEach(([propertyKey, property]) => {
-      if (property.kind === "input") {
-        const input = new Input(property, fields);
-        this.properties[propertyKey] = input;
+              if (propertyKey === "content") {
+                take = (value) => {
+                  this.children = [];
 
-        let take: (value: unknown) => void;
+                  const htmlElementChildren: Array<HTMLElement | string> = [];
+                  const populate = (child = value) => {
+                    if (child instanceof Array) {
+                      child.forEach(populate);
+                    } else if (Abstract.isElement(child)) {
+                      const elementChild = new Element(child, views, fields);
+                      this.children.push(elementChild);
+                      elementChild.subscribe({
+                        take: (htmlElementChild) => {
+                          htmlElementChildren.push(htmlElementChild);
+                        },
+                      });
+                    } else if (child !== null && child !== undefined) {
+                      const textContent = String(child);
+                      this.children.push(textContent);
+                      htmlElementChildren.push(textContent);
+                    }
+                  };
 
-        if (propertyKey === "content") {
-          take = (value) => {
-            this.children = [];
-
-            const htmlElementChildren: Array<HTMLElement | string> = [];
-            const populate = (child = value) => {
-              if (child instanceof Array) {
-                child.forEach(populate);
-              } else if (Abstract.isElement(child)) {
-                const elementChild = new Element(child, fields);
-                this.children.push(elementChild);
-                elementChild.subscribe({
-                  take: (htmlElementChild) => {
-                    htmlElementChildren.push(htmlElementChild);
-                  },
-                });
-              } else if (child !== null && child !== undefined) {
-                const textContent = String(child);
-                this.children.push(textContent);
-                htmlElementChildren.push(textContent);
+                  populate();
+                  Dom.populate(htmlElement, htmlElementChildren);
+                };
+              } else if (Style.supports(propertyKey)) {
+                take = (value) => {
+                  Dom.styleProp(
+                    htmlElement,
+                    propertyKey,
+                    value as string | null
+                  );
+                };
+              } else {
+                take = (value) => {
+                  Dom.attribute(
+                    htmlElement,
+                    propertyKey,
+                    value as string | null
+                  );
+                };
               }
-            };
 
-            populate();
-            Dom.populate(htmlElement, htmlElementChildren);
-          };
-        } else if (Style.supports(propertyKey)) {
-          take = (value) => {
-            Dom.styleProp(htmlElement, propertyKey, value as string | null);
-          };
-        } else {
-          take = (value) => {
-            Dom.attribute(htmlElement, propertyKey, value as string | null);
-          };
-        }
+              input.subscribe({ take });
+            } else if (property.kind === "output") {
+              const output = new Output(property, fields);
+              this.properties[propertyKey] = output;
 
-        input.subscribe({ take });
-      } else if (property.kind === "output") {
-        const output = new Output(property, fields);
-        this.properties[propertyKey] = output;
-
-        const publisher = new ElementOutputPublisher(
-          htmlElement,
-          propertyKey,
-          output
-        );
-        publisher.subscribe(output);
-      } else {
-        throw new ViewScriptException(
-          `Cannot construct a property of unknown kind "${
-            (property as { kind: unknown }).kind
-          }"`
+              const publisher = new ElementOutputPublisher(
+                htmlElement,
+                propertyKey,
+                output
+              );
+              publisher.subscribe(output);
+            } else {
+              throw new ViewScriptException(
+                `Cannot construct a property of unknown kind "${
+                  (property as { kind: unknown }).kind
+                }"`
+              );
+            }
+          }
         );
       }
-    });
 
-    this.publish(htmlElement);
+      this.publish(htmlElement);
+    } else if (this.viewKey in views) {
+      // TODO Pass properties to elements constructed from views...
+
+      const abstractView = views[this.viewKey];
+      const view = new View(abstractView, views, {
+        ...fields,
+      });
+
+      window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
+
+      view.subscribe({
+        take: (htmlElement) => {
+          this.publish(htmlElement);
+        },
+      });
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
+      );
+    }
   }
 }
 
@@ -433,20 +462,28 @@ class Browser extends Field {
 class View extends Binding<HTMLElement> {
   private readonly element: Element;
   private readonly fields: Record<string, Field>;
+  readonly name?: string;
+  readonly viewKey: string;
 
-  constructor(view: Abstract.View, fields: Record<string, Field>) {
+  constructor(
+    mainView: Abstract.View,
+    views: Record<string, Abstract.View>,
+    fields: Record<string, Field>
+  ) {
     super();
 
     this.fields = fields;
+    this.name = mainView.name;
+    this.viewKey = mainView.viewKey;
 
-    if (view.fields) {
-      Object.entries(view.fields).forEach(([fieldKey, abstractField]) => {
+    if (mainView.fields) {
+      Object.entries(mainView.fields).forEach(([fieldKey, abstractField]) => {
         const field = Field.create(abstractField);
         this.fields[fieldKey] = field;
       });
     }
 
-    this.element = new Element(view.element, this.fields);
+    this.element = new Element(mainView.element, views, this.fields);
     this.element.subscribe(this);
   }
 }
@@ -458,14 +495,14 @@ export class RunningApp {
     browser: RunningApp.browser,
   };
 
-  private readonly view: View;
+  private readonly mainView: View;
 
   constructor(app: Abstract.App) {
-    this.view = new View(app.view, {
+    this.mainView = new View(app.mainView, app.views ?? {}, {
       ...this.fields,
     });
 
-    this.view.subscribe({
+    this.mainView.subscribe({
       take: (htmlElement) => {
         Dom.render(htmlElement);
       },

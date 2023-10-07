@@ -52,18 +52,21 @@ export type Output = {
 export type Element = {
   kind: "element";
   viewKey: string;
-  properties: Record<string, Input | Output>;
+  properties?: Record<string, Input | Output>;
 };
 
 export type View = {
   kind: "view";
-  fields?: Record<string, Field>;
+  viewKey: string;
   element: Element;
+  fields?: Record<string, Field>;
+  name?: string;
 };
 
 export type App = {
   kind: "ViewScript v0.2.1 App";
-  view: View;
+  mainView: View;
+  views?: Record<string, View>;
 };
 
 export function isCollectionField(field: Field): field is Collection {
