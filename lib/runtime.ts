@@ -72,8 +72,12 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.modelKey = field.modelKey;
     this.name = field.name;
 
-    if (field.value !== undefined) {
-      this.take(field.value);
+    const initialValue = field.value;
+
+    if (initialValue !== undefined) {
+      this.take(initialValue);
+      this.when("reset", () => initialValue);
+      this.when("setTo", (value: T) => value);
     }
   }
 
@@ -98,7 +102,9 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new Collection(field);
     }
 
-    // TODO Create complex fields, using models.
+    if (Abstract.isStructureField(field)) {
+      return new Structure(field);
+    }
 
     throw new ViewScriptException(
       `Cannot construct a field of unknown modelKey \`${field.modelKey}\``
@@ -108,7 +114,9 @@ abstract class Field<T = unknown> extends Binding<T> {
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.name}\``
+        `Cannot get member \`${name}\` of \`${
+          this.modelKey ?? "untyped"
+        }\` field \`${this.name}\``
       );
     }
 
@@ -118,7 +126,7 @@ abstract class Field<T = unknown> extends Binding<T> {
   protected publish(value: T) {
     if (this.name !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
+        `[VSR] ⛰️ Set ${this.modelKey ?? "untyped"} field ${this.name} =`,
         value
       );
     }
@@ -187,6 +195,12 @@ class ElementField extends Field<Abstract.Element> {
 
 class Collection extends Field<Array<unknown>> {
   constructor(field: Abstract.Collection) {
+    super(field);
+  }
+}
+
+class Structure extends Field<object> {
+  constructor(field: Abstract.Structure) {
     super(field);
   }
 }
@@ -494,7 +508,13 @@ class View extends Binding<HTMLElement> {
 
           if (field === undefined) {
             throw new ViewScriptException(
-              `Cannot construct an input for unknown property name \`${propertyKey}\``
+              `Cannot construct an input property for unknown field name \`${propertyKey}\``
+            );
+          }
+
+          if (field.getValue() !== undefined) {
+            throw new ViewScriptException(
+              `Cannot construct an input property for private field name \`${propertyKey}\``
             );
           }
 

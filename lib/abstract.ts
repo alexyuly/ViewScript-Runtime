@@ -3,7 +3,7 @@ export type Field<T = unknown> = {
   fieldKey: string;
   modelKey: string;
   name?: string;
-  value?: T;
+  value?: T; // TODO Allow optional fields (...by allowing value to be null?)
 };
 
 export type Condition = Field<boolean> & {
@@ -24,6 +24,10 @@ export type ElementField = Field<Element> & {
 
 export type Collection = Field<Array<unknown>> & {
   modelKey: "Collection";
+};
+
+export type Structure = Field<object> & {
+  modelKey: "Structure";
 };
 
 export type Reference = {
@@ -101,6 +105,10 @@ export function isOutput(node: unknown): node is Output {
     "kind" in node &&
     node.kind === "output"
   );
+}
+
+export function isStructureField(field: Field): field is Structure {
+  return field.modelKey === "Structure";
 }
 
 export function isTextField(field: Field): field is Text {
