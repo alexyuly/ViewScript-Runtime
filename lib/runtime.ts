@@ -421,12 +421,13 @@ class Element extends Publisher<HTMLElement> {
 
       this.publish(htmlElement);
     } else if (this.viewKey in views) {
-      // TODO Pass properties to elements constructed from views...
-
       const abstractView = views[this.viewKey];
-      const view = new View(abstractView, views, {
-        ...fields,
-      });
+      const view = new View(
+        abstractView,
+        views,
+        { ...fields },
+        element.properties
+      );
 
       window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
 
@@ -468,7 +469,8 @@ class View extends Binding<HTMLElement> {
   constructor(
     root: Abstract.View,
     children: Record<string, Abstract.View>,
-    fields: Record<string, Field>
+    fields: Record<string, Field>,
+    properties?: Abstract.Element["properties"]
   ) {
     super();
 
@@ -480,6 +482,36 @@ class View extends Binding<HTMLElement> {
       Object.entries(root.fields).forEach(([fieldKey, abstractField]) => {
         const field = Field.create(abstractField);
         this.fields[fieldKey] = field;
+      });
+    }
+
+    if (properties) {
+      Object.entries(properties).forEach(([propertyKey, property]) => {
+        if (property.kind === "input") {
+          const field = Object.values(this.fields).find(
+            (field) => field.name === propertyKey
+          );
+
+          if (field === undefined) {
+            throw new ViewScriptException(
+              `Cannot construct an input for unknown property name \`${propertyKey}\``
+            );
+          }
+
+          const input = new Input(property, fields);
+          input.subscribe(field);
+        } else if (property.kind === "output") {
+          // TODO implementation
+          throw new ViewScriptException(
+            "Sorry, output properties for views are not implemented yet."
+          );
+        } else {
+          throw new ViewScriptException(
+            `Cannot construct a property of unknown kind "${
+              (property as { kind: unknown }).kind
+            }"`
+          );
+        }
       });
     }
 
