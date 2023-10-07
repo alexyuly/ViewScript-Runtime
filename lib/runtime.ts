@@ -54,10 +54,8 @@ abstract class Binding<T = unknown>
 }
 
 /**
- * An instance of a model of type T.
- * The Model class doesn't exist yet. It will be the base for all native and custom data types.
- * Since custom data types don't exist yet, models aren't implemented yet.
- * Instead, they are hacked into fields for now, to be worked on later.
+ * Stores and forwards a value of type T.
+ * Manages methods and actions for the value.
  */
 abstract class Field<T = unknown> extends Binding<T> {
   readonly fieldKey: string;
@@ -98,12 +96,12 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new ElementField(field);
     }
 
-    if (Abstract.isCollectionField(field)) {
-      return new Collection(field);
-    }
-
     if (Abstract.isStructureField(field)) {
       return new Structure(field);
+    }
+
+    if (Abstract.isCollectionField(field)) {
+      return new Collection(field);
     }
 
     throw new ViewScriptException(
@@ -185,7 +183,7 @@ class Text extends Field<string> {
 }
 
 /**
- * A field that stores an element AST object (see Abstract.Element).
+ * A field that stores an element AST object.
  */
 class ElementField extends Field<Abstract.Element> {
   constructor(field: Abstract.ElementField) {
@@ -193,14 +191,20 @@ class ElementField extends Field<Abstract.Element> {
   }
 }
 
-class Collection extends Field<Array<unknown>> {
-  constructor(field: Abstract.Collection) {
+/**
+ * A field that stores an arbitrary data object.
+ */
+class Structure extends Field<object> {
+  constructor(field: Abstract.Structure) {
     super(field);
   }
 }
 
-class Structure extends Field<object> {
-  constructor(field: Abstract.Structure) {
+/**
+ * A field that stores an array.
+ */
+class Collection extends Field<Array<unknown>> {
+  constructor(field: Abstract.Collection) {
     super(field);
   }
 }
@@ -265,6 +269,9 @@ class Reference extends Binding {
   }
 }
 
+/**
+ * Forwards either a positive or negative value based on a condition.
+ */
 class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly condition: Reference;
   private readonly positive: Field;
@@ -288,6 +295,9 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   }
 }
 
+/**
+ * Forwards a value from a field, reference (field or method), or conditional.
+ */
 class Input extends Binding {
   private readonly publisher: Publisher;
 
@@ -312,6 +322,9 @@ class Input extends Binding {
   }
 }
 
+/**
+ * Forwards a value to a reference (action).
+ */
 class Output extends Binding {
   private readonly subscriber: Reference;
 
@@ -327,9 +340,14 @@ class Output extends Binding {
   }
 }
 
-class ElementOutputPublisher extends Publisher {
+/**
+ * Publishes a value from an element's event to an output.
+ */
+class ElementEventPublisher extends Publisher {
   constructor(element: HTMLElement, event: string, output: Output) {
     super();
+
+    this.subscribe(output);
 
     Dom.listen(element, event, () => {
       this.publish(output.getArgumentValue());
@@ -415,13 +433,7 @@ class Element extends Publisher<HTMLElement> {
             } else if (property.kind === "output") {
               const output = new Output(property, fields);
               this.properties[propertyKey] = output;
-
-              const publisher = new ElementOutputPublisher(
-                htmlElement,
-                propertyKey,
-                output
-              );
-              publisher.subscribe(output);
+              new ElementEventPublisher(htmlElement, propertyKey, output);
             } else {
               throw new ViewScriptException(
                 `Cannot construct a property of unknown kind "${
@@ -458,6 +470,9 @@ class Element extends Publisher<HTMLElement> {
   }
 }
 
+/**
+ * A special field that provides access to the window's console object.
+ */
 class Console extends Field {
   constructor() {
     super({ kind: "field", fieldKey: "console", modelKey: "Console" });
@@ -466,6 +481,9 @@ class Console extends Field {
   }
 }
 
+/**
+ * A special field that provides access to the browser's window object.
+ */
 class Browser extends Field {
   constructor() {
     super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
@@ -474,6 +492,9 @@ class Browser extends Field {
   }
 }
 
+/**
+ * Provides properties to an element and publishes its HTML element.
+ */
 class View extends Binding<HTMLElement> {
   private readonly element: Element;
   private readonly fields: Record<string, Field>;
@@ -540,6 +561,10 @@ class View extends Binding<HTMLElement> {
   }
 }
 
+/**
+ * Starts an abstract app.
+ * Provides the entry point for ViewScript-Bridge.
+ */
 export class RunningApp {
   private static readonly browser = new Browser();
 
