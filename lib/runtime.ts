@@ -466,24 +466,24 @@ class View extends Binding<HTMLElement> {
   readonly viewKey: string;
 
   constructor(
-    mainView: Abstract.View,
-    views: Record<string, Abstract.View>,
+    root: Abstract.View,
+    children: Record<string, Abstract.View>,
     fields: Record<string, Field>
   ) {
     super();
 
     this.fields = fields;
-    this.name = mainView.name;
-    this.viewKey = mainView.viewKey;
+    this.name = root.name;
+    this.viewKey = root.viewKey;
 
-    if (mainView.fields) {
-      Object.entries(mainView.fields).forEach(([fieldKey, abstractField]) => {
+    if (root.fields) {
+      Object.entries(root.fields).forEach(([fieldKey, abstractField]) => {
         const field = Field.create(abstractField);
         this.fields[fieldKey] = field;
       });
     }
 
-    this.element = new Element(mainView.element, views, this.fields);
+    this.element = new Element(root.element, children, this.fields);
     this.element.subscribe(this);
   }
 }
@@ -495,14 +495,14 @@ export class RunningApp {
     browser: RunningApp.browser,
   };
 
-  private readonly mainView: View;
+  private readonly root: View;
 
   constructor(app: Abstract.App) {
-    this.mainView = new View(app.mainView, app.views ?? {}, {
+    this.root = new View(app.root, app.views ?? {}, {
       ...this.fields,
     });
 
-    this.mainView.subscribe({
+    this.root.subscribe({
       take: (htmlElement) => {
         Dom.render(htmlElement);
       },

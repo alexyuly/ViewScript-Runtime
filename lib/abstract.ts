@@ -65,7 +65,7 @@ export type View = {
 
 export type App = {
   kind: "ViewScript v0.2.1 App";
-  mainView: View;
+  root: View;
   views?: Record<string, View>;
 };
 
