@@ -203,8 +203,8 @@ class ElementField extends Field<Abstract.Element> {
 /**
  * A field that stores an arbitrary data object.
  */
-class Structure extends Field<Abstract.StructureData> {
-  constructor(field: Abstract.Structure) {
+class Structure extends Field<Abstract.Structure> {
+  constructor(field: Abstract.StructureField) {
     super(field);
   }
 }

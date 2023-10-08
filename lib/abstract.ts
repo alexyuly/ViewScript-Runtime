@@ -100,7 +100,7 @@ export function isData(node: unknown): node is Data {
     typeof node === "number" ||
     typeof node === "string" ||
     isElement(node) ||
-    isStructureData(node) ||
+    isStructure(node) ||
     (node instanceof Array && node.every(isData))
   );
 }
@@ -127,12 +127,17 @@ export function isOutput(node: unknown): node is Output {
   );
 }
 
-export function isStructure(field: Field): field is Structure {
-  return field.modelKey === "Structure";
+export function isStructure(node: unknown): node is Structure {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "output"
+  );
 }
 
-export function isStructureData(node: unknown): node is StructureData {
-  return typeof node === "object" && node !== null && "_structure" in node;
+export function isStructureField(field: Field): field is StructureField {
+  return field.modelKey === "Structure";
 }
 
 export function isText(field: Field): field is Text {
