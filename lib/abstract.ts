@@ -1,10 +1,11 @@
 export type PrimitiveData = boolean | number | string;
 
-export type StructureData = { _structure: object };
+export type StructuredData = {
+  kind: "data";
+  structure: Record<string, Data>;
+};
 
-export type ScalarData = PrimitiveData | StructureData | Element;
-
-export type Data = ScalarData | Array<Data>;
+export type Data = PrimitiveData | StructuredData | Element | Array<Data>;
 
 export type Field<T extends Data = Data> = {
   kind: "field";
