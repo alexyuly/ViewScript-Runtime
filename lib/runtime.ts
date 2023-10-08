@@ -469,7 +469,7 @@ class Element extends Publisher<HTMLElement> {
                 property,
                 Object.entries(terrain).reduce<Record<string, Field>>(
                   (result, [featureKey, feature]) => {
-                    if (Abstract.isField(feature)) {
+                    if (feature instanceof Field) {
                       result[featureKey] = feature;
                     }
                     return result;
@@ -630,9 +630,7 @@ class View extends Binding<HTMLElement> {
         }
 
         if (property.kind === "inlet") {
-          // TODO Why doesn't Abstract.isField work as expected here?
-
-          if (!Abstract.isField(feature)) {
+          if (feature instanceof Stream) {
             throw new ViewScriptException(
               `Cannot construct an inlet for stream name \`${propertyKey}\``
             );
@@ -648,7 +646,7 @@ class View extends Binding<HTMLElement> {
             property,
             Object.entries(this.terrain).reduce<Record<string, Field>>(
               (result, [featureKey, feature]) => {
-                if (Abstract.isField(feature)) {
+                if (feature instanceof Field) {
                   result[featureKey] = feature;
                 }
                 return result;
@@ -658,9 +656,7 @@ class View extends Binding<HTMLElement> {
           );
           inlet.subscribe(feature);
         } else if (property.kind === "outlet") {
-          // TODO Why doesn't Abstract.isField work as expected here? (same as above)
-
-          if (Abstract.isField(feature)) {
+          if (feature instanceof Field) {
             throw new ViewScriptException(
               `Cannot construct an outlet for field name \`${propertyKey}\``
             );
