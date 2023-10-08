@@ -1,4 +1,12 @@
-export type Field<T = unknown> = {
+export type PrimitiveData = boolean | number | string;
+
+export type StructureData = { _structure: object };
+
+export type ScalarData = PrimitiveData | StructureData | Element;
+
+export type Data = ScalarData | Array<Data>;
+
+export type Field<T extends Data = Data> = {
   kind: "field";
   fieldKey: string;
   modelKey: string;
@@ -18,15 +26,15 @@ export type Text = Field<string> & {
   modelKey: "Text";
 };
 
+export type Structure = Field<StructureData> & {
+  modelKey: "Structure";
+};
+
 export type ElementField = Field<Element> & {
   modelKey: "Element";
 };
 
-export type Structure = Field<object> & {
-  modelKey: "Structure";
-};
-
-export type Collection = Field<Array<unknown>> & {
+export type Collection = Field<Array<Data>> & {
   modelKey: "Collection";
 };
 
@@ -73,16 +81,27 @@ export type App = {
   views?: Record<string, View>;
 };
 
-export function isCollectionField(field: Field): field is Collection {
+export function isCollection(field: Field): field is Collection {
   return field.modelKey === "Collection";
 }
 
-export function isConditionField(field: Field): field is Condition {
+export function isCondition(field: Field): field is Condition {
   return field.modelKey === "Condition";
 }
 
-export function isCountField(field: Field): field is Count {
+export function isCount(field: Field): field is Count {
   return field.modelKey === "Count";
+}
+
+export function isData(node: unknown): node is Data {
+  return (
+    typeof node === "boolean" ||
+    typeof node === "number" ||
+    typeof node === "string" ||
+    isElement(node) ||
+    isStructureData(node) ||
+    (node instanceof Array && node.every(isData))
+  );
 }
 
 export function isElement(node: unknown): node is Element {
@@ -107,10 +126,14 @@ export function isOutput(node: unknown): node is Output {
   );
 }
 
-export function isStructureField(field: Field): field is Structure {
+export function isStructure(field: Field): field is Structure {
   return field.modelKey === "Structure";
 }
 
-export function isTextField(field: Field): field is Text {
+export function isStructureData(node: unknown): node is StructureData {
+  return typeof node === "object" && node !== null && "_structure" in node;
+}
+
+export function isText(field: Field): field is Text {
   return field.modelKey === "Text";
 }

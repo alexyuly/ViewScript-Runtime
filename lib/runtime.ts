@@ -57,7 +57,9 @@ abstract class Binding<T = unknown>
  * Stores and forwards a value of type T.
  * Manages methods and actions for the value.
  */
-abstract class Field<T = unknown> extends Binding<T> {
+abstract class Field<
+  T extends Abstract.Data = Abstract.Data,
+> extends Binding<T> {
   readonly fieldKey: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey?: string;
@@ -80,15 +82,15 @@ abstract class Field<T = unknown> extends Binding<T> {
   }
 
   static create(field: Abstract.Field): Field {
-    if (Abstract.isConditionField(field)) {
+    if (Abstract.isCondition(field)) {
       return new Condition(field);
     }
 
-    if (Abstract.isCountField(field)) {
+    if (Abstract.isCount(field)) {
       return new Count(field);
     }
 
-    if (Abstract.isTextField(field)) {
+    if (Abstract.isText(field)) {
       return new Text(field);
     }
 
@@ -96,11 +98,11 @@ abstract class Field<T = unknown> extends Binding<T> {
       return new ElementField(field);
     }
 
-    if (Abstract.isStructureField(field)) {
+    if (Abstract.isStructure(field)) {
       return new Structure(field);
     }
 
-    if (Abstract.isCollectionField(field)) {
+    if (Abstract.isCollection(field)) {
       return new Collection(field);
     }
 
@@ -136,7 +138,10 @@ abstract class Field<T = unknown> extends Binding<T> {
     this.members[name] = field;
   }
 
-  protected when<A = unknown>(name: string, reducer: (argument: A) => T) {
+  protected when<A extends Abstract.Data>(
+    name: string,
+    reducer: (argument: A) => T | void
+  ) {
     this.members[name] = {
       take: (event: A) => {
         const nextValue = reducer(event);
@@ -170,6 +175,10 @@ class Count extends Field<number> {
     super(field);
 
     this.when("add", (amount: number) => (this.getValue() ?? 0) + amount);
+    this.when(
+      "multiplyBy",
+      (amount: number) => (this.getValue() ?? 0) * amount
+    );
   }
 }
 
@@ -194,7 +203,7 @@ class ElementField extends Field<Abstract.Element> {
 /**
  * A field that stores an arbitrary data object.
  */
-class Structure extends Field<object> {
+class Structure extends Field<Abstract.StructureData> {
   constructor(field: Abstract.Structure) {
     super(field);
   }
@@ -203,9 +212,11 @@ class Structure extends Field<object> {
 /**
  * A field that stores an array.
  */
-class Collection extends Field<Array<unknown>> {
+class Collection extends Field<Array<Abstract.Data>> {
   constructor(field: Abstract.Collection) {
     super(field);
+
+    this.when("push", (item) => (this.getValue() ?? []).concat(item));
   }
 }
 
@@ -383,7 +394,7 @@ class Element extends Publisher<HTMLElement> {
               const input = new Input(property, fields);
               this.properties[propertyKey] = input;
 
-              let take: (value: unknown) => void;
+              let take: (value: Abstract.Data) => void;
 
               if (propertyKey === "content") {
                 take = (value) => {
