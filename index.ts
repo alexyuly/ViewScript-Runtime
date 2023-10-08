@@ -1,2 +1,2 @@
-export * from "./lib/abstract";
+export * as Abstract from "./lib/abstract";
 export { RunningApp } from "./lib/runtime";
