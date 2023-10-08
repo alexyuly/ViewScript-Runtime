@@ -1,11 +1,11 @@
-export type PrimitiveData = boolean | number | string;
+export type Primitive = boolean | number | string;
 
-export type StructuredData = {
+export type Structure = {
   kind: "data";
   structure: Record<string, Data>;
 };
 
-export type Data = PrimitiveData | StructuredData | Element | Array<Data>;
+export type Data = Primitive | Structure | Element | Array<Data>;
 
 export type Field<T extends Data = Data> = {
   kind: "field";
@@ -27,7 +27,7 @@ export type Text = Field<string> & {
   modelKey: "Text";
 };
 
-export type Structure = Field<StructureData> & {
+export type StructureField = Field<Structure> & {
   modelKey: "Structure";
 };
 
