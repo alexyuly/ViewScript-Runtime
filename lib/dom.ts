@@ -45,8 +45,6 @@ export const listen = (
   callback: () => void
 ) => {
   element.addEventListener(event, () => {
-    // TODO Handle events passed to this listener.
-
     window.console.log(
       `[DOM] 🔥 Fire ${event} on <${element.tagName.toLowerCase()}>`
     );

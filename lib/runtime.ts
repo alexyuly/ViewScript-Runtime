@@ -363,9 +363,6 @@ class ElementEventPublisher extends Publisher {
     Dom.listen(element, event, () => {
       this.publish(output.getArgumentValue());
     });
-
-    // TODO Remove event listeners when their elements unmount.
-    // This will become relevant once mapped elements are supported.
   }
 }
 
