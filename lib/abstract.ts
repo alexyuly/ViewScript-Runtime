@@ -39,40 +39,52 @@ export type Collection = Field<Array<Data>> & {
   modelKey: "Collection";
 };
 
-export type Reference = {
-  kind: "reference";
-  keyPath: Array<string>;
-  argumentBinding?: Field;
-};
-
 export type Conditional = {
   kind: "conditional";
-  condition: Reference;
+  condition: Input;
   positive: Field;
   negative: Field;
 };
 
+export type Stream = {
+  kind: "stream";
+  streamKey: string;
+  modelKey?: string;
+  name?: string;
+};
+
 export type Input = {
   kind: "input";
-  dataBinding: Field | Reference | Conditional;
+  keyPath: Array<string>;
 };
 
 export type Output = {
   kind: "output";
-  dataBinding: Reference;
+  keyPath: Array<string>;
+  argument?: Field;
+};
+
+export type Inlet = {
+  kind: "inlet";
+  connection: Field | Conditional | Input;
+};
+
+export type Outlet = {
+  kind: "outlet";
+  connection: Output;
 };
 
 export type Element = {
   kind: "element";
   viewKey: string;
-  properties?: Record<string, Input | Output>;
+  properties?: Record<string, Inlet | Outlet>;
 };
 
 export type View = {
   kind: "view";
   viewKey: string;
   element: Element;
-  fields?: Record<string, Field>;
+  terrain?: Record<string, Field | Stream>;
   name?: string;
 };
 
@@ -118,12 +130,21 @@ export function isElementField(field: Field): field is ElementField {
   return field.modelKey === "Element";
 }
 
-export function isOutput(node: unknown): node is Output {
+export function isField(node: unknown): node is Field {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
-    node.kind === "output"
+    node.kind === "field"
+  );
+}
+
+export function isOutlet(node: unknown): node is Outlet {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "outlet"
   );
 }
 

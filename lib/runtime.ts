@@ -62,7 +62,7 @@ abstract class Field<
 > extends Binding<T> {
   readonly fieldKey: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelKey?: string;
+  private readonly modelKey: string;
   readonly name?: string;
 
   constructor(field: Abstract.Field<T>) {
@@ -114,9 +114,7 @@ abstract class Field<
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${
-          this.modelKey ?? "untyped"
-        }\` field \`${this.name}\``
+        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.name}\``
       );
     }
 
@@ -126,7 +124,7 @@ abstract class Field<
   protected publish(value: T) {
     if (this.name !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey ?? "untyped"} field ${this.name} =`,
+        `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
         value
       );
     }
@@ -134,10 +132,12 @@ abstract class Field<
     super.publish(value);
   }
 
+  // TODO rename to defineField (?)
   protected set(name: string, field: Field) {
     this.members[name] = field;
   }
 
+  // TODO split and rename to defineAction and defineMethod (?)
   protected when<A extends Abstract.Data>(
     name: string,
     reducer: (argument: A) => T | void
@@ -221,70 +221,10 @@ class Collection extends Field<Array<Abstract.Data>> {
 }
 
 /**
- * A binding to a field or action based on its name or path within the given fields.
- */
-class Reference extends Binding {
-  private readonly argument?: Field;
-  private readonly keyPath: Array<string>;
-  private readonly port: Publisher | Subscriber;
-
-  constructor(reference: Abstract.Reference, fields: Record<string, Field>) {
-    super();
-
-    this.argument =
-      reference.argumentBinding && Field.create(reference.argumentBinding);
-    this.keyPath = reference.keyPath;
-
-    const keyPath = [...this.keyPath];
-
-    const getNextKey = () => {
-      const key = keyPath.shift();
-
-      if (!key) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${reference.keyPath}\``
-        );
-      }
-
-      return key;
-    };
-
-    const field = fields[getNextKey()];
-    this.port = field;
-
-    while (keyPath.length > 0) {
-      if (!(this.port instanceof Field)) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${reference.keyPath}\``
-        );
-      }
-
-      this.port = this.port.getMember(getNextKey());
-    }
-
-    if (typeof this.port !== "object" || this.port === null) {
-      throw new ViewScriptException(
-        `Cannot dereference invalid keyPath \`${reference.keyPath}\``
-      );
-    }
-
-    if ("subscribe" in this.port) {
-      this.port.subscribe(this);
-    } else {
-      this.subscribe(this.port);
-    }
-  }
-
-  getArgumentValue() {
-    return this.argument?.getValue();
-  }
-}
-
-/**
  * Forwards either a positive or negative value based on a condition.
  */
 class Conditional extends Publisher implements Subscriber<boolean> {
-  private readonly condition: Reference;
+  private readonly condition: Input;
   private readonly positive: Field;
   private readonly negative: Field;
 
@@ -297,7 +237,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
     this.positive = Field.create(conditional.positive);
     this.negative = Field.create(conditional.negative);
 
-    this.condition = new Reference(conditional.condition, fields);
+    this.condition = new Input(conditional.condition, fields);
     this.condition.subscribe(this);
   }
 
@@ -307,24 +247,158 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 }
 
 /**
- * Forwards a value from a field, reference (field or method), or conditional.
+ * TODO
+ */
+class Stream<T extends Abstract.Data | void = void> extends Binding<T> {
+  readonly streamKey: string;
+  private readonly modelKey?: string;
+  readonly name?: string;
+
+  constructor(stream: Abstract.Stream) {
+    super();
+
+    this.streamKey = stream.streamKey;
+    this.modelKey = stream.modelKey;
+    this.name = stream.name;
+  }
+
+  // TODO
+}
+
+/**
+ * A binding to a field based on its name or path within the given fields.
  */
 class Input extends Binding {
-  private readonly publisher: Publisher;
+  private readonly keyPath: Array<string>;
+  private readonly field: Publisher | Subscriber;
 
   constructor(input: Abstract.Input, fields: Record<string, Field>) {
     super();
 
-    if (input.dataBinding.kind === "field") {
-      this.publisher = Field.create(input.dataBinding);
-    } else if (input.dataBinding.kind === "reference") {
-      this.publisher = new Reference(input.dataBinding, fields);
-    } else if (input.dataBinding.kind === "conditional") {
-      this.publisher = new Conditional(input.dataBinding, fields);
+    this.keyPath = input.keyPath;
+
+    const keyPath = [...this.keyPath];
+
+    const getNextKey = () => {
+      const key = keyPath.shift();
+
+      if (!key) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid keyPath \`${input.keyPath}\``
+        );
+      }
+
+      return key;
+    };
+
+    this.field = fields[getNextKey()];
+
+    while (keyPath.length > 0) {
+      if (!(this.field instanceof Field)) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid keyPath \`${input.keyPath}\``
+        );
+      }
+
+      this.field = this.field.getMember(getNextKey());
+    }
+
+    if (typeof this.field !== "object" || this.field === null) {
+      throw new ViewScriptException(
+        `Cannot dereference invalid keyPath \`${input.keyPath}\``
+      );
+    }
+
+    // TODO simplify:
+    if ("subscribe" in this.field) {
+      this.field.subscribe(this);
+    } else {
+      this.subscribe(this.field);
+    }
+  }
+}
+
+/**
+ * A binding to a stream based on its name or path within the given fields.
+ */
+class Output extends Binding {
+  private readonly argument?: Field;
+  private readonly keyPath: Array<string>;
+  private readonly feature: Publisher | Subscriber;
+
+  constructor(
+    output: Abstract.Output,
+    terrain: Record<string, Field | Stream>
+  ) {
+    super();
+
+    this.argument = output.argument && Field.create(output.argument);
+    this.keyPath = output.keyPath;
+
+    const keyPath = [...this.keyPath];
+
+    const getNextKey = () => {
+      const key = keyPath.shift();
+
+      if (!key) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid keyPath \`${output.keyPath}\``
+        );
+      }
+
+      return key;
+    };
+
+    this.feature = terrain[getNextKey()];
+
+    while (keyPath.length > 0) {
+      if (!(this.feature instanceof Field)) {
+        throw new ViewScriptException(
+          `Cannot dereference invalid keyPath \`${output.keyPath}\``
+        );
+      }
+
+      this.feature = this.feature.getMember(getNextKey());
+    }
+
+    if (typeof this.feature !== "object" || this.feature === null) {
+      throw new ViewScriptException(
+        `Cannot dereference invalid keyPath \`${output.keyPath}\``
+      );
+    }
+
+    // TODO simplify:
+    if ("subscribe" in this.feature) {
+      this.feature.subscribe(this);
+    } else {
+      this.subscribe(this.feature);
+    }
+  }
+
+  getArgumentValue() {
+    return this.argument?.getValue();
+  }
+}
+
+/**
+ * Forwards a value from a field, conditional, or input.
+ */
+class Inlet extends Binding {
+  private readonly publisher: Publisher;
+
+  constructor(input: Abstract.Inlet, fields: Record<string, Field>) {
+    super();
+
+    if (input.connection.kind === "field") {
+      this.publisher = Field.create(input.connection);
+    } else if (input.connection.kind === "input") {
+      this.publisher = new Input(input.connection, fields);
+    } else if (input.connection.kind === "conditional") {
+      this.publisher = new Conditional(input.connection, fields);
     } else {
       throw new ViewScriptException(
-        `Cannot construct an input with dataBinding of unknown kind "${
-          (input.dataBinding as { kind: unknown }).kind
+        `Cannot construct an inlet with connection of unknown kind "${
+          (input.connection as { kind: unknown }).kind
         }"`
       );
     }
@@ -334,15 +408,18 @@ class Input extends Binding {
 }
 
 /**
- * Forwards a value to a reference (action).
+ * Forwards a value to an output.
  */
-class Output extends Binding {
-  private readonly subscriber: Reference;
+class Outlet extends Binding {
+  private readonly subscriber: Output;
 
-  constructor(output: Abstract.Output, fields: Record<string, Field>) {
+  constructor(
+    output: Abstract.Outlet,
+    terrain: Record<string, Field | Stream>
+  ) {
     super();
 
-    this.subscriber = new Reference(output.dataBinding, fields);
+    this.subscriber = new Output(output.connection, terrain);
     this.subscribe(this.subscriber);
   }
 
@@ -352,29 +429,29 @@ class Output extends Binding {
 }
 
 /**
- * Publishes a value from an element's event to an output.
+ * Publishes a value from an element's event to an outlet.
  */
 class ElementEventPublisher extends Publisher {
-  constructor(element: HTMLElement, event: string, output: Output) {
+  constructor(element: HTMLElement, event: string, outlet: Outlet) {
     super();
 
-    this.subscribe(output);
+    this.subscribe(outlet);
 
     Dom.listen(element, event, () => {
-      this.publish(output.getArgumentValue());
+      this.publish(outlet.getArgumentValue());
     });
   }
 }
 
 class Element extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
-  private readonly properties: Record<string, Input | Output> = {};
+  private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly viewKey: string;
 
   constructor(
     element: Abstract.Element,
     views: Record<string, Abstract.View>,
-    fields: Record<string, Field>
+    terrain: Record<string, Field | Stream>
   ) {
     super();
 
@@ -387,9 +464,20 @@ class Element extends Publisher<HTMLElement> {
       if (element.properties) {
         Object.entries(element.properties).forEach(
           ([propertyKey, property]) => {
-            if (property.kind === "input") {
-              const input = new Input(property, fields);
-              this.properties[propertyKey] = input;
+            if (property.kind === "inlet") {
+              const inlet = new Inlet(
+                property,
+                Object.entries(terrain).reduce<Record<string, Field>>(
+                  (result, [featureKey, feature]) => {
+                    if (Abstract.isField(feature)) {
+                      result[featureKey] = feature;
+                    }
+                    return result;
+                  },
+                  {}
+                )
+              );
+              this.properties[propertyKey] = inlet;
 
               let take: (value: Abstract.Data) => void;
 
@@ -402,7 +490,7 @@ class Element extends Publisher<HTMLElement> {
                     if (child instanceof Array) {
                       child.forEach(populate);
                     } else if (Abstract.isElement(child)) {
-                      const elementChild = new Element(child, views, fields);
+                      const elementChild = new Element(child, views, terrain);
                       this.children.push(elementChild);
                       elementChild.subscribe({
                         take: (htmlElementChild) => {
@@ -437,16 +525,16 @@ class Element extends Publisher<HTMLElement> {
                 };
               }
 
-              input.subscribe({ take });
-            } else if (property.kind === "output") {
-              const output = new Output(property, fields);
-              this.properties[propertyKey] = output;
-              new ElementEventPublisher(htmlElement, propertyKey, output);
+              inlet.subscribe({ take });
+            } else if (property.kind === "outlet") {
+              const outlet = new Outlet(property, terrain);
+              this.properties[propertyKey] = outlet;
+              new ElementEventPublisher(htmlElement, propertyKey, outlet);
             } else {
               throw new ViewScriptException(
                 `Cannot construct a property of unknown kind "${
                   (property as { kind: unknown }).kind
-                }"`
+                } for element of viewKey ${this.viewKey}"`
               );
             }
           }
@@ -459,7 +547,7 @@ class Element extends Publisher<HTMLElement> {
       const view = new View(
         abstractView,
         views,
-        { ...fields },
+        { ...terrain },
         element.properties
       );
 
@@ -505,66 +593,92 @@ class Browser extends Field {
  */
 class View extends Binding<HTMLElement> {
   private readonly element: Element;
-  private readonly fields: Record<string, Field>;
+  private readonly terrain: Record<string, Field | Stream>;
   readonly name?: string;
   readonly viewKey: string;
 
   constructor(
     root: Abstract.View,
     children: Record<string, Abstract.View>,
-    fields: Record<string, Field>,
+    terrain: Record<string, Field | Stream>,
     properties?: Abstract.Element["properties"]
   ) {
     super();
 
-    this.fields = fields;
+    this.terrain = terrain;
     this.name = root.name;
     this.viewKey = root.viewKey;
 
-    if (root.fields) {
-      Object.entries(root.fields).forEach(([fieldKey, abstractField]) => {
-        const field = Field.create(abstractField);
-        this.fields[fieldKey] = field;
+    if (root.terrain) {
+      Object.entries(root.terrain).forEach(([featureKey, feature]) => {
+        this.terrain[featureKey] = Abstract.isField(feature)
+          ? Field.create(feature)
+          : new Stream(feature);
       });
     }
 
     if (properties) {
       Object.entries(properties).forEach(([propertyKey, property]) => {
-        if (property.kind === "input") {
-          const field = Object.values(this.fields).find(
-            (field) => field.name === propertyKey
-          );
+        const feature = Object.values(this.terrain).find(
+          (feature) => feature.name === propertyKey
+        );
 
-          if (field === undefined) {
-            throw new ViewScriptException(
-              `Cannot construct an input property for unknown field name \`${propertyKey}\``
-            );
-          }
-
-          if (field.getValue() !== undefined) {
-            throw new ViewScriptException(
-              `Cannot construct an input property for private field name \`${propertyKey}\``
-            );
-          }
-
-          const input = new Input(property, fields);
-          input.subscribe(field);
-        } else if (property.kind === "output") {
-          // TODO implementation
+        if (feature === undefined) {
           throw new ViewScriptException(
-            "Sorry, output properties for views are not implemented yet."
+            `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of viewKey \`${this.viewKey}\``
           );
+        }
+
+        if (property.kind === "inlet") {
+          // TODO Why doesn't Abstract.isField work as expected here?
+
+          if (!Abstract.isField(feature)) {
+            throw new ViewScriptException(
+              `Cannot construct an inlet for stream name \`${propertyKey}\``
+            );
+          }
+
+          if (feature.getValue() !== undefined) {
+            throw new ViewScriptException(
+              `Cannot construct an inlet for private field name \`${propertyKey}\``
+            );
+          }
+
+          const inlet = new Inlet(
+            property,
+            Object.entries(this.terrain).reduce<Record<string, Field>>(
+              (result, [featureKey, feature]) => {
+                if (Abstract.isField(feature)) {
+                  result[featureKey] = feature;
+                }
+                return result;
+              },
+              {}
+            )
+          );
+          inlet.subscribe(feature);
+        } else if (property.kind === "outlet") {
+          // TODO Why doesn't Abstract.isField work as expected here? (same as above)
+
+          if (Abstract.isField(feature)) {
+            throw new ViewScriptException(
+              `Cannot construct an outlet for field name \`${propertyKey}\``
+            );
+          }
+
+          const outlet = new Outlet(property, this.terrain);
+          feature.subscribe(outlet);
         } else {
           throw new ViewScriptException(
             `Cannot construct a property of unknown kind "${
               (property as { kind: unknown }).kind
-            }"`
+            } for view of viewKey \`${this.viewKey}\`"`
           );
         }
       });
     }
 
-    this.element = new Element(root.element, children, this.fields);
+    this.element = new Element(root.element, children, this.terrain);
     this.element.subscribe(this);
   }
 }
