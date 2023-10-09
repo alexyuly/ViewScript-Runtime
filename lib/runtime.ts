@@ -263,6 +263,10 @@ class Stream extends Binding {
     this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
+
+  getArgumentValue() {
+    return undefined; // TODO see above
+  }
 }
 
 /**
@@ -368,11 +372,7 @@ class Output extends Binding {
     if (
       typeof nextMember !== "object" ||
       nextMember === null ||
-      !(
-        nextMember instanceof Stream ||
-        nextMember instanceof Output ||
-        "take" in nextMember
-      )
+      !("take" in nextMember)
     ) {
       throw new ViewScriptException(
         `Cannot dereference invalid keyPath \`${output.keyPath}\``
@@ -394,19 +394,19 @@ class Output extends Binding {
 class Inlet extends Binding {
   private readonly publisher: Publisher;
 
-  constructor(input: Abstract.Inlet, fields: Record<string, Field>) {
+  constructor(inlet: Abstract.Inlet, fields: Record<string, Field>) {
     super();
 
-    if (input.connection.kind === "field") {
-      this.publisher = Field.create(input.connection);
-    } else if (input.connection.kind === "input") {
-      this.publisher = new Input(input.connection, fields);
-    } else if (input.connection.kind === "conditional") {
-      this.publisher = new Conditional(input.connection, fields);
+    if (inlet.connection.kind === "field") {
+      this.publisher = Field.create(inlet.connection);
+    } else if (inlet.connection.kind === "input") {
+      this.publisher = new Input(inlet.connection, fields);
+    } else if (inlet.connection.kind === "conditional") {
+      this.publisher = new Conditional(inlet.connection, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an inlet with connection of unknown kind "${
-          (input.connection as { kind: unknown }).kind
+          (inlet.connection as { kind: unknown }).kind
         }"`
       );
     }
@@ -419,24 +419,26 @@ class Inlet extends Binding {
  * Forwards a value to an output.
  */
 class Outlet extends Binding {
-  // TODO Initialize the argument, if applicable:
   private readonly argument?: Field;
   private readonly subscriber: Subscriber;
 
   constructor(
-    output: Abstract.Outlet,
+    outlet: Abstract.Outlet,
     terrain: Record<string, Field | Stream>
   ) {
     super();
 
-    if (output.connection.kind === "stream") {
-      this.subscriber = new Stream(output.connection);
-    } else if (output.connection.kind === "output") {
-      this.subscriber = new Output(output.connection, terrain);
+    this.argument =
+      outlet.connection.argument && Field.create(outlet.connection.argument);
+
+    if (outlet.connection.kind === "stream") {
+      this.subscriber = new Stream(outlet.connection);
+    } else if (outlet.connection.kind === "output") {
+      this.subscriber = new Output(outlet.connection, terrain);
     } else {
       throw new ViewScriptException(
         `Cannot construct an outlet with connection of unknown kind "${
-          (output.connection as { kind: unknown }).kind
+          (outlet.connection as { kind: unknown }).kind
         }"`
       );
     }
