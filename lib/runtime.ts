@@ -386,6 +386,12 @@ class Output extends Binding {
   getArgumentValue() {
     return this.argument?.getValue();
   }
+
+  take() {
+    // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
+    // Consume the provided event from the publishing outlet.
+    super.take(this.getArgumentValue());
+  }
 }
 
 /**
@@ -431,9 +437,7 @@ class Outlet extends Binding {
     this.argument =
       outlet.connection.argument && Field.create(outlet.connection.argument);
 
-    if (outlet.connection.kind === "stream") {
-      this.subscriber = new Stream(outlet.connection);
-    } else if (outlet.connection.kind === "output") {
+    if (outlet.connection.kind === "output") {
       this.subscriber = new Output(outlet.connection, terrain);
     } else {
       throw new ViewScriptException(
