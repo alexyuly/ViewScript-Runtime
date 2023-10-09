@@ -90,7 +90,7 @@ export type View = {
 };
 
 export type App = {
-  kind: "ViewScript v0.2.1 App";
+  kind: "ViewScript v0.3.0 App";
   root: View;
   views?: Record<string, View>;
 };
