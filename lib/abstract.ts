@@ -164,3 +164,12 @@ export function isStructureField(field: Field): field is StructureField {
 export function isText(field: Field): field is Text {
   return field.modelKey === "Text";
 }
+
+export function isView(node: unknown): node is View {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "view"
+  );
+}
