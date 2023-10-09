@@ -51,7 +51,6 @@ export type Stream = {
   streamKey: string;
   modelKey?: string;
   name?: string;
-  argument?: Field;
 };
 
 export type Input = {
