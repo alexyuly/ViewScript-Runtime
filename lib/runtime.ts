@@ -54,7 +54,7 @@ abstract class Binding<T = unknown>
 }
 
 /**
- * Stores and forwards a value of type T.
+ * Stores a value of type T and forwards it from parent to child components.
  * Manages methods and actions for the value.
  */
 abstract class Field<
@@ -247,30 +247,30 @@ class Conditional extends Publisher implements Subscriber<boolean> {
 }
 
 /**
- * TODO
+ * Forwards events from child to parent components.
  */
-class Stream<T extends Abstract.Data | void = void> extends Binding<T> {
-  readonly streamKey: string;
+class Stream extends Binding {
+  // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
+  // Use modelKey once we start handling events from streams.
   private readonly modelKey?: string;
+  readonly streamKey: string;
   readonly name?: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
-    this.streamKey = stream.streamKey;
     this.modelKey = stream.modelKey;
+    this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
-
-  // TODO
 }
 
 /**
- * A binding to a field based on its name or path within the given fields.
+ * A binding to a publisher based on its name or path within the given fields.
  */
 class Input extends Binding {
   private readonly keyPath: Array<string>;
-  private readonly field: Publisher | Subscriber;
+  private readonly publisher: Publisher;
 
   constructor(input: Abstract.Input, fields: Record<string, Field>) {
     super();
@@ -291,40 +291,42 @@ class Input extends Binding {
       return key;
     };
 
-    this.field = fields[getNextKey()];
+    let nextMember: Publisher | Subscriber = fields[getNextKey()];
 
     while (keyPath.length > 0) {
-      if (!(this.field instanceof Field)) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${input.keyPath}\``
-        );
+      if (
+        typeof nextMember !== "object" ||
+        nextMember === null ||
+        !(nextMember instanceof Field)
+      ) {
+        break;
       }
 
-      this.field = this.field.getMember(getNextKey());
+      nextMember = nextMember.getMember(getNextKey());
     }
 
-    if (typeof this.field !== "object" || this.field === null) {
+    if (
+      typeof nextMember !== "object" ||
+      nextMember === null ||
+      !(nextMember instanceof Field)
+    ) {
       throw new ViewScriptException(
         `Cannot dereference invalid keyPath \`${input.keyPath}\``
       );
     }
 
-    // TODO simplify:
-    if ("subscribe" in this.field) {
-      this.field.subscribe(this);
-    } else {
-      this.subscribe(this.field);
-    }
+    this.publisher = nextMember;
+    this.publisher.subscribe(this);
   }
 }
 
 /**
- * A binding to a stream based on its name or path within the given fields.
+ * A binding to a subscriber based on its name or path within the given fields.
  */
 class Output extends Binding {
   private readonly argument?: Field;
   private readonly keyPath: Array<string>;
-  private readonly feature: Publisher | Subscriber;
+  private readonly subscriber: Subscriber;
 
   constructor(
     output: Abstract.Output,
@@ -349,30 +351,36 @@ class Output extends Binding {
       return key;
     };
 
-    this.feature = terrain[getNextKey()];
+    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
 
     while (keyPath.length > 0) {
-      if (!(this.feature instanceof Field)) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${output.keyPath}\``
-        );
+      if (
+        typeof nextMember !== "object" ||
+        nextMember === null ||
+        !(nextMember instanceof Field)
+      ) {
+        break;
       }
 
-      this.feature = this.feature.getMember(getNextKey());
+      nextMember = nextMember.getMember(getNextKey());
     }
 
-    if (typeof this.feature !== "object" || this.feature === null) {
+    if (
+      typeof nextMember !== "object" ||
+      nextMember === null ||
+      !(
+        nextMember instanceof Stream ||
+        nextMember instanceof Output ||
+        "take" in nextMember
+      )
+    ) {
       throw new ViewScriptException(
         `Cannot dereference invalid keyPath \`${output.keyPath}\``
       );
     }
 
-    // TODO simplify:
-    if ("subscribe" in this.feature) {
-      this.feature.subscribe(this);
-    } else {
-      this.subscribe(this.feature);
-    }
+    this.subscriber = nextMember;
+    this.subscribe(this.subscriber);
   }
 
   getArgumentValue() {
@@ -411,7 +419,9 @@ class Inlet extends Binding {
  * Forwards a value to an output.
  */
 class Outlet extends Binding {
-  private readonly subscriber: Output;
+  // TODO Initialize the argument, if applicable:
+  private readonly argument?: Field;
+  private readonly subscriber: Subscriber;
 
   constructor(
     output: Abstract.Outlet,
@@ -419,12 +429,23 @@ class Outlet extends Binding {
   ) {
     super();
 
-    this.subscriber = new Output(output.connection, terrain);
+    if (output.connection.kind === "stream") {
+      this.subscriber = new Stream(output.connection);
+    } else if (output.connection.kind === "output") {
+      this.subscriber = new Output(output.connection, terrain);
+    } else {
+      throw new ViewScriptException(
+        `Cannot construct an outlet with connection of unknown kind "${
+          (output.connection as { kind: unknown }).kind
+        }"`
+      );
+    }
+
     this.subscribe(this.subscriber);
   }
 
   getArgumentValue() {
-    return this.subscriber.getArgumentValue();
+    return this.argument?.getValue();
   }
 }
 

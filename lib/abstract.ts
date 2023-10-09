@@ -71,7 +71,7 @@ export type Inlet = {
 
 export type Outlet = {
   kind: "outlet";
-  connection: Output;
+  connection: Stream | Output;
 };
 
 export type Element = {
