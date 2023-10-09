@@ -591,28 +591,6 @@ class Element extends Binding<HTMLElement> {
 }
 
 /**
- * A special field that provides access to the window's console object.
- */
-class Console extends Field {
-  constructor() {
-    super({ kind: "field", fieldKey: "console", modelKey: "Console" });
-
-    this.defineAction("log", window.console.log);
-  }
-}
-
-/**
- * A special field that provides access to the browser's window object.
- */
-class Browser extends Field {
-  constructor() {
-    super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
-
-    this.defineChild("console", new Console());
-  }
-}
-
-/**
  * Provides properties to an element and publishes its HTML element.
  */
 class View extends Binding<HTMLElement> {
@@ -700,6 +678,28 @@ class View extends Binding<HTMLElement> {
 
     this.element = new Element(root.element, children, this.terrain);
     this.element.subscribe(this);
+  }
+}
+
+/**
+ * A special field that provides access to the window's console object.
+ */
+class Console extends Field {
+  constructor() {
+    super({ kind: "field", fieldKey: "console", modelKey: "Console" });
+
+    this.defineAction("log", window.console.log);
+  }
+}
+
+/**
+ * A special field that provides access to the browser's window object.
+ */
+class Browser extends Field {
+  constructor() {
+    super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
+
+    this.defineChild("console", new Console());
   }
 }
 
