@@ -263,10 +263,6 @@ class Stream extends Binding {
     this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
-
-  getArgumentValue() {
-    return undefined; // TODO see above
-  }
 }
 
 /**
@@ -383,14 +379,10 @@ class Output extends Publisher implements Subscriber {
     this.subscribe(this.subscriber);
   }
 
-  getArgumentValue() {
-    return this.argument?.getValue();
-  }
-
   take() {
     // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
     // Consume the provided event from the publishing outlet.
-    this.publish(this.getArgumentValue());
+    this.publish(this.argument?.getValue());
   }
 }
 
