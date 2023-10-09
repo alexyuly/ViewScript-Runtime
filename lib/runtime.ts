@@ -76,9 +76,10 @@ abstract class Field<
 
     if (initialValue !== undefined) {
       this.take(initialValue);
-      this.when("reset", () => initialValue);
-      this.when("setTo", (value: T) => value);
     }
+
+    this.when("reset", () => initialValue);
+    this.when("setTo", (value: T) => value);
   }
 
   static create(field: Abstract.Field): Field {
@@ -462,7 +463,7 @@ class ElementEventPublisher extends Publisher {
   }
 }
 
-class Element extends Publisher<HTMLElement> {
+class Element extends Binding<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly viewKey: string;
@@ -572,11 +573,7 @@ class Element extends Publisher<HTMLElement> {
 
       window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
 
-      view.subscribe({
-        take: (htmlElement) => {
-          this.publish(htmlElement);
-        },
-      });
+      view.subscribe(this);
     } else {
       throw new ViewScriptException(
         `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
