@@ -477,6 +477,7 @@ class Element extends Binding<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly viewKey: string;
+  private readonly view?: View;
 
   constructor(
     element: Abstract.Element,
@@ -507,7 +508,6 @@ class Element extends Binding<HTMLElement> {
                   {}
                 )
               );
-              this.properties[propertyKey] = inlet;
 
               let take: (value: Abstract.Data) => void;
 
@@ -556,10 +556,11 @@ class Element extends Binding<HTMLElement> {
               }
 
               inlet.subscribe({ take });
+              this.properties[propertyKey] = inlet;
             } else if (property.kind === "outlet") {
               const outlet = new Outlet(property, terrain);
-              this.properties[propertyKey] = outlet;
               new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
+              this.properties[propertyKey] = outlet;
             } else {
               throw new ViewScriptException(
                 `Cannot construct a property of unknown kind "${
@@ -574,14 +575,14 @@ class Element extends Binding<HTMLElement> {
       this.publish(htmlElement);
     } else if (this.viewKey in views) {
       const abstractView = views[this.viewKey];
-      const view = new View(
+      this.view = new View(
         abstractView,
         views,
         { ...terrain },
         element.properties
       );
-      view.subscribe(this);
-      window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
+      this.view.subscribe(this);
+      // window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, this.view);
     } else {
       throw new ViewScriptException(
         `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
@@ -595,6 +596,7 @@ class Element extends Binding<HTMLElement> {
  */
 class View extends Binding<HTMLElement> {
   private readonly element: Element;
+  private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly terrain: Record<string, Field | Stream>;
   readonly name?: string;
   readonly viewKey: string;
@@ -657,6 +659,7 @@ class View extends Binding<HTMLElement> {
             )
           );
           inlet.subscribe(feature);
+          this.properties[propertyKey] = inlet;
         } else if (property.kind === "outlet") {
           if (feature instanceof Field) {
             throw new ViewScriptException(
@@ -666,6 +669,7 @@ class View extends Binding<HTMLElement> {
 
           const outlet = new Outlet(property, this.terrain);
           feature.subscribe(outlet);
+          this.properties[propertyKey] = outlet;
         } else {
           throw new ViewScriptException(
             `Cannot construct a property of unknown kind "${
