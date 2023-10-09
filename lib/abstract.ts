@@ -1,3 +1,5 @@
+export type RandomUniqueId = ReturnType<typeof window.crypto.randomUUID>;
+
 export type Primitive = boolean | number | string;
 
 export type Structure = {
@@ -34,7 +36,7 @@ export type Conditional<ModelKey extends string = string> = {
 
 export type Stream = {
   kind: "stream";
-  streamKey: string;
+  streamKey: RandomUniqueId;
   name?: string;
 };
 
@@ -60,26 +62,26 @@ export type Outlet<ModelKey extends string = string> = {
   connection: Output<ModelKey>;
 };
 
-export type ElementProperties = Record<string, Inlet | Outlet>;
+export type ElementProps = Record<string, Inlet | Outlet>;
 
-export type Element<Props extends ElementProperties = ElementProperties> = {
+export type Element<Properties extends ElementProps = ElementProps> = {
   kind: "element";
-  viewKey: string;
-  properties?: Props;
+  viewKey: RandomUniqueId | `<${string}>`;
+  properties: Properties;
 };
 
 export type View = {
   kind: "view";
-  viewKey: string;
+  viewKey: RandomUniqueId;
   element: Element;
-  terrain?: Record<string, Field | Stream>;
+  terrain: Record<string, Field | Stream>;
   name?: string;
 };
 
 export type App = {
   kind: "ViewScript v0.3.1 App";
   root: View;
-  views?: Record<string, View>;
+  views: Record<string, View>;
 };
 
 export function isStructure(node: unknown): node is Structure {
