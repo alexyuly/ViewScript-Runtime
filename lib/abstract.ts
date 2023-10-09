@@ -94,16 +94,17 @@ export type App = {
   views?: Record<string, View>;
 };
 
-export function isCollection(field: Field): field is Collection {
-  return field.modelKey === "Collection";
-}
-
-export function isCondition(field: Field): field is Condition {
-  return field.modelKey === "Condition";
-}
-
-export function isCount(field: Field): field is Count {
-  return field.modelKey === "Count";
+export function isStructure(node: unknown): node is Structure {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "data" &&
+    "structure" in node &&
+    typeof node.structure === "object" &&
+    node.structure !== null &&
+    Object.values(node.structure).every(isData)
+  );
 }
 
 export function isData(node: unknown): node is Data {
@@ -117,25 +118,45 @@ export function isData(node: unknown): node is Data {
   );
 }
 
-export function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "element"
-  );
-}
-
-export function isElementField(field: Field): field is ElementField {
-  return field.modelKey === "Element";
-}
-
 export function isField(node: unknown): node is Field {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
     node.kind === "field"
+  );
+}
+
+export function isCondition(field: Field): field is Condition {
+  return field.modelKey === "Condition";
+}
+
+export function isCount(field: Field): field is Count {
+  return field.modelKey === "Count";
+}
+
+export function isText(field: Field): field is Text {
+  return field.modelKey === "Text";
+}
+
+export function isStructureField(field: Field): field is StructureField {
+  return field.modelKey === "Structure";
+}
+
+export function isElementField(field: Field): field is ElementField {
+  return field.modelKey === "Element";
+}
+
+export function isCollection(field: Field): field is Collection {
+  return field.modelKey === "Collection";
+}
+
+export function isConditional(node: unknown): node is Conditional {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "conditional"
   );
 }
 
@@ -148,21 +169,13 @@ export function isOutlet(node: unknown): node is Outlet {
   );
 }
 
-export function isStructure(node: unknown): node is Structure {
+export function isElement(node: unknown): node is Element {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
-    node.kind === "output"
+    node.kind === "element"
   );
-}
-
-export function isStructureField(field: Field): field is StructureField {
-  return field.modelKey === "Structure";
-}
-
-export function isText(field: Field): field is Text {
-  return field.modelKey === "Text";
 }
 
 export function isView(node: unknown): node is View {
