@@ -397,10 +397,10 @@ class Inlet extends Binding {
 
     if (inlet.connection.kind === "field") {
       this.publisher = Field.create(inlet.connection);
-    } else if (inlet.connection.kind === "input") {
-      this.publisher = new Input(inlet.connection, fields);
     } else if (inlet.connection.kind === "conditional") {
       this.publisher = new Conditional(inlet.connection, fields);
+    } else if (inlet.connection.kind === "input") {
+      this.publisher = new Input(inlet.connection, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an inlet with connection of unknown kind "${
