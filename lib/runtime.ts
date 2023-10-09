@@ -16,7 +16,7 @@ interface Subscriber<T = unknown> {
  * Stores the publicly readable last value.
  */
 abstract class Publisher<T = unknown> {
-  private lastValue: T | undefined;
+  private lastValue?: T;
   private readonly listeners: Array<Subscriber<T>> = [];
 
   getValue() {
@@ -54,8 +54,8 @@ abstract class Binding<T = unknown>
 }
 
 /**
- * Stores a value of type T and forwards it from parent to child components.
- * Manages methods and actions for the value.
+ * Forwards and stores values of type T from parent to child components.
+ * Manages actions, children, and methods for the value.
  */
 abstract class Field<
   T extends Abstract.Data = Abstract.Data,
@@ -78,8 +78,8 @@ abstract class Field<
       this.take(initialValue);
     }
 
-    this.when("reset", () => initialValue);
-    this.when("setTo", (value: T) => value);
+    this.defineAction("reset", () => initialValue);
+    this.defineAction("setTo", (value: T) => value);
   }
 
   static create(field: Abstract.Field): Field {
@@ -95,12 +95,12 @@ abstract class Field<
       return new Text(field);
     }
 
-    if (Abstract.isElementField(field)) {
-      return new ElementField(field);
-    }
-
     if (Abstract.isStructure(field)) {
       return new Structure(field);
+    }
+
+    if (Abstract.isElementField(field)) {
+      return new ElementField(field);
     }
 
     if (Abstract.isCollection(field)) {
@@ -110,6 +110,25 @@ abstract class Field<
     throw new ViewScriptException(
       `Cannot construct a field of unknown modelKey \`${field.modelKey}\``
     );
+  }
+
+  protected defineAction<A extends Abstract.Data>(
+    name: string,
+    reducer: (argument: A) => T | void
+  ) {
+    this.members[name] = {
+      take: (event: A) => {
+        const nextValue = reducer(event);
+
+        if (nextValue !== undefined) {
+          this.take(nextValue);
+        }
+      },
+    };
+  }
+
+  protected defineChild(name: string, field: Field) {
+    this.members[name] = field;
   }
 
   getMember(name: string) {
@@ -132,27 +151,6 @@ abstract class Field<
 
     super.publish(value);
   }
-
-  // TODO rename to defineField (?)
-  protected set(name: string, field: Field) {
-    this.members[name] = field;
-  }
-
-  // TODO split and rename to defineAction and defineMethod (?)
-  protected when<A extends Abstract.Data>(
-    name: string,
-    reducer: (argument: A) => T | void
-  ) {
-    this.members[name] = {
-      take: (event: A) => {
-        const nextValue = reducer(event);
-
-        if (nextValue !== undefined) {
-          this.take(nextValue);
-        }
-      },
-    };
-  }
 }
 
 /**
@@ -162,9 +160,9 @@ class Condition extends Field<boolean> {
   constructor(field: Abstract.Condition) {
     super(field);
 
-    this.when("disable", () => false);
-    this.when("enable", () => true);
-    this.when("toggle", () => !this.getValue());
+    this.defineAction("disable", () => false);
+    this.defineAction("enable", () => true);
+    this.defineAction("toggle", () => !this.getValue());
   }
 }
 
@@ -175,11 +173,20 @@ class Count extends Field<number> {
   constructor(field: Abstract.Count) {
     super(field);
 
-    this.when("add", (amount: number) => (this.getValue() ?? 0) + amount);
-    this.when(
+    this.defineAction(
+      "add",
+      (amount: number) => (this.getValue() ?? 0) + amount
+    );
+    this.defineAction(
       "multiplyBy",
       (amount: number) => (this.getValue() ?? 0) * amount
     );
+
+    // TODO Support field methods. For example:
+    // this.defineMethod(
+    //   "isAtLeast",
+    //   (amount: number): boolean => (this.getValue() ?? 0) >= amount
+    // );
   }
 }
 
@@ -188,15 +195,6 @@ class Count extends Field<number> {
  */
 class Text extends Field<string> {
   constructor(field: Abstract.Text) {
-    super(field);
-  }
-}
-
-/**
- * A field that stores an element AST object.
- */
-class ElementField extends Field<Abstract.Element> {
-  constructor(field: Abstract.ElementField) {
     super(field);
   }
 }
@@ -211,13 +209,22 @@ class Structure extends Field<Abstract.Structure> {
 }
 
 /**
+ * A field that stores an element AST object.
+ */
+class ElementField extends Field<Abstract.Element> {
+  constructor(field: Abstract.ElementField) {
+    super(field);
+  }
+}
+
+/**
  * A field that stores an array.
  */
 class Collection extends Field<Array<Abstract.Data>> {
   constructor(field: Abstract.Collection) {
     super(field);
 
-    this.when("push", (item) => (this.getValue() ?? []).concat(item));
+    this.defineAction("push", (item) => (this.getValue() ?? []).concat(item));
   }
 }
 
@@ -309,7 +316,7 @@ class Input extends Binding {
     if (
       typeof nextMember !== "object" ||
       nextMember === null ||
-      !(nextMember instanceof Field)
+      !(nextMember instanceof Publisher)
     ) {
       throw new ViewScriptException(
         `Cannot dereference invalid keyPath \`${input.keyPath}\``
@@ -449,9 +456,9 @@ class Outlet extends Binding {
 }
 
 /**
- * Publishes a value from an element's event to an outlet.
+ * Publishes a value from an HTML element's event to an outlet.
  */
-class ElementEventPublisher extends Publisher {
+class HtmlElementEventPublisher extends Publisher {
   constructor(element: HTMLElement, event: string, outlet: Outlet) {
     super();
 
@@ -463,6 +470,9 @@ class ElementEventPublisher extends Publisher {
   }
 }
 
+/**
+ * Provides properties to an HTML element or an instance of a view, and publishes it or its HTML element.
+ */
 class Element extends Binding<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Inlet | Outlet> = {};
@@ -549,7 +559,7 @@ class Element extends Binding<HTMLElement> {
             } else if (property.kind === "outlet") {
               const outlet = new Outlet(property, terrain);
               this.properties[propertyKey] = outlet;
-              new ElementEventPublisher(htmlElement, propertyKey, outlet);
+              new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
             } else {
               throw new ViewScriptException(
                 `Cannot construct a property of unknown kind "${
@@ -570,10 +580,8 @@ class Element extends Binding<HTMLElement> {
         { ...terrain },
         element.properties
       );
-
-      window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
-
       view.subscribe(this);
+      window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, view);
     } else {
       throw new ViewScriptException(
         `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
@@ -589,7 +597,7 @@ class Console extends Field {
   constructor() {
     super({ kind: "field", fieldKey: "console", modelKey: "Console" });
 
-    this.when("log", (value) => window.console.log(value));
+    this.defineAction("log", window.console.log);
   }
 }
 
@@ -600,7 +608,7 @@ class Browser extends Field {
   constructor() {
     super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
 
-    this.set("console", new Console());
+    this.defineChild("console", new Console());
   }
 }
 
