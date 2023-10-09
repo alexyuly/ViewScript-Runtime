@@ -327,7 +327,7 @@ class Input extends Binding {
 /**
  * A binding to a subscriber based on its name or path within the given fields.
  */
-class Output extends Binding {
+class Output extends Publisher implements Subscriber {
   private readonly argument?: Field;
   private readonly keyPath: Array<string>;
   private readonly subscriber: Subscriber;
@@ -390,7 +390,7 @@ class Output extends Binding {
   take() {
     // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
     // Consume the provided event from the publishing outlet.
-    super.take(this.getArgumentValue());
+    this.publish(this.getArgumentValue());
   }
 }
 
