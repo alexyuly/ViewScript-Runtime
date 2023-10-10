@@ -175,11 +175,11 @@ class NumberField extends Field<number> {
 
     this.defineAction(
       "add",
-      (amount: number) => (this.getValue() ?? 0) + amount
+      (amount: number) => Number(this.getValue() || 0) + Number(amount || 0)
     );
     this.defineAction(
       "multiplyBy",
-      (amount: number) => (this.getValue() ?? 0) * amount
+      (amount: number) => Number(this.getValue() || 0) * Number(amount || 0)
     );
 
     // TODO Support field methods. For example:
@@ -224,7 +224,10 @@ class ArrayField extends Field<Array<Abstract.Data>> {
   constructor(field: Abstract.ArrayField) {
     super(field);
 
-    this.defineAction("push", (item) => (this.getValue() ?? []).concat(item));
+    this.defineAction(
+      "push",
+      (item) => (this.getValue() || []).concat?.(item) || [item]
+    );
   }
 }
 
