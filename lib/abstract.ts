@@ -70,13 +70,11 @@ export type Element<Properties extends ElementProps = ElementProps> = {
   properties: Properties;
 };
 
-export type ViewTerrain = Record<string, Field | Stream>;
-
-export type View<Terrain extends ViewTerrain = ViewTerrain> = {
+export type View = {
   kind: "view";
   viewKey: RandomUniqueId;
   element: Element;
-  terrain: Terrain;
+  terrain: Record<string, Field | Stream>;
   name?: string;
 };
 
