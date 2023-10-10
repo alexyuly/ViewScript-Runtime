@@ -226,7 +226,10 @@ class ArrayField extends Field<Array<Abstract.Data>> {
 
     this.defineAction(
       "push",
-      (item) => (this.getValue() || []).concat?.(item) || [item]
+      (item) =>
+        (this.getValue() || []).concat?.(
+          item instanceof Array ? [item] : item ?? null
+        ) || [item ?? null]
     );
   }
 }
