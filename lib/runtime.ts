@@ -83,28 +83,28 @@ abstract class Field<
   }
 
   static create(field: Abstract.Field): Field {
-    if (Abstract.isCondition(field)) {
-      return new Condition(field);
+    if (Abstract.isBooleanField(field)) {
+      return new BooleanField(field);
     }
 
-    if (Abstract.isCount(field)) {
-      return new Count(field);
+    if (Abstract.isNumberField(field)) {
+      return new NumberField(field);
     }
 
-    if (Abstract.isText(field)) {
-      return new Text(field);
+    if (Abstract.isStringField(field)) {
+      return new StringField(field);
     }
 
     if (Abstract.isStructure(field)) {
-      return new Structure(field);
+      return new StructureField(field);
     }
 
     if (Abstract.isElementField(field)) {
       return new ElementField(field);
     }
 
-    if (Abstract.isCollection(field)) {
-      return new Collection(field);
+    if (Abstract.isArrayField(field)) {
+      return new ArrayField(field);
     }
 
     throw new ViewScriptException(
@@ -156,8 +156,8 @@ abstract class Field<
 /**
  * A field that stores a boolean.
  */
-class Condition extends Field<boolean> {
-  constructor(field: Abstract.Condition) {
+class BooleanField extends Field<boolean> {
+  constructor(field: Abstract.BooleanField) {
     super(field);
 
     this.defineAction("disable", () => false);
@@ -169,8 +169,8 @@ class Condition extends Field<boolean> {
 /**
  * A field that stores a number.
  */
-class Count extends Field<number> {
-  constructor(field: Abstract.Count) {
+class NumberField extends Field<number> {
+  constructor(field: Abstract.NumberField) {
     super(field);
 
     this.defineAction(
@@ -193,8 +193,8 @@ class Count extends Field<number> {
 /**
  * A field that stores a string.
  */
-class Text extends Field<string> {
-  constructor(field: Abstract.Text) {
+class StringField extends Field<string> {
+  constructor(field: Abstract.StringField) {
     super(field);
   }
 }
@@ -202,7 +202,7 @@ class Text extends Field<string> {
 /**
  * A field that stores an arbitrary data object.
  */
-class Structure extends Field<Abstract.Structure> {
+class StructureField extends Field<Abstract.Structure> {
   constructor(field: Abstract.StructureField) {
     super(field);
   }
@@ -220,8 +220,8 @@ class ElementField extends Field<Abstract.Element> {
 /**
  * A field that stores an array.
  */
-class Collection extends Field<Array<Abstract.Data>> {
-  constructor(field: Abstract.Collection) {
+class ArrayField extends Field<Array<Abstract.Data>> {
+  constructor(field: Abstract.ArrayField) {
     super(field);
 
     this.defineAction("push", (item) => (this.getValue() ?? []).concat(item));

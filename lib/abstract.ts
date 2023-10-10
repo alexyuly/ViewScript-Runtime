@@ -15,16 +15,16 @@ export type Field<T extends Data = Data> = {
   value?: T;
 };
 
-export type Condition = Field<boolean> & {
-  modelKey: "Condition";
+export type BooleanField = Field<boolean> & {
+  modelKey: "Boolean";
 };
 
-export type Count = Field<number> & {
-  modelKey: "Count";
+export type NumberField = Field<number> & {
+  modelKey: "Number";
 };
 
-export type Text = Field<string> & {
-  modelKey: "Text";
+export type StringField = Field<string> & {
+  modelKey: "String";
 };
 
 export type StructureField = Field<Structure> & {
@@ -35,8 +35,8 @@ export type ElementField = Field<Element> & {
   modelKey: "Element";
 };
 
-export type Collection = Field<Array<Data>> & {
-  modelKey: "Collection";
+export type ArrayField = Field<Array<Data>> & {
+  modelKey: "Array";
 };
 
 export type Conditional = {
@@ -126,16 +126,16 @@ export function isField(node: unknown): node is Field {
   );
 }
 
-export function isCondition(field: Field): field is Condition {
-  return field.modelKey === "Condition";
+export function isBooleanField(field: Field): field is BooleanField {
+  return field.modelKey === "Boolean";
 }
 
-export function isCount(field: Field): field is Count {
-  return field.modelKey === "Count";
+export function isNumberField(field: Field): field is NumberField {
+  return field.modelKey === "Number";
 }
 
-export function isText(field: Field): field is Text {
-  return field.modelKey === "Text";
+export function isStringField(field: Field): field is StringField {
+  return field.modelKey === "String";
 }
 
 export function isStructureField(field: Field): field is StructureField {
@@ -146,8 +146,8 @@ export function isElementField(field: Field): field is ElementField {
   return field.modelKey === "Element";
 }
 
-export function isCollection(field: Field): field is Collection {
-  return field.modelKey === "Collection";
+export function isArrayField(field: Field): field is ArrayField {
+  return field.modelKey === "Array";
 }
 
 export function isConditional(node: unknown): node is Conditional {
