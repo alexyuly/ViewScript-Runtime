@@ -491,73 +491,85 @@ class Element extends Binding<HTMLElement> {
       const tagName = this.viewKey.slice(1, this.viewKey.length - 1);
       const htmlElement = Dom.create(tagName);
 
-      Object.entries(element.properties).forEach(([propertyKey, property]) => {
-        if (property.kind === "inlet") {
-          const inlet = new Inlet(
-            property,
-            Object.entries(terrain).reduce<Record<string, Field>>(
-              (result, [featureKey, feature]) => {
-                if (feature instanceof Field) {
-                  result[featureKey] = feature;
-                }
-                return result;
-              },
-              {}
-            )
-          );
+      if (element.properties) {
+        Object.entries(element.properties).forEach(
+          ([propertyKey, property]) => {
+            if (property.kind === "inlet") {
+              const inlet = new Inlet(
+                property,
+                Object.entries(terrain).reduce<Record<string, Field>>(
+                  (result, [featureKey, feature]) => {
+                    if (feature instanceof Field) {
+                      result[featureKey] = feature;
+                    }
+                    return result;
+                  },
+                  {}
+                )
+              );
 
-          let take: (value: Abstract.Data) => void;
+              let take: (value: Abstract.Data) => void;
 
-          if (propertyKey === "content") {
-            take = (value) => {
-              this.children = [];
+              if (propertyKey === "content") {
+                take = (value) => {
+                  this.children = [];
 
-              const htmlElementChildren: Array<HTMLElement | string> = [];
-              const populate = (child = value) => {
-                if (child instanceof Array) {
-                  child.forEach(populate);
-                } else if (Abstract.isElement(child)) {
-                  const elementChild = new Element(child, views, terrain);
-                  this.children.push(elementChild);
-                  elementChild.subscribe({
-                    take: (htmlElementChild) => {
-                      htmlElementChildren.push(htmlElementChild);
-                    },
-                  });
-                } else if (child !== null && child !== undefined) {
-                  const textContent = String(child);
-                  this.children.push(textContent);
-                  htmlElementChildren.push(textContent);
-                }
-              };
+                  const htmlElementChildren: Array<HTMLElement | string> = [];
+                  const populate = (child = value) => {
+                    if (child instanceof Array) {
+                      child.forEach(populate);
+                    } else if (Abstract.isElement(child)) {
+                      const elementChild = new Element(child, views, terrain);
+                      this.children.push(elementChild);
+                      elementChild.subscribe({
+                        take: (htmlElementChild) => {
+                          htmlElementChildren.push(htmlElementChild);
+                        },
+                      });
+                    } else if (child !== null && child !== undefined) {
+                      const textContent = String(child);
+                      this.children.push(textContent);
+                      htmlElementChildren.push(textContent);
+                    }
+                  };
 
-              populate();
-              Dom.populate(htmlElement, htmlElementChildren);
-            };
-          } else if (Style.supports(propertyKey)) {
-            take = (value) => {
-              Dom.styleProp(htmlElement, propertyKey, value as string | null);
-            };
-          } else {
-            take = (value) => {
-              Dom.attribute(htmlElement, propertyKey, value as string | null);
-            };
+                  populate();
+                  Dom.populate(htmlElement, htmlElementChildren);
+                };
+              } else if (Style.supports(propertyKey)) {
+                take = (value) => {
+                  Dom.styleProp(
+                    htmlElement,
+                    propertyKey,
+                    value as string | null
+                  );
+                };
+              } else {
+                take = (value) => {
+                  Dom.attribute(
+                    htmlElement,
+                    propertyKey,
+                    value as string | null
+                  );
+                };
+              }
+
+              inlet.subscribe({ take });
+              this.properties[propertyKey] = inlet;
+            } else if (property.kind === "outlet") {
+              const outlet = new Outlet(property, terrain);
+              new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
+              this.properties[propertyKey] = outlet;
+            } else {
+              throw new ViewScriptException(
+                `Cannot construct a property of unknown kind "${
+                  (property as { kind: unknown }).kind
+                } for element of viewKey ${this.viewKey}"`
+              );
+            }
           }
-
-          inlet.subscribe({ take });
-          this.properties[propertyKey] = inlet;
-        } else if (property.kind === "outlet") {
-          const outlet = new Outlet(property, terrain);
-          new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
-          this.properties[propertyKey] = outlet;
-        } else {
-          throw new ViewScriptException(
-            `Cannot construct a property of unknown kind "${
-              (property as { kind: unknown }).kind
-            } for element of viewKey ${this.viewKey}"`
-          );
-        }
-      });
+        );
+      }
 
       this.publish(htmlElement);
     } else if (this.viewKey in views) {
@@ -600,11 +612,13 @@ class View extends Binding<HTMLElement> {
     this.name = root.name;
     this.viewKey = root.viewKey;
 
-    Object.entries(root.terrain).forEach(([featureKey, feature]) => {
-      this.terrain[featureKey] = Abstract.isField(feature)
-        ? Field.create(feature)
-        : new Stream(feature);
-    });
+    if (root.terrain) {
+      Object.entries(root.terrain).forEach(([featureKey, feature]) => {
+        this.terrain[featureKey] = Abstract.isField(feature)
+          ? Field.create(feature)
+          : new Stream(feature);
+      });
+    }
 
     if (properties) {
       Object.entries(properties).forEach(([propertyKey, property]) => {
@@ -706,7 +720,7 @@ export class RunningApp {
   private readonly root: View;
 
   constructor(app: Abstract.App) {
-    this.root = new View(app.root, app.views, {
+    this.root = new View(app.root, app.views ?? {}, {
       ...this.fields,
     });
 
