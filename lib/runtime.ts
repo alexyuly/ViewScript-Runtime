@@ -539,11 +539,7 @@ class Element extends Binding<HTMLElement> {
                 };
               } else if (Style.supports(propertyKey)) {
                 take = (value) => {
-                  Dom.styleProp(
-                    htmlElement,
-                    propertyKey,
-                    value as string | null
-                  );
+                  Dom.styleProp(htmlElement, propertyKey, value);
                 };
               } else {
                 take = (value) => {
