@@ -259,15 +259,13 @@ class Conditional extends Publisher implements Subscriber<boolean> {
  */
 class Stream extends Binding {
   // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
-  // Use modelKey once we start handling events from streams.
-  private readonly modelKey?: string;
+  // Add a modelKey property, once we start handling events from streams.
   readonly streamKey: string;
   readonly name?: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
-    this.modelKey = stream.modelKey;
     this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
@@ -492,77 +490,73 @@ class Element extends Binding<HTMLElement> {
       const tagName = this.viewKey.slice(1, this.viewKey.length - 1);
       const htmlElement = Dom.create(tagName);
 
-      if (element.properties) {
-        Object.entries(element.properties).forEach(
-          ([propertyKey, property]) => {
-            if (property.kind === "inlet") {
-              const inlet = new Inlet(
-                property,
-                Object.entries(terrain).reduce<Record<string, Field>>(
-                  (result, [featureKey, feature]) => {
-                    if (feature instanceof Field) {
-                      result[featureKey] = feature;
-                    }
-                    return result;
-                  },
-                  {}
-                )
-              );
+      Object.entries(element.properties).forEach(([propertyKey, property]) => {
+        if (property.kind === "inlet") {
+          const inlet = new Inlet(
+            property,
+            Object.entries(terrain).reduce<Record<string, Field>>(
+              (result, [featureKey, feature]) => {
+                if (feature instanceof Field) {
+                  result[featureKey] = feature;
+                }
+                return result;
+              },
+              {}
+            )
+          );
 
-              let take: (value: Abstract.Data) => void;
+          let take: (value: Abstract.Data) => void;
 
-              if (propertyKey === "content") {
-                take = (value) => {
-                  this.children = [];
+          if (propertyKey === "content") {
+            take = (value) => {
+              this.children = [];
 
-                  const htmlElementChildren: Array<HTMLElement | string> = [];
-                  const populate = (child = value) => {
-                    if (child instanceof Array) {
-                      child.forEach(populate);
-                    } else if (Abstract.isElement(child)) {
-                      const elementChild = new Element(child, views, terrain);
-                      this.children.push(elementChild);
-                      elementChild.subscribe({
-                        take: (htmlElementChild) => {
-                          htmlElementChildren.push(htmlElementChild);
-                        },
-                      });
-                    } else if (child !== null && child !== undefined) {
-                      const textContent = String(child);
-                      this.children.push(textContent);
-                      htmlElementChildren.push(textContent);
-                    }
-                  };
+              const htmlElementChildren: Array<HTMLElement | string> = [];
+              const populate = (child = value) => {
+                if (child instanceof Array) {
+                  child.forEach(populate);
+                } else if (Abstract.isElement(child)) {
+                  const elementChild = new Element(child, views, terrain);
+                  this.children.push(elementChild);
+                  elementChild.subscribe({
+                    take: (htmlElementChild) => {
+                      htmlElementChildren.push(htmlElementChild);
+                    },
+                  });
+                } else if (child !== null && child !== undefined) {
+                  const textContent = String(child);
+                  this.children.push(textContent);
+                  htmlElementChildren.push(textContent);
+                }
+              };
 
-                  populate();
-                  Dom.populate(htmlElement, htmlElementChildren);
-                };
-              } else if (Style.supports(propertyKey)) {
-                take = (value) => {
-                  Dom.styleProp(htmlElement, propertyKey, value);
-                };
-              } else {
-                take = (value) => {
-                  Dom.attribute(htmlElement, propertyKey, value);
-                };
-              }
-
-              inlet.subscribe({ take });
-              this.properties[propertyKey] = inlet;
-            } else if (property.kind === "outlet") {
-              const outlet = new Outlet(property, terrain);
-              new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
-              this.properties[propertyKey] = outlet;
-            } else {
-              throw new ViewScriptException(
-                `Cannot construct a property of unknown kind "${
-                  (property as { kind: unknown }).kind
-                } for element of viewKey ${this.viewKey}"`
-              );
-            }
+              populate();
+              Dom.populate(htmlElement, htmlElementChildren);
+            };
+          } else if (Style.supports(propertyKey)) {
+            take = (value) => {
+              Dom.styleProp(htmlElement, propertyKey, value);
+            };
+          } else {
+            take = (value) => {
+              Dom.attribute(htmlElement, propertyKey, value);
+            };
           }
-        );
-      }
+
+          inlet.subscribe({ take });
+          this.properties[propertyKey] = inlet;
+        } else if (property.kind === "outlet") {
+          const outlet = new Outlet(property, terrain);
+          new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
+          this.properties[propertyKey] = outlet;
+        } else {
+          throw new ViewScriptException(
+            `Cannot construct a property of unknown kind "${
+              (property as { kind: unknown }).kind
+            } for element of viewKey ${this.viewKey}"`
+          );
+        }
+      });
 
       this.publish(htmlElement);
     } else if (this.viewKey in views) {
@@ -597,7 +591,7 @@ class View extends Binding<HTMLElement> {
     root: Abstract.View,
     children: Record<string, Abstract.View>,
     terrain: Record<string, Field | Stream>,
-    properties?: Abstract.Element["properties"]
+    properties: Abstract.Element["properties"]
   ) {
     super();
 
@@ -605,72 +599,68 @@ class View extends Binding<HTMLElement> {
     this.name = root.name;
     this.viewKey = root.viewKey;
 
-    if (root.terrain) {
-      Object.entries(root.terrain).forEach(([featureKey, feature]) => {
-        this.terrain[featureKey] = Abstract.isField(feature)
-          ? Field.create(feature)
-          : new Stream(feature);
-      });
-    }
+    Object.entries(root.terrain).forEach(([featureKey, feature]) => {
+      this.terrain[featureKey] = Abstract.isField(feature)
+        ? Field.create(feature)
+        : new Stream(feature);
+    });
 
-    if (properties) {
-      Object.entries(properties).forEach(([propertyKey, property]) => {
-        const feature = Object.values(this.terrain).find(
-          (feature) => feature.name === propertyKey
+    Object.entries(properties).forEach(([propertyKey, property]) => {
+      const feature = Object.values(this.terrain).find(
+        (feature) => feature.name === propertyKey
+      );
+
+      if (feature === undefined) {
+        throw new ViewScriptException(
+          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of viewKey \`${this.viewKey}\``
         );
+      }
 
-        if (feature === undefined) {
+      if (property.kind === "inlet") {
+        if (feature instanceof Stream) {
           throw new ViewScriptException(
-            `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of viewKey \`${this.viewKey}\``
+            `Cannot construct an inlet for stream name \`${propertyKey}\``
           );
         }
 
-        if (property.kind === "inlet") {
-          if (feature instanceof Stream) {
-            throw new ViewScriptException(
-              `Cannot construct an inlet for stream name \`${propertyKey}\``
-            );
-          }
-
-          if (feature.getValue() !== undefined) {
-            throw new ViewScriptException(
-              `Cannot construct an inlet for private field name \`${propertyKey}\``
-            );
-          }
-
-          const inlet = new Inlet(
-            property,
-            Object.entries(this.terrain).reduce<Record<string, Field>>(
-              (result, [featureKey, feature]) => {
-                if (feature instanceof Field) {
-                  result[featureKey] = feature;
-                }
-                return result;
-              },
-              {}
-            )
-          );
-          inlet.subscribe(feature);
-          this.properties[propertyKey] = inlet;
-        } else if (property.kind === "outlet") {
-          if (feature instanceof Field) {
-            throw new ViewScriptException(
-              `Cannot construct an outlet for field name \`${propertyKey}\``
-            );
-          }
-
-          const outlet = new Outlet(property, this.terrain);
-          feature.subscribe(outlet);
-          this.properties[propertyKey] = outlet;
-        } else {
+        if (feature.getValue() !== undefined) {
           throw new ViewScriptException(
-            `Cannot construct a property of unknown kind "${
-              (property as { kind: unknown }).kind
-            } for view of viewKey \`${this.viewKey}\`"`
+            `Cannot construct an inlet for private field name \`${propertyKey}\``
           );
         }
-      });
-    }
+
+        const inlet = new Inlet(
+          property,
+          Object.entries(this.terrain).reduce<Record<string, Field>>(
+            (result, [featureKey, feature]) => {
+              if (feature instanceof Field) {
+                result[featureKey] = feature;
+              }
+              return result;
+            },
+            {}
+          )
+        );
+        inlet.subscribe(feature);
+        this.properties[propertyKey] = inlet;
+      } else if (property.kind === "outlet") {
+        if (feature instanceof Field) {
+          throw new ViewScriptException(
+            `Cannot construct an outlet for field name \`${propertyKey}\``
+          );
+        }
+
+        const outlet = new Outlet(property, this.terrain);
+        feature.subscribe(outlet);
+        this.properties[propertyKey] = outlet;
+      } else {
+        throw new ViewScriptException(
+          `Cannot construct a property of unknown kind "${
+            (property as { kind: unknown }).kind
+          } for view of viewKey \`${this.viewKey}\`"`
+        );
+      }
+    });
 
     this.element = new Element(root.element, children, this.terrain);
     this.element.subscribe(this);
@@ -713,9 +703,7 @@ export class RunningApp {
   private readonly root: View;
 
   constructor(app: Abstract.App) {
-    this.root = new View(app.root, app.views ?? {}, {
-      ...this.fields,
-    });
+    this.root = new View(app.root, app.views, { ...this.fields }, {});
 
     this.root.subscribe({
       take: (htmlElement) => {

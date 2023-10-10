@@ -49,7 +49,6 @@ export type Conditional = {
 export type Stream = {
   kind: "stream";
   streamKey: string;
-  modelKey?: string;
   name?: string;
 };
 
@@ -77,21 +76,21 @@ export type Outlet = {
 export type Element = {
   kind: "element";
   viewKey: string;
-  properties?: Record<string, Inlet | Outlet>;
+  properties: Record<string, Inlet | Outlet>;
 };
 
 export type View = {
   kind: "view";
   viewKey: string;
   element: Element;
-  terrain?: Record<string, Field | Stream>;
+  terrain: Record<string, Field | Stream>;
   name?: string;
 };
 
 export type App = {
   kind: "ViewScript v0.3.1 App";
   root: View;
-  views?: Record<string, View>;
+  views: Record<string, View>;
 };
 
 export function isStructure(node: unknown): node is Structure {
