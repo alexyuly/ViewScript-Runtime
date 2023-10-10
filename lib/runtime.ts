@@ -547,11 +547,7 @@ class Element extends Binding<HTMLElement> {
                 };
               } else {
                 take = (value) => {
-                  Dom.attribute(
-                    htmlElement,
-                    propertyKey,
-                    value as string | null
-                  );
+                  Dom.attribute(htmlElement, propertyKey, value);
                 };
               }
 

@@ -1,3 +1,5 @@
+import type { Data } from "./abstract";
+
 export const create = (tagName: string) => {
   const htmlElement = window.document.createElement(tagName.toLowerCase());
   window.console.log(`[DOM] 🌱 Create <${tagName.toLowerCase()}>`, htmlElement);
@@ -18,9 +20,13 @@ export const populate = (
 export const styleProp = (
   element: HTMLElement,
   name: string,
-  value: string | null
+  value: Data | null
 ) => {
-  element.style.setProperty(name, value === null ? null : String(value));
+  if (value === null) {
+    element.style.removeProperty(name);
+  } else {
+    element.style.setProperty(name, String(value));
+  }
   window.console.log(
     `[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`,
     value
@@ -30,9 +36,16 @@ export const styleProp = (
 export const attribute = (
   element: HTMLElement,
   name: string,
-  value: string | null
+  value: Data | null
 ) => {
-  element.setAttribute(name, value === null ? "" : String(value));
+  if (value === null || (typeof value === "boolean" && !value)) {
+    element.removeAttribute(name);
+  } else {
+    element.setAttribute(
+      name,
+      typeof value === "boolean" ? name : String(value)
+    );
+  }
   window.console.log(
     `[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`,
     value
