@@ -7,65 +7,77 @@ export type Structure = {
 
 export type Data = Primitive | Structure | Element | Array<Data>;
 
-export type Field<
-  ModelKey extends string = string,
-  Value extends Data = Data,
-> = {
+export type Field<T extends Data = Data> = {
   kind: "field";
   fieldKey: string;
-  modelKey: ModelKey;
-  value?: Value;
+  modelKey: string;
   name?: string;
+  value?: T;
 };
 
-export type Condition = Field<"Condition", boolean>;
-export type Count = Field<"Count", number>;
-export type Text = Field<"Text", string>;
-export type StructureField = Field<"Structure", Structure>;
-export type ElementField = Field<"Element", Element>;
-export type Collection = Field<"Collection", Array<Data>>;
+export type Condition = Field<boolean> & {
+  modelKey: "Condition";
+};
 
-export type Conditional<ModelKey extends string = string> = {
+export type Count = Field<number> & {
+  modelKey: "Count";
+};
+
+export type Text = Field<string> & {
+  modelKey: "Text";
+};
+
+export type StructureField = Field<Structure> & {
+  modelKey: "Structure";
+};
+
+export type ElementField = Field<Element> & {
+  modelKey: "Element";
+};
+
+export type Collection = Field<Array<Data>> & {
+  modelKey: "Collection";
+};
+
+export type Conditional = {
   kind: "conditional";
-  condition: Input<"Condition">;
-  positive: Field<ModelKey>;
-  negative: Field<ModelKey>;
+  condition: Input;
+  positive: Field;
+  negative: Field;
 };
 
 export type Stream = {
   kind: "stream";
   streamKey: string;
+  modelKey?: string;
   name?: string;
 };
 
-export type Input<ModelKey extends string = string> = {
+export type Input = {
   kind: "input";
-  modelKey: ModelKey;
   keyPath: Array<string>;
 };
 
-export type Output<ModelKey extends string = string> = {
+export type Output = {
   kind: "output";
   keyPath: Array<string>;
-  argument?: Field<ModelKey>;
+  argument?: Field;
 };
 
-export type Inlet<ModelKey extends string = string> = {
+export type Inlet = {
   kind: "inlet";
-  connection: Field<ModelKey> | Conditional<ModelKey> | Input<ModelKey>;
+  connection: Field | Conditional | Input;
 };
 
-export type Outlet<ModelKey extends string = string> = {
+export type Outlet = {
   kind: "outlet";
-  connection: Output<ModelKey>;
+  connection: Output;
 };
 
-export type ElementProperties = Record<string, Inlet | Outlet>;
-
-export type Element<Props extends ElementProperties = ElementProperties> = {
+export type Element = {
   kind: "element";
   viewKey: string;
-  properties?: Props;
+  properties?: Record<string, Inlet | Outlet>;
 };
 
 export type View = {

@@ -58,15 +58,14 @@ abstract class Binding<T = unknown>
  * Manages actions, children, and methods for the value.
  */
 abstract class Field<
-  ModelKey extends string = string,
-  Value extends Abstract.Data = Abstract.Data,
-> extends Binding<Value> {
+  T extends Abstract.Data = Abstract.Data,
+> extends Binding<T> {
   readonly fieldKey: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey: string;
   readonly name?: string;
 
-  constructor(field: Abstract.Field<ModelKey, Value>) {
+  constructor(field: Abstract.Field<T>) {
     super();
 
     this.fieldKey = field.fieldKey;
@@ -80,7 +79,7 @@ abstract class Field<
     }
 
     this.defineAction("reset", () => initialValue);
-    this.defineAction("setTo", (value: Value) => value);
+    this.defineAction("setTo", (value: T) => value);
   }
 
   static create(field: Abstract.Field): Field {
@@ -113,12 +112,12 @@ abstract class Field<
     );
   }
 
-  protected defineAction<Argument extends Abstract.Data>(
+  protected defineAction<A extends Abstract.Data>(
     name: string,
-    reducer: (argument: Argument) => Value | void
+    reducer: (argument: A) => T | void
   ) {
     this.members[name] = {
-      take: (event: Argument) => {
+      take: (event: A) => {
         const nextValue = reducer(event);
 
         if (nextValue !== undefined) {
@@ -142,7 +141,7 @@ abstract class Field<
     return this.members[name];
   }
 
-  protected publish(value: Value) {
+  protected publish(value: T) {
     if (this.name !== undefined) {
       window.console.log(
         `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
@@ -157,7 +156,7 @@ abstract class Field<
 /**
  * A field that stores a boolean.
  */
-class Condition extends Field<"Condition", boolean> {
+class Condition extends Field<boolean> {
   constructor(field: Abstract.Condition) {
     super(field);
 
@@ -170,7 +169,7 @@ class Condition extends Field<"Condition", boolean> {
 /**
  * A field that stores a number.
  */
-class Count extends Field<"Count", number> {
+class Count extends Field<number> {
   constructor(field: Abstract.Count) {
     super(field);
 
@@ -194,7 +193,7 @@ class Count extends Field<"Count", number> {
 /**
  * A field that stores a string.
  */
-class Text extends Field<"Text", string> {
+class Text extends Field<string> {
   constructor(field: Abstract.Text) {
     super(field);
   }
@@ -203,7 +202,7 @@ class Text extends Field<"Text", string> {
 /**
  * A field that stores an arbitrary data object.
  */
-class Structure extends Field<"Structure", Abstract.Structure> {
+class Structure extends Field<Abstract.Structure> {
   constructor(field: Abstract.StructureField) {
     super(field);
   }
@@ -212,7 +211,7 @@ class Structure extends Field<"Structure", Abstract.Structure> {
 /**
  * A field that stores an element AST object.
  */
-class ElementField extends Field<"Element", Abstract.Element> {
+class ElementField extends Field<Abstract.Element> {
   constructor(field: Abstract.ElementField) {
     super(field);
   }
@@ -221,7 +220,7 @@ class ElementField extends Field<"Element", Abstract.Element> {
 /**
  * A field that stores an array.
  */
-class Collection extends Field<"Collection", Array<Abstract.Data>> {
+class Collection extends Field<Array<Abstract.Data>> {
   constructor(field: Abstract.Collection) {
     super(field);
 
@@ -259,14 +258,16 @@ class Conditional extends Publisher implements Subscriber<boolean> {
  * Forwards events from child to parent components.
  */
 class Stream extends Binding {
-  // TODO Handle events passed through streams.
-  // See https://github.com/alexyuly/ViewScript-Runtime/issues/8
+  // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
+  // Use modelKey once we start handling events from streams.
+  private readonly modelKey?: string;
   readonly streamKey: string;
   readonly name?: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
+    this.modelKey = stream.modelKey;
     this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
