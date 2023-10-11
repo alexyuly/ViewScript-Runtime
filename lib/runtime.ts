@@ -471,6 +471,9 @@ class EventPublisher extends Publisher {
   }
 }
 
+/**
+ * Provides properties to an HTML element and publishes it.
+ */
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, Inlet | Outlet> = {};
@@ -563,7 +566,7 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 /**
- * Provides properties to an HTML element or an instance of a view, and publishes it or its HTML element.
+ * Provides properties to an atom or a view, and publishes it or its HTML element.
  */
 class Element extends Binding<HTMLElement> {
   private readonly view: Publisher<HTMLElement>;
