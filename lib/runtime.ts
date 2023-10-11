@@ -60,7 +60,6 @@ abstract class Binding<T = unknown>
 abstract class Field<
   T extends Abstract.Data = Abstract.Data,
 > extends Binding<T> {
-  readonly fieldKey: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey: string;
   readonly name?: string;
@@ -68,7 +67,6 @@ abstract class Field<
   constructor(field: Abstract.Field<T>) {
     super();
 
-    this.fieldKey = field.fieldKey;
     this.modelKey = field.modelKey;
     this.name = field.name;
 
@@ -264,17 +262,16 @@ class Conditional extends Publisher implements Subscriber<boolean> {
  * Forwards events from child to parent components.
  */
 class Stream extends Binding {
-  // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
-  // Add a modelKey property, once we start handling events from streams.
-  readonly streamKey: string;
   readonly name?: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
-    this.streamKey = stream.streamKey;
     this.name = stream.name;
   }
+
+  // TODO Handle events from streams
+  // See https://github.com/alexyuly/ViewScript-Runtime/issues/8
 }
 
 /**
@@ -462,7 +459,7 @@ class Outlet extends Binding {
 /**
  * Publishes a value from an HTML element's event to an outlet.
  */
-class HtmlElementEventPublisher extends Publisher {
+class EventPublisher extends Publisher {
   constructor(element: HTMLElement, event: string, outlet: Outlet) {
     super();
 
@@ -474,14 +471,103 @@ class HtmlElementEventPublisher extends Publisher {
   }
 }
 
+class Atom extends Publisher<HTMLElement> {
+  private children: Array<Element | string> = [];
+  private readonly properties: Record<string, Inlet | Outlet> = {};
+  private readonly terrain: Record<string, Field | Stream>;
+  private readonly tagName: string;
+
+  constructor(
+    tagName: string,
+    views: Record<string, Abstract.View>,
+    terrain: Record<string, Field | Stream>,
+    properties: Abstract.Element["properties"]
+  ) {
+    super();
+
+    this.terrain = terrain;
+    this.tagName = tagName;
+
+    const htmlElement = Dom.create(tagName);
+
+    Object.entries(properties).forEach(([propertyKey, property]) => {
+      if (property.kind === "inlet") {
+        const inlet = new Inlet(
+          property,
+          Object.entries(this.terrain).reduce<Record<string, Field>>(
+            (result, [featureKey, feature]) => {
+              if (feature instanceof Field) {
+                result[featureKey] = feature;
+              }
+              return result;
+            },
+            {}
+          )
+        );
+
+        let take: (value: Abstract.Data) => void;
+
+        if (propertyKey === "content") {
+          take = (value) => {
+            this.children = [];
+
+            const htmlElementChildren: Array<HTMLElement | string> = [];
+            const populate = (child = value) => {
+              if (child instanceof Array) {
+                child.forEach(populate);
+              } else if (Abstract.isElement(child)) {
+                const elementChild = new Element(child, views, this.terrain);
+                this.children.push(elementChild);
+                elementChild.subscribe({
+                  take: (htmlElementChild) => {
+                    htmlElementChildren.push(htmlElementChild);
+                  },
+                });
+              } else if (child !== null && child !== undefined) {
+                const textContent = String(child);
+                this.children.push(textContent);
+                htmlElementChildren.push(textContent);
+              }
+            };
+
+            populate();
+            Dom.populate(htmlElement, htmlElementChildren);
+          };
+        } else if (Style.supports(propertyKey)) {
+          take = (value) => {
+            Dom.styleProp(htmlElement, propertyKey, value);
+          };
+        } else {
+          take = (value) => {
+            Dom.attribute(htmlElement, propertyKey, value);
+          };
+        }
+
+        inlet.subscribe({ take });
+        this.properties[propertyKey] = inlet;
+      } else if (property.kind === "outlet") {
+        const outlet = new Outlet(property, terrain);
+        new EventPublisher(htmlElement, propertyKey, outlet);
+        this.properties[propertyKey] = outlet;
+      } else {
+        throw new ViewScriptException(
+          `Cannot construct a property of unknown kind "${
+            (property as { kind: unknown }).kind
+          } for atom of tagName ${this.tagName}"`
+        );
+      }
+    });
+
+    this.publish(htmlElement);
+  }
+}
+
 /**
  * Provides properties to an HTML element or an instance of a view, and publishes it or its HTML element.
  */
 class Element extends Binding<HTMLElement> {
-  private children: Array<Element | string> = [];
-  private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly viewKey: string;
-  private readonly view?: View;
+  private readonly view: Publisher<HTMLElement>;
 
   constructor(
     element: Abstract.Element,
@@ -494,87 +580,12 @@ class Element extends Binding<HTMLElement> {
 
     if (/^<[\w-.]+>$/g.test(this.viewKey)) {
       const tagName = this.viewKey.slice(1, this.viewKey.length - 1);
-      const htmlElement = Dom.create(tagName);
-
-      Object.entries(element.properties).forEach(([propertyKey, property]) => {
-        if (property.kind === "inlet") {
-          const inlet = new Inlet(
-            property,
-            Object.entries(terrain).reduce<Record<string, Field>>(
-              (result, [featureKey, feature]) => {
-                if (feature instanceof Field) {
-                  result[featureKey] = feature;
-                }
-                return result;
-              },
-              {}
-            )
-          );
-
-          let take: (value: Abstract.Data) => void;
-
-          if (propertyKey === "content") {
-            take = (value) => {
-              this.children = [];
-
-              const htmlElementChildren: Array<HTMLElement | string> = [];
-              const populate = (child = value) => {
-                if (child instanceof Array) {
-                  child.forEach(populate);
-                } else if (Abstract.isElement(child)) {
-                  const elementChild = new Element(child, views, terrain);
-                  this.children.push(elementChild);
-                  elementChild.subscribe({
-                    take: (htmlElementChild) => {
-                      htmlElementChildren.push(htmlElementChild);
-                    },
-                  });
-                } else if (child !== null && child !== undefined) {
-                  const textContent = String(child);
-                  this.children.push(textContent);
-                  htmlElementChildren.push(textContent);
-                }
-              };
-
-              populate();
-              Dom.populate(htmlElement, htmlElementChildren);
-            };
-          } else if (Style.supports(propertyKey)) {
-            take = (value) => {
-              Dom.styleProp(htmlElement, propertyKey, value);
-            };
-          } else {
-            take = (value) => {
-              Dom.attribute(htmlElement, propertyKey, value);
-            };
-          }
-
-          inlet.subscribe({ take });
-          this.properties[propertyKey] = inlet;
-        } else if (property.kind === "outlet") {
-          const outlet = new Outlet(property, terrain);
-          new HtmlElementEventPublisher(htmlElement, propertyKey, outlet);
-          this.properties[propertyKey] = outlet;
-        } else {
-          throw new ViewScriptException(
-            `Cannot construct a property of unknown kind "${
-              (property as { kind: unknown }).kind
-            } for element of viewKey ${this.viewKey}"`
-          );
-        }
-      });
-
-      this.publish(htmlElement);
-    } else if (this.viewKey in views) {
-      const abstractView = views[this.viewKey];
-      this.view = new View(
-        abstractView,
-        views,
-        { ...terrain },
-        element.properties
-      );
+      this.view = new Atom(tagName, views, terrain, element.properties);
       this.view.subscribe(this);
-      // window.console.log(`[VSR] 🌻 Create ${abstractView.name}`, this.view);
+    } else if (this.viewKey in views) {
+      const spec = views[this.viewKey];
+      this.view = new View(spec, views, { ...terrain }, element.properties);
+      this.view.subscribe(this);
     } else {
       throw new ViewScriptException(
         `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
@@ -590,8 +601,7 @@ class View extends Binding<HTMLElement> {
   private readonly element: Element;
   private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly terrain: Record<string, Field | Stream>;
-  readonly name?: string;
-  readonly viewKey: string;
+  private readonly viewKey: string;
 
   constructor(
     root: Abstract.View,
@@ -602,7 +612,6 @@ class View extends Binding<HTMLElement> {
     super();
 
     this.terrain = terrain;
-    this.name = root.name;
     this.viewKey = root.viewKey;
 
     Object.entries(root.terrain).forEach(([featureKey, feature]) => {
@@ -701,16 +710,11 @@ class Browser extends Field {
  */
 export class RunningApp {
   private static readonly browser = new Browser();
-
-  private readonly fields: Record<string, Field> = {
-    browser: RunningApp.browser,
-  };
-
+  private readonly fields = { browser: RunningApp.browser };
   private readonly root: View;
 
   constructor(app: Abstract.App) {
     this.root = new View(app.root, app.views, { ...this.fields }, {});
-
     this.root.subscribe({
       take: (htmlElement) => {
         Dom.render(htmlElement);
