@@ -566,7 +566,6 @@ class Atom extends Publisher<HTMLElement> {
  * Provides properties to an HTML element or an instance of a view, and publishes it or its HTML element.
  */
 class Element extends Binding<HTMLElement> {
-  private readonly viewKey: string;
   private readonly view: Publisher<HTMLElement>;
 
   constructor(
@@ -576,19 +575,17 @@ class Element extends Binding<HTMLElement> {
   ) {
     super();
 
-    this.viewKey = element.viewKey;
-
-    if (/^<[\w-.]+>$/g.test(this.viewKey)) {
-      const tagName = this.viewKey.slice(1, this.viewKey.length - 1);
+    if (/^<[\w-.]+>$/g.test(element.viewKey)) {
+      const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
       this.view = new Atom(tagName, views, terrain, element.properties);
       this.view.subscribe(this);
-    } else if (this.viewKey in views) {
-      const spec = views[this.viewKey];
+    } else if (element.viewKey in views) {
+      const spec = views[element.viewKey];
       this.view = new View(spec, views, { ...terrain }, element.properties);
       this.view.subscribe(this);
     } else {
       throw new ViewScriptException(
-        `Cannot construct an element of invalid viewKey \`${this.viewKey}\``
+        `Cannot construct an element of invalid viewKey \`${element.viewKey}\``
       );
     }
   }
