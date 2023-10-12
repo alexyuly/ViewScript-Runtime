@@ -33,8 +33,8 @@ export type Structure = {
  */
 export type Element = {
   kind: "element";
-  viewKey: string | `<${string}>`;
-  properties: Record<string, DataSource | Destination>;
+  viewKey: string;
+  properties: Record<string, DataSource | SideEffect>;
 };
 
 /**
@@ -76,7 +76,7 @@ export type StringField = Field<"String", string>;
  * A field containing structures.
  * It is validated by a model.
  */
-export type StructureField<ModelKey extends string = string> = Field<
+export type StructureField<ModelKey extends string> = Field<
   ModelKey,
   Structure
 >;
@@ -85,11 +85,11 @@ export type StructureField<ModelKey extends string = string> = Field<
  * A field containing elements.
  */
 export type ElementField = Field<"Element", Element>;
+
 /**
  * A field containing arrays of data sources.
  * Its children's data sources may be validated by a model.
  */
-
 export type ArrayField = Field<"Array", Array<DataSource>> & {
   dataModelKey?: string;
 };
@@ -141,16 +141,33 @@ export type MethodDelegateSlot = {
   kind: "methodDelegateSlot";
 };
 
-// Destinations
+// Side Effects
 
 /**
- * An abstract destination for data sent out from nodes.
+ * An abstract sink for data flowing out of a publisher.
  */
-export type Destination =
-  | StreamReference
-  | Action
-  | ActionEffect
-  | ConditionalFork;
+export type SideEffect = Action | ActionStep;
+
+/**
+ * An identifiable mapping of an optional parameter to a series of steps.
+ */
+export type Action = {
+  kind: "action";
+  key: string;
+  parameter?: Field;
+  steps: Array<ActionStep>;
+};
+
+export type ActionStep = ActionEffect | StreamReference | ConditionalFork;
+
+/**
+ * An aggregate side effect which results from calling an action.
+ */
+export type ActionEffect = {
+  kind: "actionEffect";
+  keyPath: Array<string>;
+  argument?: DataSource;
+};
 
 /**
  * A reference to a stream.
@@ -162,7 +179,7 @@ export type StreamReference = {
 };
 
 /**
- * An identifiable channel for events flowing out from an element.
+ * An identifiable channel for data flowing out of an element.
  */
 export type Stream = {
   kind: "stream";
@@ -171,31 +188,12 @@ export type Stream = {
 };
 
 /**
- * An identifiable mapping of an optional parameter to a sequence of side effects.
- */
-export type Action = {
-  kind: "action";
-  key: string;
-  parameter?: Field;
-  effects: Array<ActionEffect | ConditionalFork>;
-};
-
-/**
- * An aggregate side effect from calling an action.
- */
-export type ActionEffect = {
-  kind: "actionEffect";
-  keyPath: Array<string>;
-  argument?: DataSource;
-};
-
-/**
- * A conditional fork in a sequence of side effects.
+ * A conditional fork in a series of steps.
  */
 export type ConditionalFork = {
   kind: "conditionalFork";
   when: DataSource;
-  then?: Array<ActionEffect | ConditionalFork>;
+  then?: Array<ActionStep>;
 };
 
 // Apps
@@ -303,9 +301,10 @@ export function isStringField(field: Field): field is StringField {
   return field.modelKey === "String";
 }
 
-export function isStructureField(field: Field): field is StructureField {
-  return field.modelKey === "Structure";
-}
+// TODO fix
+// export function isStructureField(field: Field): field is StructureField {
+//   return field.modelKey === "Structure";
+// }
 
 export function isElementField(field: Field): field is ElementField {
   return field.modelKey === "Element";

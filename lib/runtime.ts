@@ -203,7 +203,7 @@ class StructureField<ModelKey extends string = string> extends Field<
   ModelKey,
   Abstract.Structure
 > {
-  constructor(field: Abstract.StructureField) {
+  constructor(field: Abstract.StructureField<ModelKey>) {
     super(field);
   }
 }
