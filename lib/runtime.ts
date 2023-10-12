@@ -2,6 +2,10 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
+// Convenient type aliases
+
+type Terrain = Record<string, Field | Stream>;
+
 // Errors that may occur during initialization
 
 class ViewScriptError extends Error {}
@@ -74,10 +78,7 @@ abstract class Binding<T = unknown>
 class DataSource extends Binding<Abstract.Value> {
   private readonly publisher: Publisher<Abstract.Value>;
 
-  constructor(
-    dataSource: Abstract.DataSource,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(dataSource: Abstract.DataSource, terrain: Terrain) {
     super();
 
     if (Abstract.isValue(dataSource)) {
@@ -112,16 +113,51 @@ class Value<T extends Abstract.Value> extends Publisher<T> {
 }
 
 /**
+ * Provides properties to an atom or a view, and publishes it or its HTML element.
+ */
+class Element extends Binding<HTMLElement> {
+  private readonly publisher: Publisher<HTMLElement>;
+
+  constructor(
+    element: Abstract.Element,
+    branches: Record<string, Abstract.View | Abstract.Model>,
+    terrain: Terrain
+  ) {
+    super();
+
+    if (/^<[\w-.]+>$/g.test(element.viewKey)) {
+      const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
+
+      this.publisher = new Atom(tagName, branches, terrain, element.properties);
+      this.publisher.subscribe(this);
+    } else {
+      const branch = branches[element.viewKey];
+
+      if (!Abstract.isView(branch)) {
+        throw new ViewScriptError(
+          `Cannot construct an element of invalid view key \`${element.viewKey}\``
+        );
+      }
+
+      this.publisher = new View(
+        branch,
+        branches,
+        { ...terrain },
+        element.properties
+      );
+      this.publisher.subscribe(this);
+    }
+  }
+}
+
+/**
  * A binding to a publisher based on its name or path within the given fields.
  */
 class FieldReference extends Binding<Abstract.Value> {
   private readonly pathToFieldKey: Array<string>;
   private readonly publisher: Publisher;
 
-  constructor(
-    fieldReference: Abstract.FieldReference,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(fieldReference: Abstract.FieldReference, terrain: Terrain) {
     super();
 
     this.pathToFieldKey = fieldReference.pathToFieldKey;
@@ -207,16 +243,16 @@ class Field<
       return new StringField(field);
     }
 
-    if (Abstract.isStructure(field)) {
-      return new StructureField(field);
-    }
-
     if (Abstract.isElementField(field)) {
       return new ElementField(field);
     }
 
     if (Abstract.isArrayField(field)) {
       return new ArrayField(field);
+    }
+
+    if (Abstract.isStructureField(field)) {
+      return new StructureField(field);
     }
 
     throw new FieldUnknownModelKeyError(field);
@@ -353,10 +389,7 @@ class ConditionalData extends Binding<Abstract.Value> {
   private readonly then: DataSource;
   private readonly else?: DataSource;
 
-  constructor(
-    conditionalData: Abstract.ConditionalData,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(conditionalData: Abstract.ConditionalData, terrain: Terrain) {
     super();
 
     this.then = new DataSource(conditionalData.then, terrain);
@@ -383,10 +416,7 @@ class SideEffect extends Binding {
   private readonly argument?: Field;
   private readonly subscriber: Subscriber;
 
-  constructor(
-    sideEffect: Abstract.SideEffect,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(sideEffect: Abstract.SideEffect, terrain: Terrain) {
     super();
 
     if (sideEffect.argument) {
@@ -421,10 +451,7 @@ class StreamReference extends Publisher implements Subscriber {
   private readonly streamKey: string;
   private readonly subscriber: Subscriber;
 
-  constructor(
-    streamReference: Abstract.StreamReference,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(streamReference: Abstract.StreamReference, terrain: Terrain) {
     super();
 
     if (streamReference.argument) {
@@ -468,33 +495,18 @@ class Stream extends Binding<Abstract.Value> {
 }
 
 /**
- * Publishes a value from an HTML element's event to an outlet.
- */
-class EventPublisher extends Publisher {
-  constructor(element: HTMLElement, event: string, outlet: SideEffect) {
-    super();
-
-    this.subscribe(outlet);
-
-    Dom.listen(element, event, () => {
-      this.publish(outlet.getArgumentValue());
-    });
-  }
-}
-
-/**
  * Provides properties to an HTML element and publishes it.
  */
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, DataSource | SideEffect> = {};
   private readonly tagName: string;
-  private readonly terrain: Record<string, Field | Stream>;
+  private readonly terrain: Terrain;
 
   constructor(
     tagName: string,
     branches: Record<string, Abstract.View | Abstract.Model>,
-    terrain: Record<string, Field | Stream>,
+    terrain: Terrain,
     properties: Abstract.Element["properties"]
   ) {
     super();
@@ -552,7 +564,19 @@ class Atom extends Publisher<HTMLElement> {
         this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
         const outlet = new SideEffect(property, terrain);
-        new EventPublisher(htmlElement, propertyKey, outlet);
+
+        new (class AtomicEventPublisher extends Publisher {
+          constructor() {
+            super();
+
+            this.subscribe(outlet);
+
+            Dom.listen(htmlElement, propertyKey, () => {
+              this.publish(outlet.getArgumentValue());
+            });
+          }
+        })();
+
         this.properties[propertyKey] = outlet;
       } else {
         throw new ViewScriptError(
@@ -568,44 +592,6 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 /**
- * Provides properties to an atom or a view, and publishes it or its HTML element.
- */
-class Element extends Binding<HTMLElement> {
-  private readonly publisher: Publisher<HTMLElement>;
-
-  constructor(
-    element: Abstract.Element,
-    branches: Record<string, Abstract.View | Abstract.Model>,
-    terrain: Record<string, Field | Stream>
-  ) {
-    super();
-
-    if (/^<[\w-.]+>$/g.test(element.viewKey)) {
-      const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
-
-      this.publisher = new Atom(tagName, branches, terrain, element.properties);
-      this.publisher.subscribe(this);
-    } else {
-      const branch = branches[element.viewKey];
-
-      if (!Abstract.isView(branch)) {
-        throw new ViewScriptError(
-          `Cannot construct an element of invalid view key \`${element.viewKey}\``
-        );
-      }
-
-      this.publisher = new View(
-        branch,
-        branches,
-        { ...terrain },
-        element.properties
-      );
-      this.publisher.subscribe(this);
-    }
-  }
-}
-
-/**
  * Provides properties to an element and publishes its HTML element.
  */
 class View extends Binding<HTMLElement> {
@@ -613,12 +599,12 @@ class View extends Binding<HTMLElement> {
 
   private readonly element: Element;
   private readonly properties: Record<string, DataSource | SideEffect> = {};
-  private readonly terrain: Record<string, Field | Stream>;
+  private readonly terrain: Terrain;
 
   constructor(
     root: Abstract.View,
     branches: Record<string, Abstract.View | Abstract.Model>,
-    terrain: Record<string, Field | Stream>,
+    terrain: Terrain,
     properties: Abstract.Element["properties"]
   ) {
     super();

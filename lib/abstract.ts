@@ -196,16 +196,7 @@ export type ConditionalFork = {
   then?: Array<ActionStep>;
 };
 
-// Apps
-
-/**
- * An abstract ViewScript app.
- */
-export type App = {
-  kind: "ViewScript v0.4.0 App";
-  root: View;
-  branches: Record<string, View | Model>;
-};
+// Model & View
 
 /**
  * A template used to construct an element.
@@ -225,6 +216,17 @@ export type Model = {
   kind: "model";
   key: string;
   members: Record<string, Field | Method | Action>;
+};
+
+// Apps
+
+/**
+ * An abstract ViewScript app.
+ */
+export type App = {
+  kind: "ViewScript v0.4.0 App";
+  root: View;
+  branches: Record<string, View | Model>;
 };
 
 // Type guards
@@ -306,13 +308,7 @@ export function isStructureField<ModelKey extends string>(
 ): field is StructureField<ModelKey> {
   return (
     isField(field) &&
-    !(
-      isBooleanField(field) ||
-      isNumberField(field) ||
-      isStringField(field) ||
-      isElementField(field) ||
-      isArrayField(field)
-    )
+    (field["value"] === undefined || isStructure(field["value"]))
   );
 }
 
