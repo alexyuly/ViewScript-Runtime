@@ -53,7 +53,7 @@ export type FieldReference = {
  */
 export type Field<T extends Value = Value> = {
   kind: "field";
-  fieldKey: string;
+  key: string;
   modelKey: string;
   value?: T;
 };
@@ -136,7 +136,7 @@ export type MethodDelegate = {
  */
 export type Method = {
   kind: "method";
-  methodKey: string;
+  key: string;
   parameter?: Field | MethodDelegateSlot;
   result: DataSource;
 };
@@ -164,7 +164,7 @@ export type Destination =
  */
 export type StreamReference = {
   kind: "streamReference";
-  streamKey: string;
+  key: string;
   argument?: DataSource;
 };
 
@@ -173,7 +173,7 @@ export type StreamReference = {
  */
 export type Stream = {
   kind: "stream";
-  streamKey: string;
+  key: string;
   parameter?: Field;
 };
 
@@ -182,7 +182,7 @@ export type Stream = {
  */
 export type Action = {
   kind: "action";
-  actionKey: string;
+  key: string;
   parameter?: Field;
   effects: Array<ActionEffect | ConditionalFork>;
 };
@@ -223,7 +223,7 @@ export type App = {
  */
 export type View = {
   kind: "view";
-  viewKey: string;
+  key: string;
   element: Element;
   terrain: Record<string, Field | Stream>;
 };
@@ -233,7 +233,7 @@ export type View = {
  */
 export type Model = {
   kind: "model";
-  modelKey: string;
+  key: string;
   members: Record<string, Field | Method | Action>;
 };
 

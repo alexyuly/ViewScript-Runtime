@@ -60,14 +60,14 @@ abstract class Binding<T = unknown>
 abstract class Field<
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
-  readonly fieldKey?: string;
+  readonly key: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey: string;
 
   constructor(field: Abstract.Field<T>) {
     super();
 
-    this.fieldKey = field.fieldKey;
+    this.key = field.key;
     this.modelKey = field.modelKey;
 
     const initialValue = field.value;
@@ -132,7 +132,7 @@ abstract class Field<
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.fieldKey}\``
+        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.key}\``
       );
     }
 
@@ -140,9 +140,9 @@ abstract class Field<
   }
 
   protected publish(value: T) {
-    if (this.fieldKey !== undefined) {
+    if (this.key !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey} field ${this.fieldKey} =`,
+        `[VSR] ⛰️ Set ${this.modelKey} field ${this.key} =`,
         value
       );
     }
@@ -179,8 +179,6 @@ class NumberField extends Field<number> {
       "multiplyBy",
       (amount: number) => Number(this.getValue() || 0) * Number(amount || 0)
     );
-
-    // TODO Support field methods. For example:
     // this.defineMethod(
     //   "isAtLeast",
     //   (amount: number): boolean => (this.getValue() ?? 0) >= amount
@@ -235,7 +233,7 @@ class ArrayField extends Field<Array<Abstract.DataSource>> {
 /**
  * Forwards either a positive or negative value based on a condition.
  */
-class Conditional extends Publisher implements Subscriber<boolean> {
+class ConditionalData extends Publisher implements Subscriber<boolean> {
   private readonly condition: FieldReference;
   private readonly positive: Field;
   private readonly negative: Field;
@@ -262,16 +260,13 @@ class Conditional extends Publisher implements Subscriber<boolean> {
  * Forwards events from child to parent components.
  */
 class Stream extends Binding {
-  readonly streamKey?: string;
+  readonly key: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
-    this.streamKey = stream.streamKey;
+    this.key = stream.key;
   }
-
-  // TODO Handle events from streams
-  // See https://github.com/alexyuly/ViewScript-Runtime/issues/8
 }
 
 /**
@@ -332,13 +327,13 @@ class FieldReference extends Binding {
 /**
  * A binding to a subscriber based on its name or path within the given fields.
  */
-class Output extends Publisher implements Subscriber {
+class StreamReference extends Publisher implements Subscriber {
   private readonly argument?: Field;
   private readonly keyPath: Array<string>;
   private readonly subscriber: Subscriber;
 
   constructor(
-    output: Abstract.Output,
+    output: Abstract.StreamReference,
     terrain: Record<string, Field | Stream>
   ) {
     super();
@@ -389,8 +384,6 @@ class Output extends Publisher implements Subscriber {
   }
 
   take() {
-    // TODO see https://github.com/alexyuly/ViewScript-Runtime/issues/8
-    // Consume the provided event from the publishing outlet.
     this.publish(this.argument?.getValue());
   }
 }
@@ -407,7 +400,7 @@ class Inlet extends Binding {
     if (inlet.connection.kind === "field") {
       this.publisher = Field.create(inlet.connection);
     } else if (inlet.connection.kind === "conditional") {
-      this.publisher = new Conditional(inlet.connection, fields);
+      this.publisher = new ConditionalData(inlet.connection, fields);
     } else if (inlet.connection.kind === "input") {
       this.publisher = new FieldReference(inlet.connection, fields);
     } else {
@@ -439,7 +432,7 @@ class Outlet extends Binding {
       outlet.connection.argument && Field.create(outlet.connection.argument);
 
     if (outlet.connection.kind === "output") {
-      this.subscriber = new Output(outlet.connection, terrain);
+      this.subscriber = new StreamReference(outlet.connection, terrain);
     } else {
       throw new ViewScriptException(
         `Cannot construct an outlet with connection of unknown kind "${
@@ -508,7 +501,7 @@ class Atom extends Publisher<HTMLElement> {
           )
         );
 
-        let take: (value: Abstract.Data) => void;
+        let take: (value: Abstract.Value) => void;
 
         if (propertyKey === "content") {
           take = (value) => {
@@ -601,7 +594,7 @@ class View extends Binding<HTMLElement> {
   private readonly element: Element;
   private readonly properties: Record<string, Inlet | Outlet> = {};
   private readonly terrain: Record<string, Field | Stream>;
-  private readonly viewKey: string;
+  private readonly key: string;
 
   constructor(
     root: Abstract.View,
@@ -612,7 +605,7 @@ class View extends Binding<HTMLElement> {
     super();
 
     this.terrain = terrain;
-    this.viewKey = root.viewKey;
+    this.key = root.key;
 
     Object.entries(root.terrain).forEach(([featureKey, feature]) => {
       this.terrain[featureKey] = Abstract.isField(feature)
@@ -622,12 +615,12 @@ class View extends Binding<HTMLElement> {
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
       const feature = Object.values(this.terrain).find(
-        (feature) => feature.name === propertyKey
+        (feature) => feature.key === propertyKey
       );
 
       if (feature === undefined) {
         throw new ViewScriptException(
-          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of viewKey \`${this.viewKey}\``
+          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``
         );
       }
 
@@ -672,7 +665,7 @@ class View extends Binding<HTMLElement> {
         throw new ViewScriptException(
           `Cannot construct a property of unknown kind "${
             (property as { kind: unknown }).kind
-          } for view of viewKey \`${this.viewKey}\`"`
+          } for view of key \`${this.key}\`"`
         );
       }
     });
@@ -687,7 +680,7 @@ class View extends Binding<HTMLElement> {
  */
 class Console extends Field {
   constructor() {
-    super({ kind: "field", fieldKey: "console", modelKey: "Console" });
+    super({ kind: "field", key: "console", modelKey: "Console" });
 
     this.defineAction("log", window.console.log);
   }
@@ -698,7 +691,7 @@ class Console extends Field {
  */
 class Browser extends Field {
   constructor() {
-    super({ kind: "field", fieldKey: "browser", modelKey: "Browser" });
+    super({ kind: "field", key: "browser", modelKey: "Browser" });
 
     this.defineChild("console", new Console());
   }
