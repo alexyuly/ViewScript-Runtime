@@ -1,17 +1,56 @@
+// Data Sources
+
+/**
+ * An abstract source of data which feeds into components.
+ */
+export type DataSource =
+  | Value
+  | FieldReference
+  | ConditionalData
+  | MethodResult;
+
+/**
+ * An anonymous source of data which feeds into one component.
+ */
+export type Value = Primitive | Structure | Element | Array<DataSource>;
+
+/**
+ * A primitive value.
+ */
 export type Primitive = boolean | number | string;
 
+/**
+ * A key-value map of data sources.
+ * It may be associated with a model.
+ */
 export type Structure = {
-  kind: "data";
-  structure: Record<string, Data>;
+  kind: "structure";
+  data: Record<string, DataSource>;
+  modelKey?: string;
 };
 
-export type Data = Primitive | Structure | Element | Array<Data>;
+/**
+ * A renderable component.
+ * It is associated with either a view or an HTML tag name.
+ */
+export type Element = {
+  kind: "element";
+  properties: Record<string, DataSource | Destination>;
+  viewKey: string | `<${string}>`;
+};
 
-export type Field<T extends Data = Data> = {
+/**
+ * A reference to a field or a data source within its structure.
+ */
+export type FieldReference = {
+  kind: "fieldReference";
+  fieldKeyPath: Array<string>;
+};
+
+export type Field<T extends Value = Value> = {
   kind: "field";
   fieldKey: string;
-  modelKey: string;
-  name?: string;
+  modelKey?: string;
   value?: T;
 };
 
@@ -35,48 +74,81 @@ export type ElementField = Field<Element> & {
   modelKey: "Element";
 };
 
-export type ArrayField = Field<Array<Data>> & {
+export type ArrayField = Field<Array<DataSource>> & {
   modelKey: "Array";
+  innerModelKey?: string;
 };
 
-export type Conditional = {
-  kind: "conditional";
-  condition: Input;
-  positive: Field;
-  negative: Field;
+export type ConditionalData = {
+  kind: "conditionalData";
+  when: DataSource;
+  then: DataSource;
+  else?: DataSource;
+};
+
+export type MethodResult = {
+  kind: "methodResult";
+  keyPath: Array<string>;
+  argument?: DataSource | Method;
+};
+
+export type Method = {
+  kind: "method";
+  methodKey: string;
+  parameter?: Field | MethodHelper;
+  result: DataSource;
+};
+
+export type MethodHelper = {
+  kind: "methodHelper";
+};
+
+// Destinations
+
+export type Destination =
+  | StreamReference
+  | Action
+  | ActionEffect
+  | ConditionalFork;
+
+export type StreamReference = {
+  kind: "streamReference";
+  streamKey: string;
+  argument?: DataSource;
 };
 
 export type Stream = {
   kind: "stream";
   streamKey: string;
-  name?: string;
+  parameter?: Field;
 };
 
-export type Input = {
-  kind: "input";
+export type Action = {
+  kind: "action";
+  actionKey: string;
+  parameter?: Field;
+  effects: Array<ActionEffect | ConditionalFork>;
+};
+
+export type ActionEffect = {
+  kind: "actionEffect";
   keyPath: Array<string>;
+  argument?: DataSource;
 };
 
-export type Output = {
-  kind: "output";
-  keyPath: Array<string>;
-  argument?: Field;
+export type ConditionalFork = {
+  kind: "conditionalFork";
+  when: DataSource;
+  then: Array<ActionEffect | ConditionalFork>;
 };
 
-export type Inlet = {
-  kind: "inlet";
-  connection: Field | Conditional | Input;
-};
+// Apps
 
-export type Outlet = {
-  kind: "outlet";
-  connection: Output;
-};
-
-export type Element = {
-  kind: "element";
-  viewKey: string;
-  properties: Record<string, Inlet | Outlet>;
+export type App = {
+  kind: "ViewScript v0.4.0 App";
+  root: View;
+  views: Record<string, View>;
+  models: Record<string, Model>;
 };
 
 export type View = {
@@ -84,36 +156,62 @@ export type View = {
   viewKey: string;
   element: Element;
   terrain: Record<string, Field | Stream>;
-  name?: string;
 };
 
-export type App = {
-  kind: "ViewScript v0.3.3 App";
-  root: View;
-  views: Record<string, View>;
+export type Model = {
+  kind: "model";
+  modelKey: string;
+  members: Record<string, Field | Method | Action>;
 };
 
-export function isStructure(node: unknown): node is Structure {
+export function isDataSource(node: unknown): node is DataSource {
   return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "data" &&
-    "structure" in node &&
-    typeof node.structure === "object" &&
-    node.structure !== null &&
-    Object.values(node.structure).every(isData)
+    isValue(node) ||
+    isFieldReference(node) ||
+    isConditionalData(node) ||
+    isMethodResult(node)
   );
 }
 
-export function isData(node: unknown): node is Data {
+export function isValue(node: unknown): node is Value {
   return (
     typeof node === "boolean" ||
     typeof node === "number" ||
     typeof node === "string" ||
     isElement(node) ||
     isStructure(node) ||
-    (node instanceof Array && node.every(isData))
+    (node instanceof Array && node.every(isDataSource))
+  );
+}
+
+export function isStructure(node: unknown): node is Structure {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "structure" &&
+    "data" in node &&
+    typeof node.data === "object" &&
+    node.data !== null &&
+    Object.values(node.data).every(isDataSource)
+  );
+}
+
+export function isElement(node: unknown): node is Element {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "element"
+  );
+}
+
+export function isFieldReference(node: unknown): node is FieldReference {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "kind" in node &&
+    node.kind === "fieldReference"
   );
 }
 
@@ -150,30 +248,21 @@ export function isArrayField(field: Field): field is ArrayField {
   return field.modelKey === "Array";
 }
 
-export function isConditional(node: unknown): node is Conditional {
+export function isConditionalData(node: unknown): node is ConditionalData {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
-    node.kind === "conditional"
+    node.kind === "conditionalData"
   );
 }
 
-export function isOutlet(node: unknown): node is Outlet {
+export function isMethodResult(node: unknown): node is MethodResult {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
-    node.kind === "outlet"
-  );
-}
-
-export function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "element"
+    node.kind === "methodResult"
   );
 }
 

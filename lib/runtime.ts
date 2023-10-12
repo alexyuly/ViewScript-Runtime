@@ -55,20 +55,20 @@ abstract class Binding<T = unknown>
 
 /**
  * Forwards and stores values of type T from parent to child components.
- * Manages actions, children, and methods for the value.
+ * Manages children, actions, and methods for the value.
  */
 abstract class Field<
-  T extends Abstract.Data = Abstract.Data,
+  T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
+  readonly fieldKey?: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelKey: string;
-  readonly name?: string;
+  private readonly modelKey?: string;
 
   constructor(field: Abstract.Field<T>) {
     super();
 
+    this.fieldKey = field.fieldKey;
     this.modelKey = field.modelKey;
-    this.name = field.name;
 
     const initialValue = field.value;
 
@@ -110,12 +110,12 @@ abstract class Field<
     );
   }
 
-  protected defineAction<A extends Abstract.Data>(
+  protected defineAction<Argument extends Abstract.Value>(
     name: string,
-    reducer: (argument: A) => T | void
+    reducer: (argument: Argument) => T | void
   ) {
     this.members[name] = {
-      take: (event: A) => {
+      take: (event: Argument) => {
         const nextValue = reducer(event);
 
         if (nextValue !== undefined) {
@@ -132,7 +132,7 @@ abstract class Field<
   getMember(name: string) {
     if (!(name in this.members)) {
       throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.name}\``
+        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.fieldKey}\``
       );
     }
 
@@ -140,9 +140,9 @@ abstract class Field<
   }
 
   protected publish(value: T) {
-    if (this.name !== undefined) {
+    if (this.fieldKey !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey} field ${this.name} =`,
+        `[VSR] ⛰️ Set ${this.modelKey} field ${this.fieldKey} =`,
         value
       );
     }
@@ -218,7 +218,7 @@ class ElementField extends Field<Abstract.Element> {
 /**
  * A field that stores an array.
  */
-class ArrayField extends Field<Array<Abstract.Data>> {
+class ArrayField extends Field<Array<Abstract.DataSource>> {
   constructor(field: Abstract.ArrayField) {
     super(field);
 
@@ -241,15 +241,15 @@ class Conditional extends Publisher implements Subscriber<boolean> {
   private readonly negative: Field;
 
   constructor(
-    conditional: Abstract.Conditional,
+    conditional: Abstract.ConditionalData,
     fields: Record<string, Field>
   ) {
     super();
 
-    this.positive = Field.create(conditional.positive);
-    this.negative = Field.create(conditional.negative);
+    this.positive = Field.create(conditional.then);
+    this.negative = Field.create(conditional.else);
 
-    this.condition = new Input(conditional.condition, fields);
+    this.condition = new Input(conditional.when, fields);
     this.condition.subscribe(this);
   }
 
