@@ -89,6 +89,7 @@ export type ElementField = Field<"Element", Element>;
  * A field containing arrays of data sources.
  * Its children's data sources may be validated by a model.
  */
+
 export type ArrayField = Field<"Array", Array<DataSource>> & {
   dataModelKey?: string;
 };
