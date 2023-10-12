@@ -1,7 +1,7 @@
 // Data Sources
 
 /**
- * An abstract source of data which feeds into components.
+ * An abstract source of data which feeds into nodes.
  */
 export type DataSource =
   | Value
@@ -10,7 +10,7 @@ export type DataSource =
   | MethodResult;
 
 /**
- * An anonymous source of data which feeds into one component.
+ * An anonymous source of data which feeds into a single node.
  */
 export type Value = Primitive | Structure | Element | Array<DataSource>;
 
@@ -20,7 +20,7 @@ export type Value = Primitive | Structure | Element | Array<DataSource>;
 export type Primitive = boolean | number | string;
 
 /**
- * A key-value map of data sources.
+ * A mapping of keys to data sources.
  * It may be validated by a model.
  */
 export type Structure = {
@@ -30,7 +30,7 @@ export type Structure = {
 };
 
 /**
- * A renderable component.
+ * A renderable node.
  * It is rendered using either a view or an HTML tag name.
  */
 export type Element = {
@@ -151,7 +151,7 @@ export type MethodDelegateSlot = {
 // Destinations
 
 /**
- * An abstract destination for data sent out from components.
+ * An abstract destination for data sent out from nodes.
  */
 export type Destination =
   | StreamReference
@@ -188,7 +188,7 @@ export type Action = {
 };
 
 /**
- * A side effect which is the result of an action call.
+ * A side effect which results from calling an action.
  */
 export type ActionEffect = {
   kind: "actionEffect";

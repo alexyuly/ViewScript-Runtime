@@ -236,7 +236,7 @@ class ArrayField extends Field<Array<Abstract.DataSource>> {
  * Forwards either a positive or negative value based on a condition.
  */
 class Conditional extends Publisher implements Subscriber<boolean> {
-  private readonly condition: Input;
+  private readonly condition: FieldReference;
   private readonly positive: Field;
   private readonly negative: Field;
 
@@ -249,7 +249,7 @@ class Conditional extends Publisher implements Subscriber<boolean> {
     this.positive = Field.create(conditional.then);
     this.negative = Field.create(conditional.else);
 
-    this.condition = new Input(conditional.when, fields);
+    this.condition = new FieldReference(conditional.when, fields);
     this.condition.subscribe(this);
   }
 
@@ -262,12 +262,12 @@ class Conditional extends Publisher implements Subscriber<boolean> {
  * Forwards events from child to parent components.
  */
 class Stream extends Binding {
-  readonly name?: string;
+  readonly streamKey?: string;
 
   constructor(stream: Abstract.Stream) {
     super();
 
-    this.name = stream.name;
+    this.streamKey = stream.streamKey;
   }
 
   // TODO Handle events from streams
@@ -277,11 +277,11 @@ class Stream extends Binding {
 /**
  * A binding to a publisher based on its name or path within the given fields.
  */
-class Input extends Binding {
+class FieldReference extends Binding {
   private readonly keyPath: Array<string>;
   private readonly publisher: Publisher;
 
-  constructor(input: Abstract.Input, fields: Record<string, Field>) {
+  constructor(input: Abstract.FieldReference, fields: Record<string, Field>) {
     super();
 
     this.keyPath = input.keyPath;
@@ -409,7 +409,7 @@ class Inlet extends Binding {
     } else if (inlet.connection.kind === "conditional") {
       this.publisher = new Conditional(inlet.connection, fields);
     } else if (inlet.connection.kind === "input") {
-      this.publisher = new Input(inlet.connection, fields);
+      this.publisher = new FieldReference(inlet.connection, fields);
     } else {
       throw new ViewScriptException(
         `Cannot construct an inlet with connection of unknown kind "${
