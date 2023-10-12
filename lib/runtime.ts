@@ -62,7 +62,7 @@ abstract class Field<
 > extends Binding<T> {
   readonly fieldKey?: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelKey?: string;
+  private readonly modelKey: string;
 
   constructor(field: Abstract.Field<T>) {
     super();

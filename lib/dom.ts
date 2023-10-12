@@ -1,4 +1,4 @@
-import type { Data } from "./abstract";
+import type { Value } from "./abstract";
 
 export const create = (tagName: string) => {
   const htmlElement = window.document.createElement(tagName.toLowerCase());
@@ -20,9 +20,9 @@ export const populate = (
 export const styleProp = (
   element: HTMLElement,
   name: string,
-  value: Data | null
+  value?: Value
 ) => {
-  if (value === null) {
+  if (value === undefined) {
     element.style.removeProperty(name);
   } else {
     element.style.setProperty(name, String(value));
@@ -36,9 +36,9 @@ export const styleProp = (
 export const attribute = (
   element: HTMLElement,
   name: string,
-  value: Data | null
+  value?: Value
 ) => {
-  if (value === null || (typeof value === "boolean" && !value)) {
+  if (value === undefined || (typeof value === "boolean" && !value)) {
     element.removeAttribute(name);
   } else {
     element.setAttribute(

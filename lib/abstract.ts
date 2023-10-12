@@ -21,7 +21,7 @@ export type Primitive = boolean | number | string;
 
 /**
  * A key-value map of data sources.
- * It may be associated with a model.
+ * It may be validated by a model.
  */
 export type Structure = {
   kind: "structure";
@@ -31,54 +31,79 @@ export type Structure = {
 
 /**
  * A renderable component.
- * It is associated with either a view or an HTML tag name.
+ * It is rendered using either a view or an HTML tag name.
  */
 export type Element = {
   kind: "element";
-  properties: Record<string, DataSource | Destination>;
   viewKey: string | `<${string}>`;
+  properties: Record<string, DataSource | Destination>;
 };
 
 /**
- * A reference to a field or a data source within its structure.
+ * A reference to a field, or a data source within its structure.
  */
 export type FieldReference = {
   kind: "fieldReference";
-  fieldKeyPath: Array<string>;
+  keyPath: Array<string>;
 };
 
+/**
+ * An identifiable container for values.
+ * It is validated by a model.
+ */
 export type Field<T extends Value = Value> = {
   kind: "field";
   fieldKey: string;
-  modelKey?: string;
+  modelKey: string;
   value?: T;
 };
 
+/**
+ * A field containing boolean values.
+ */
 export type BooleanField = Field<boolean> & {
   modelKey: "Boolean";
 };
 
+/**
+ * A field containing numeric values.
+ */
 export type NumberField = Field<number> & {
   modelKey: "Number";
 };
 
+/**
+ * A field containing string values.
+ */
 export type StringField = Field<string> & {
   modelKey: "String";
 };
 
+/**
+ * A field containing structures.
+ */
 export type StructureField = Field<Structure> & {
   modelKey: "Structure";
 };
 
+/**
+ * A field containing elements.
+ */
 export type ElementField = Field<Element> & {
   modelKey: "Element";
 };
 
+/**
+ * A field containing arrays of data sources.
+ */
 export type ArrayField = Field<Array<DataSource>> & {
   modelKey: "Array";
   innerModelKey?: string;
 };
 
+/**
+ * A conditional data source.
+ */
 export type ConditionalData = {
   kind: "conditionalData";
   when: DataSource;
@@ -86,43 +111,75 @@ export type ConditionalData = {
   else?: DataSource;
 };
 
+/**
+ * A data source which is the result of a method call.
+ */
 export type MethodResult = {
   kind: "methodResult";
   keyPath: Array<string>;
-  argument?: DataSource | Method;
+  argument?: DataSource | MethodDelegate;
 };
 
-export type Method = {
-  kind: "method";
-  methodKey: string;
-  parameter?: Field | MethodHelper;
+/**
+ * An anonymous mapping of a parameter to a result.
+ * It is passed as an argument to a method call.
+ * It is used to implement array methods like `map` and `filter`.
+ */
+export type MethodDelegate = {
+  kind: "methodDelegate";
+  parameter: Field;
   result: DataSource;
 };
 
-export type MethodHelper = {
-  kind: "methodHelper";
+/**
+ * An identifiable mapping of an optional parameter to a result.
+ */
+export type Method = {
+  kind: "method";
+  methodKey: string;
+  parameter?: Field | MethodDelegateSlot;
+  result: DataSource;
+};
+
+/**
+ * A method parameter which accepts a method delegate as an argument.
+ */
+export type MethodDelegateSlot = {
+  kind: "methodDelegateSlot";
 };
 
 // Destinations
 
+/**
+ * An abstract destination for data sent out from components.
+ */
 export type Destination =
   | StreamReference
   | Action
   | ActionEffect
   | ConditionalFork;
 
+/**
+ * A reference to a stream.
+ */
 export type StreamReference = {
   kind: "streamReference";
   streamKey: string;
   argument?: DataSource;
 };
 
+/**
+ * An identifiable stream of events.
+ */
 export type Stream = {
   kind: "stream";
   streamKey: string;
   parameter?: Field;
 };
 
+/**
+ * An identifiable mapping of an optional parameter to a sequence of side effects.
+ */
 export type Action = {
   kind: "action";
   actionKey: string;
@@ -130,20 +187,29 @@ export type Action = {
   effects: Array<ActionEffect | ConditionalFork>;
 };
 
+/**
+ * A side effect which is the result of an action call.
+ */
 export type ActionEffect = {
   kind: "actionEffect";
   keyPath: Array<string>;
   argument?: DataSource;
 };
 
+/**
+ * A conditional fork in a sequence of side effects.
+ */
 export type ConditionalFork = {
   kind: "conditionalFork";
   when: DataSource;
-  then: Array<ActionEffect | ConditionalFork>;
+  then?: Array<ActionEffect | ConditionalFork>;
 };
 
 // Apps
 
+/**
+ * An abstract ViewScript app.
+ */
 export type App = {
   kind: "ViewScript v0.4.0 App";
   root: View;
@@ -151,6 +217,10 @@ export type App = {
   models: Record<string, Model>;
 };
 
+/**
+ * A template used to render an element.
+ * It has a set of fields and streams which may bind to element properties.
+ */
 export type View = {
   kind: "view";
   viewKey: string;
@@ -158,11 +228,16 @@ export type View = {
   terrain: Record<string, Field | Stream>;
 };
 
+/**
+ * A template used to create and manipulate data.
+ */
 export type Model = {
   kind: "model";
   modelKey: string;
   members: Record<string, Field | Method | Action>;
 };
+
+// Type guards
 
 export function isDataSource(node: unknown): node is DataSource {
   return (
