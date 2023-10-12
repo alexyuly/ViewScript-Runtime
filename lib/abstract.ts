@@ -1,7 +1,7 @@
 // Data Sources
 
 /**
- * An abstract source of data which feeds into nodes.
+ * An abstract source of data feeding into a subscriber.
  */
 export type DataSource =
   | Value
@@ -10,7 +10,7 @@ export type DataSource =
   | MethodResult;
 
 /**
- * An anonymous source of data which feeds into a single node.
+ * An anonymous source of data feeding into a subscriber.
  */
 export type Value = Primitive | Structure | Element | Array<DataSource>;
 
@@ -21,16 +21,14 @@ export type Primitive = boolean | number | string;
 
 /**
  * A mapping of keys to data sources.
- * It may be validated by a model.
  */
 export type Structure = {
   kind: "structure";
   data: Record<string, DataSource>;
-  modelKey?: string;
 };
 
 /**
- * A renderable node.
+ * A binding to an HTML element.
  * It is rendered using either a view or an HTML tag name.
  */
 export type Element = {
@@ -50,59 +48,53 @@ export type FieldReference = {
 /**
  * An identifiable container for values.
  * It is validated by a model.
+ * It may be initialized to a value.
  */
-export type Field<T extends Value = Value> = {
+export type Field<ModelKey extends string = string, T extends Value = Value> = {
   kind: "field";
   key: string;
-  modelKey: string;
+  modelKey: ModelKey;
   value?: T;
 };
 
 /**
  * A field containing boolean values.
  */
-export type BooleanField = Field<boolean> & {
-  modelKey: "Boolean";
-};
+export type BooleanField = Field<"Boolean", boolean>;
 
 /**
  * A field containing numeric values.
  */
-export type NumberField = Field<number> & {
-  modelKey: "Number";
-};
+export type NumberField = Field<"Number", number>;
 
 /**
  * A field containing string values.
  */
-export type StringField = Field<string> & {
-  modelKey: "String";
-};
+export type StringField = Field<"String", string>;
 
 /**
  * A field containing structures.
+ * It is validated by a model.
  */
-export type StructureField = Field<Structure> & {
-  modelKey: "Structure";
-};
+export type StructureField<ModelKey extends string = string> = Field<
+  ModelKey,
+  Structure
+>;
 
 /**
  * A field containing elements.
  */
-export type ElementField = Field<Element> & {
-  modelKey: "Element";
-};
-
+export type ElementField = Field<"Element", Element>;
 /**
  * A field containing arrays of data sources.
+ * Its children's data sources may be validated by a model.
  */
-export type ArrayField = Field<Array<DataSource>> & {
-  modelKey: "Array";
-  innerModelKey?: string;
+export type ArrayField = Field<"Array", Array<DataSource>> & {
+  dataModelKey?: string;
 };
 
 /**
- * A conditional data source.
+ * A conditional source of data.
  */
 export type ConditionalData = {
   kind: "conditionalData";
@@ -112,7 +104,7 @@ export type ConditionalData = {
 };
 
 /**
- * A data source which is the result of a method call.
+ * A source of data from subscribing to a method.
  */
 export type MethodResult = {
   kind: "methodResult";
@@ -122,7 +114,7 @@ export type MethodResult = {
 
 /**
  * An anonymous mapping of a parameter to a result.
- * It is passed as an argument to a method call.
+ * It can be passed as an argument when subscribing to a method.
  * It is used to implement array methods like `map` and `filter`.
  */
 export type MethodDelegate = {
@@ -169,7 +161,7 @@ export type StreamReference = {
 };
 
 /**
- * An identifiable stream of events.
+ * An identifiable channel for events flowing out from an element.
  */
 export type Stream = {
   kind: "stream";
@@ -188,7 +180,7 @@ export type Action = {
 };
 
 /**
- * A side effect which results from calling an action.
+ * An aggregate side effect from calling an action.
  */
 export type ActionEffect = {
   kind: "actionEffect";
@@ -213,12 +205,11 @@ export type ConditionalFork = {
 export type App = {
   kind: "ViewScript v0.4.0 App";
   root: View;
-  views: Record<string, View>;
-  models: Record<string, Model>;
+  branches: Record<string, View | Model>;
 };
 
 /**
- * A template used to render an element.
+ * A template used to construct an element.
  * It has a set of fields and streams which may bind to element properties.
  */
 export type View = {
@@ -229,7 +220,7 @@ export type View = {
 };
 
 /**
- * A template used to create and manipulate data.
+ * A template used to construct, use, and manipulate data.
  */
 export type Model = {
   kind: "model";

@@ -58,13 +58,14 @@ abstract class Binding<T = unknown>
  * Manages children, actions, and methods for the value.
  */
 abstract class Field<
+  ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
   readonly key: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelKey: string;
+  private readonly modelKey: ModelKey;
 
-  constructor(field: Abstract.Field<T>) {
+  constructor(field: Abstract.Field<ModelKey, T>) {
     super();
 
     this.key = field.key;
@@ -154,7 +155,7 @@ abstract class Field<
 /**
  * A field that stores a boolean.
  */
-class BooleanField extends Field<boolean> {
+class BooleanField extends Field<"Boolean", boolean> {
   constructor(field: Abstract.BooleanField) {
     super(field);
 
@@ -167,7 +168,7 @@ class BooleanField extends Field<boolean> {
 /**
  * A field that stores a number.
  */
-class NumberField extends Field<number> {
+class NumberField extends Field<"Number", number> {
   constructor(field: Abstract.NumberField) {
     super(field);
 
@@ -189,7 +190,7 @@ class NumberField extends Field<number> {
 /**
  * A field that stores a string.
  */
-class StringField extends Field<string> {
+class StringField extends Field<"String", string> {
   constructor(field: Abstract.StringField) {
     super(field);
   }
@@ -198,7 +199,10 @@ class StringField extends Field<string> {
 /**
  * A field that stores an arbitrary data object.
  */
-class StructureField extends Field<Abstract.Structure> {
+class StructureField<ModelKey extends string = string> extends Field<
+  ModelKey,
+  Abstract.Structure
+> {
   constructor(field: Abstract.StructureField) {
     super(field);
   }
@@ -207,7 +211,7 @@ class StructureField extends Field<Abstract.Structure> {
 /**
  * A field that stores an element AST object.
  */
-class ElementField extends Field<Abstract.Element> {
+class ElementField extends Field<"Element", Abstract.Element> {
   constructor(field: Abstract.ElementField) {
     super(field);
   }
@@ -216,7 +220,7 @@ class ElementField extends Field<Abstract.Element> {
 /**
  * A field that stores an array.
  */
-class ArrayField extends Field<Array<Abstract.DataSource>> {
+class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
   constructor(field: Abstract.ArrayField) {
     super(field);
 
@@ -224,8 +228,8 @@ class ArrayField extends Field<Array<Abstract.DataSource>> {
       "push",
       (item) =>
         (this.getValue() || []).concat?.(
-          item instanceof Array ? [item] : item ?? null
-        ) || [item ?? null]
+          item instanceof Array ? [item] : item
+        ) || [item]
     );
   }
 }
