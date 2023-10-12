@@ -73,6 +73,7 @@ class Field<
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
   readonly key: string;
+
   private readonly members: Record<string, Publisher | Subscriber> = {};
   private readonly modelKey: ModelKey;
 
@@ -479,12 +480,12 @@ class EventPublisher extends Publisher {
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, DataSource | SideEffect> = {};
-  private readonly terrain: Record<string, Field | Stream>;
   private readonly tagName: string;
+  private readonly terrain: Record<string, Field | Stream>;
 
   constructor(
     tagName: string,
-    views: Record<string, Abstract.View>,
+    branches: Record<string, Abstract.View | Abstract.Model>,
     terrain: Record<string, Field | Stream>,
     properties: Abstract.Element["properties"]
   ) {
@@ -496,8 +497,8 @@ class Atom extends Publisher<HTMLElement> {
     const htmlElement = Dom.create(tagName);
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
-      if (property.kind === "inlet") {
-        const inlet = new DataSource(property, Object.entries(this.terrain));
+      if (Abstract.isDataSource(property)) {
+        const dataSource = new DataSource(property, this.terrain);
 
         let take: (value: Abstract.Value) => void;
 
@@ -506,11 +507,12 @@ class Atom extends Publisher<HTMLElement> {
             this.children = [];
 
             const htmlElementChildren: Array<HTMLElement | string> = [];
-            const populate = (child = value) => {
+            const populate = (child: Abstract.DataSource) => {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Abstract.isElement(child)) {
-                const elementChild = new Element(child, views, this.terrain);
+                // TODO account for elements that aren't values
+                const elementChild = new Element(child, branches, this.terrain);
                 this.children.push(elementChild);
                 elementChild.subscribe({
                   take: (htmlElementChild) => {
@@ -518,13 +520,14 @@ class Atom extends Publisher<HTMLElement> {
                   },
                 });
               } else if (child !== null && child !== undefined) {
+                // TODO account for strings that aren't values
                 const textContent = String(child);
                 this.children.push(textContent);
                 htmlElementChildren.push(textContent);
               }
             };
 
-            populate();
+            populate(value);
             Dom.populate(htmlElement, htmlElementChildren);
           };
         } else if (Style.supports(propertyKey)) {
@@ -537,9 +540,9 @@ class Atom extends Publisher<HTMLElement> {
           };
         }
 
-        inlet.subscribe({ take });
-        this.properties[propertyKey] = inlet;
-      } else if (property.kind === "outlet") {
+        dataSource.subscribe({ take });
+        this.properties[propertyKey] = dataSource;
+      } else if (Abstract.isSideEffect(property)) {
         const outlet = new SideEffect(property, terrain);
         new EventPublisher(htmlElement, propertyKey, outlet);
         this.properties[propertyKey] = outlet;
@@ -560,27 +563,36 @@ class Atom extends Publisher<HTMLElement> {
  * Provides properties to an atom or a view, and publishes it or its HTML element.
  */
 class Element extends Binding<HTMLElement> {
-  private readonly view: Publisher<HTMLElement>;
+  private readonly publisher: Publisher<HTMLElement>;
 
   constructor(
     element: Abstract.Element,
-    views: Record<string, Abstract.View>,
+    branches: Record<string, Abstract.View | Abstract.Model>,
     terrain: Record<string, Field | Stream>
   ) {
     super();
 
     if (/^<[\w-.]+>$/g.test(element.viewKey)) {
       const tagName = element.viewKey.slice(1, element.viewKey.length - 1);
-      this.view = new Atom(tagName, views, terrain, element.properties);
-      this.view.subscribe(this);
-    } else if (element.viewKey in views) {
-      const spec = views[element.viewKey];
-      this.view = new View(spec, views, { ...terrain }, element.properties);
-      this.view.subscribe(this);
+
+      this.publisher = new Atom(tagName, branches, terrain, element.properties);
+      this.publisher.subscribe(this);
     } else {
-      throw new ViewScriptException(
-        `Cannot construct an element of invalid viewKey \`${element.viewKey}\``
+      const branch = branches[element.viewKey];
+
+      if (!Abstract.isView(branch)) {
+        throw new ViewScriptException(
+          `Cannot construct an element of invalid view key \`${element.viewKey}\``
+        );
+      }
+
+      this.publisher = new View(
+        branch,
+        branches,
+        { ...terrain },
+        element.properties
       );
+      this.publisher.subscribe(this);
     }
   }
 }
@@ -589,21 +601,22 @@ class Element extends Binding<HTMLElement> {
  * Provides properties to an element and publishes its HTML element.
  */
 class View extends Binding<HTMLElement> {
+  private readonly key: string;
+
   private readonly element: Element;
   private readonly properties: Record<string, DataSource | SideEffect> = {};
   private readonly terrain: Record<string, Field | Stream>;
-  private readonly key: string;
 
   constructor(
     root: Abstract.View,
-    children: Record<string, Abstract.View>,
+    branches: Record<string, Abstract.View | Abstract.Model>,
     terrain: Record<string, Field | Stream>,
     properties: Abstract.Element["properties"]
   ) {
     super();
 
-    this.terrain = terrain;
     this.key = root.key;
+    this.terrain = terrain;
 
     Object.entries(root.terrain).forEach(([featureKey, feature]) => {
       this.terrain[featureKey] = Abstract.isField(feature)
@@ -657,7 +670,7 @@ class View extends Binding<HTMLElement> {
       }
     });
 
-    this.element = new Element(root.element, children, this.terrain);
+    this.element = new Element(root.element, branches, this.terrain);
     this.element.subscribe(this);
   }
 }
@@ -694,7 +707,7 @@ export class RunningApp {
   private readonly root: View;
 
   constructor(app: Abstract.App) {
-    this.root = new View(app.root, app.views, { ...this.fields }, {});
+    this.root = new View(app.root, app.branches, { ...this.fields }, {});
     this.root.subscribe({
       take: (htmlElement) => {
         Dom.render(htmlElement);
