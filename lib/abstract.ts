@@ -7,7 +7,7 @@ export type DataSource =
   | Value
   | FieldReference
   | ConditionalData
-  | MethodResult;
+  | MethodReference;
 
 /**
  * An anonymous source of data feeding into a subscriber.
@@ -42,7 +42,7 @@ export type Element = {
  */
 export type FieldReference = {
   kind: "fieldReference";
-  keyPath: Array<string>;
+  pathToFieldKey: Array<string>;
 };
 
 /**
@@ -107,9 +107,9 @@ export type ConditionalData = {
 /**
  * A source of data from subscribing to a method.
  */
-export type MethodResult = {
-  kind: "methodResult";
-  keyPath: Array<string>;
+export type MethodReference = {
+  kind: "methodReference";
+  pathToMethodKey: Array<string>;
   argument?: DataSource | MethodDelegate;
 };
 
@@ -158,14 +158,14 @@ export type Action = {
   steps: Array<ActionStep>;
 };
 
-export type ActionStep = ActionEffect | StreamReference | ConditionalFork;
+export type ActionStep = ActionReference | StreamReference | ConditionalFork;
 
 /**
  * An aggregate side effect which results from calling an action.
  */
-export type ActionEffect = {
-  kind: "actionEffect";
-  keyPath: Array<string>;
+export type ActionReference = {
+  kind: "actionReference";
+  pathToActionKey: Array<string>;
   argument?: DataSource;
 };
 
@@ -174,7 +174,7 @@ export type ActionEffect = {
  */
 export type StreamReference = {
   kind: "streamReference";
-  key: string;
+  streamKey: string;
   argument?: DataSource;
 };
 
@@ -323,7 +323,7 @@ export function isConditionalData(node: unknown): node is ConditionalData {
   );
 }
 
-export function isMethodResult(node: unknown): node is MethodResult {
+export function isMethodResult(node: unknown): node is MethodReference {
   return (
     typeof node === "object" &&
     node !== null &&
