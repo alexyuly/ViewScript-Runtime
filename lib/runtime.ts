@@ -2,19 +2,32 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
-class ViewScriptException extends Error {}
+// Errors that may occur during initialization
 
-/**
- * Takes values from a publisher.
- */
+class ViewScriptError extends Error {}
+
+class FieldUnknownModelKeyError extends ViewScriptError {
+  constructor(field: Abstract.Field) {
+    super(
+      `Cannot construct a field of unknown model key \`${field.modelKey}\``
+    );
+  }
+}
+
+class FieldUnknownMemberError extends ViewScriptError {
+  constructor(field: Abstract.Field, name: string) {
+    super(
+      `Cannot get member \`${name}\` of \`${field.modelKey}\` field \`${field.key}\``
+    );
+  }
+}
+
+// Publish/subscribe framework
+
 interface Subscriber<T = unknown> {
   take(value: T): void;
 }
 
-/**
- * Publishes values to subscribers.
- * Stores the publicly readable last value.
- */
 abstract class Publisher<T = unknown> {
   private lastValue?: T;
   private readonly listeners: Array<Subscriber<T>> = [];
@@ -42,7 +55,7 @@ abstract class Publisher<T = unknown> {
 
 /**
  * Takes values and publishes them again.
- * This is useful for classes that need to forward values, while managing other duties.
+ * This is useful for classes to forward values while managing other duties.
  */
 abstract class Binding<T = unknown>
   extends Publisher<T>
@@ -50,6 +63,40 @@ abstract class Binding<T = unknown>
 {
   take(value: T) {
     this.publish(value);
+  }
+}
+
+// Concrete representations of abstract types
+
+/**
+ * Forwards a value from a field, conditional, or input.
+ */
+class DataSource extends Binding<Abstract.Value> {
+  private readonly publisher: Publisher<Abstract.Value>;
+
+  constructor(
+    dataSource: Abstract.DataSource,
+    terrain: Record<string, Field | Stream>
+  ) {
+    super();
+
+    if (Abstract.isValue(dataSource)) {
+      this.publisher = new Value(dataSource);
+    } else if (Abstract.isFieldReference(dataSource)) {
+      this.publisher = new FieldReference(dataSource, terrain);
+    } else if (Abstract.isConditionalData(dataSource)) {
+      this.publisher = new ConditionalData(dataSource, terrain);
+    } else {
+      throw new ViewScriptError(
+        `Cannot construct a data source of unknown kind \`${
+          typeof dataSource === "object" && dataSource !== null
+            ? (dataSource as { kind: unknown }).kind
+            : dataSource
+        }\``
+      );
+    }
+
+    this.publisher.subscribe(this);
   }
 }
 
@@ -65,24 +112,78 @@ class Value<T extends Abstract.Value> extends Publisher<T> {
 }
 
 /**
- * Forwards and stores values of type T from parent to child components.
- * Manages children, actions, and methods for the value.
+ * A binding to a publisher based on its name or path within the given fields.
+ */
+class FieldReference extends Binding<Abstract.Value> {
+  private readonly pathToFieldKey: Array<string>;
+  private readonly publisher: Publisher;
+
+  constructor(
+    fieldReference: Abstract.FieldReference,
+    terrain: Record<string, Field | Stream>
+  ) {
+    super();
+
+    this.pathToFieldKey = fieldReference.pathToFieldKey;
+
+    const pathToFieldKey = [...this.pathToFieldKey];
+
+    const getNextKey = () => {
+      const key = pathToFieldKey.shift();
+
+      if (!key) {
+        throw new ViewScriptError(
+          `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
+        );
+      }
+
+      return key;
+    };
+
+    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
+
+    while (pathToFieldKey.length > 0) {
+      if (
+        typeof nextMember !== "object" ||
+        nextMember === null ||
+        !(nextMember instanceof Field)
+      ) {
+        break;
+      }
+
+      nextMember = nextMember.getMember(getNextKey());
+    }
+
+    if (
+      typeof nextMember !== "object" ||
+      nextMember === null ||
+      !(nextMember instanceof Publisher)
+    ) {
+      throw new ViewScriptError(
+        `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
+      );
+    }
+
+    this.publisher = nextMember;
+    this.publisher.subscribe(this);
+  }
+}
+
+/**
+ * Forwards values of a specific type.
+ * Allows the definition of sub-fields, actions, and methods.
  */
 class Field<
   ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
-  readonly key: string;
-
+  private readonly abstract: Abstract.Field;
   private readonly members: Record<string, Publisher | Subscriber> = {};
-  private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
     super();
 
-    this.key = field.key;
-    this.modelKey = field.modelKey;
-
+    this.abstract = field;
     const initialValue = field.value;
 
     if (initialValue !== undefined) {
@@ -118,9 +219,7 @@ class Field<
       return new ArrayField(field);
     }
 
-    throw new ViewScriptException(
-      `Cannot construct a field of unknown model key \`${field.modelKey}\``
-    );
+    throw new FieldUnknownModelKeyError(field);
   }
 
   protected defineAction<Argument extends Abstract.Value>(
@@ -144,18 +243,16 @@ class Field<
 
   getMember(name: string) {
     if (!(name in this.members)) {
-      throw new ViewScriptException(
-        `Cannot get member \`${name}\` of \`${this.modelKey}\` field \`${this.key}\``
-      );
+      throw new FieldUnknownMemberError(this.abstract, name);
     }
 
     return this.members[name];
   }
 
   protected publish(value: T) {
-    if (this.key !== undefined) {
+    if (this.abstract.key !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey} field ${this.key} =`,
+        `[VSR] ⛰️ Set ${this.abstract.modelKey} field ${this.abstract.key} =`,
         value
       );
     }
@@ -209,7 +306,7 @@ class StringField extends Field<"String", string> {
 }
 
 /**
- * A field that stores an arbitrary data object.
+ * A field that stores a structure of the given model.
  */
 class StructureField<ModelKey extends string = string> extends Field<
   ModelKey,
@@ -221,7 +318,7 @@ class StructureField<ModelKey extends string = string> extends Field<
 }
 
 /**
- * A field that stores an element AST object.
+ * A field that stores an element.
  */
 class ElementField extends Field<"Element", Abstract.Element> {
   constructor(field: Abstract.ElementField) {
@@ -246,13 +343,12 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
   }
 }
 
+// TODO Implement methods.
+
 /**
  * Forwards either a positive or negative value based on a condition.
  */
-class ConditionalData
-  extends Publisher<Abstract.Value>
-  implements Subscriber<Abstract.Value>
-{
+class ConditionalData extends Binding<Abstract.Value> {
   private readonly when: DataSource;
   private readonly then: DataSource;
   private readonly else?: DataSource;
@@ -281,75 +377,41 @@ class ConditionalData
 }
 
 /**
- * Forwards events from child to parent components.
+ * Forwards a value to an output.
  */
-class Stream extends Binding {
-  readonly key: string;
-
-  constructor(stream: Abstract.Stream) {
-    super();
-
-    this.key = stream.key;
-  }
-}
-
-/**
- * A binding to a publisher based on its name or path within the given fields.
- */
-class FieldReference extends Binding<Abstract.Value> {
-  private readonly pathToFieldKey: Array<string>;
-  private readonly publisher: Publisher;
+class SideEffect extends Binding {
+  private readonly argument?: Field;
+  private readonly subscriber: Subscriber;
 
   constructor(
-    fieldReference: Abstract.FieldReference,
+    sideEffect: Abstract.SideEffect,
     terrain: Record<string, Field | Stream>
   ) {
     super();
 
-    this.pathToFieldKey = fieldReference.pathToFieldKey;
-
-    const pathToFieldKey = [...this.pathToFieldKey];
-
-    const getNextKey = () => {
-      const key = pathToFieldKey.shift();
-
-      if (!key) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
-        );
-      }
-
-      return key;
-    };
-
-    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
-
-    while (pathToFieldKey.length > 0) {
-      if (
-        typeof nextMember !== "object" ||
-        nextMember === null ||
-        !(nextMember instanceof Field)
-      ) {
-        break;
-      }
-
-      nextMember = nextMember.getMember(getNextKey());
+    if (sideEffect.argument) {
+      this.argument = new DataSource(sideEffect.argument, terrain);
     }
 
-    if (
-      typeof nextMember !== "object" ||
-      nextMember === null ||
-      !(nextMember instanceof Publisher)
-    ) {
-      throw new ViewScriptException(
-        `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
+    if (sideEffect.connection.kind === "output") {
+      this.subscriber = new StreamReference(sideEffect.connection, terrain);
+    } else {
+      throw new ViewScriptError(
+        `Cannot construct an outlet with connection of unknown kind "${
+          (sideEffect.connection as { kind: unknown }).kind
+        }"`
       );
     }
 
-    this.publisher = nextMember;
-    this.publisher.subscribe(this);
+    this.subscribe(this.subscriber);
+  }
+
+  getArgumentValue() {
+    return this.argument?.getValue();
   }
 }
+
+// TODO Implement actions.
 
 /**
  * A binding to a subscriber based on its name or path within the given fields.
@@ -378,7 +440,7 @@ class StreamReference extends Publisher implements Subscriber {
       nextMember === null ||
       !("take" in nextMember)
     ) {
-      throw new ViewScriptException(
+      throw new ViewScriptError(
         `Cannot dereference invalid stream key \`${streamReference.streamKey}\``
       );
     }
@@ -393,69 +455,15 @@ class StreamReference extends Publisher implements Subscriber {
 }
 
 /**
- * Forwards a value from a field, conditional, or input.
+ * Forwards events from child to parent components.
  */
-class DataSource extends Binding<Abstract.Value> {
-  private readonly publisher: Publisher<Abstract.Value>;
+class Stream extends Binding<Abstract.Value> {
+  readonly key: string;
 
-  constructor(
-    dataSource: Abstract.DataSource,
-    terrain: Record<string, Field | Stream>
-  ) {
+  constructor(stream: Abstract.Stream) {
     super();
 
-    if (Abstract.isValue(dataSource)) {
-      this.publisher = new Value(dataSource);
-    } else if (Abstract.isFieldReference(dataSource)) {
-      this.publisher = new FieldReference(dataSource, terrain);
-    } else if (Abstract.isConditionalData(dataSource)) {
-      this.publisher = new ConditionalData(dataSource, terrain);
-    } else {
-      throw new ViewScriptException(
-        `Cannot construct a data source of unknown kind \`${
-          typeof dataSource === "object" && dataSource !== null
-            ? (dataSource as { kind: unknown }).kind
-            : dataSource
-        }\``
-      );
-    }
-
-    this.publisher.subscribe(this);
-  }
-}
-
-/**
- * Forwards a value to an output.
- */
-class SideEffect extends Binding {
-  private readonly argument?: Field;
-  private readonly subscriber: Subscriber;
-
-  constructor(
-    sideEffect: Abstract.SideEffect,
-    terrain: Record<string, Field | Stream>
-  ) {
-    super();
-
-    if (sideEffect.argument) {
-      this.argument = new DataSource(sideEffect.argument, terrain);
-    }
-
-    if (sideEffect.connection.kind === "output") {
-      this.subscriber = new StreamReference(sideEffect.connection, terrain);
-    } else {
-      throw new ViewScriptException(
-        `Cannot construct an outlet with connection of unknown kind "${
-          (sideEffect.connection as { kind: unknown }).kind
-        }"`
-      );
-    }
-
-    this.subscribe(this.subscriber);
-  }
-
-  getArgumentValue() {
-    return this.argument?.getValue();
+    this.key = stream.key;
   }
 }
 
@@ -547,7 +555,7 @@ class Atom extends Publisher<HTMLElement> {
         new EventPublisher(htmlElement, propertyKey, outlet);
         this.properties[propertyKey] = outlet;
       } else {
-        throw new ViewScriptException(
+        throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
             (property as { kind: unknown }).kind
           } for atom of tagName ${this.tagName}"`
@@ -581,7 +589,7 @@ class Element extends Binding<HTMLElement> {
       const branch = branches[element.viewKey];
 
       if (!Abstract.isView(branch)) {
-        throw new ViewScriptException(
+        throw new ViewScriptError(
           `Cannot construct an element of invalid view key \`${element.viewKey}\``
         );
       }
@@ -630,20 +638,20 @@ class View extends Binding<HTMLElement> {
       );
 
       if (feature === undefined) {
-        throw new ViewScriptException(
+        throw new ViewScriptError(
           `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``
         );
       }
 
       if (property.kind === "inlet") {
         if (feature instanceof Stream) {
-          throw new ViewScriptException(
+          throw new ViewScriptError(
             `Cannot construct an inlet for stream name \`${propertyKey}\``
           );
         }
 
         if (feature.getValue() !== undefined) {
-          throw new ViewScriptException(
+          throw new ViewScriptError(
             `Cannot construct an inlet for private field name \`${propertyKey}\``
           );
         }
@@ -653,7 +661,7 @@ class View extends Binding<HTMLElement> {
         this.properties[propertyKey] = inlet;
       } else if (property.kind === "outlet") {
         if (feature instanceof Field) {
-          throw new ViewScriptException(
+          throw new ViewScriptError(
             `Cannot construct an outlet for field name \`${propertyKey}\``
           );
         }
@@ -662,7 +670,7 @@ class View extends Binding<HTMLElement> {
         feature.subscribe(outlet);
         this.properties[propertyKey] = outlet;
       } else {
-        throw new ViewScriptException(
+        throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
             (property as { kind: unknown }).kind
           } for view of key \`${this.key}\`"`
