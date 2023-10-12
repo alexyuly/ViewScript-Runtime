@@ -54,10 +54,21 @@ abstract class Binding<T = unknown>
 }
 
 /**
+ * Publishes a constant value to subscribers.
+ */
+class Value<T extends Abstract.Value> extends Publisher<T> {
+  constructor(value: T) {
+    super();
+
+    this.publish(value);
+  }
+}
+
+/**
  * Forwards and stores values of type T from parent to child components.
  * Manages children, actions, and methods for the value.
  */
-abstract class Field<
+class Field<
   ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
@@ -107,7 +118,7 @@ abstract class Field<
     }
 
     throw new ViewScriptException(
-      `Cannot construct a field of unknown modelKey \`${field.modelKey}\``
+      `Cannot construct a field of unknown model key \`${field.modelKey}\``
     );
   }
 
@@ -237,26 +248,34 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
 /**
  * Forwards either a positive or negative value based on a condition.
  */
-class ConditionalData extends Publisher implements Subscriber<boolean> {
-  private readonly condition: FieldReference;
-  private readonly positive: Field;
-  private readonly negative: Field;
+class ConditionalData
+  extends Publisher<Abstract.Value>
+  implements Subscriber<Abstract.Value>
+{
+  private readonly when: DataSource;
+  private readonly then: DataSource;
+  private readonly else?: DataSource;
 
   constructor(
-    conditional: Abstract.ConditionalData,
-    fields: Record<string, Field>
+    conditionalData: Abstract.ConditionalData,
+    terrain: Record<string, Field | Stream>
   ) {
     super();
 
-    this.positive = Field.create(conditional.then);
-    this.negative = Field.create(conditional.else);
+    this.then = new DataSource(conditionalData.then, terrain);
 
-    this.condition = new FieldReference(conditional.when, fields);
-    this.condition.subscribe(this);
+    if (conditionalData.else) {
+      this.else = new DataSource(conditionalData.else, terrain);
+    }
+
+    this.when = new DataSource(conditionalData.when, terrain);
+    this.when.subscribe(this);
   }
 
-  take(value: boolean) {
-    this.publish(value ? this.positive.getValue() : this.negative.getValue());
+  take(value: Abstract.Value) {
+    const nextValue = (value ? this.then : this.else)?.getValue();
+
+    this.publish(nextValue ?? null);
   }
 }
 
@@ -276,32 +295,35 @@ class Stream extends Binding {
 /**
  * A binding to a publisher based on its name or path within the given fields.
  */
-class FieldReference extends Binding {
-  private readonly keyPath: Array<string>;
+class FieldReference extends Binding<Abstract.Value> {
+  private readonly pathToFieldKey: Array<string>;
   private readonly publisher: Publisher;
 
-  constructor(input: Abstract.FieldReference, fields: Record<string, Field>) {
+  constructor(
+    fieldReference: Abstract.FieldReference,
+    terrain: Record<string, Field | Stream>
+  ) {
     super();
 
-    this.keyPath = input.keyPath;
+    this.pathToFieldKey = fieldReference.pathToFieldKey;
 
-    const keyPath = [...this.keyPath];
+    const pathToFieldKey = [...this.pathToFieldKey];
 
     const getNextKey = () => {
-      const key = keyPath.shift();
+      const key = pathToFieldKey.shift();
 
       if (!key) {
         throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${input.keyPath}\``
+          `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
         );
       }
 
       return key;
     };
 
-    let nextMember: Publisher | Subscriber = fields[getNextKey()];
+    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
 
-    while (keyPath.length > 0) {
+    while (pathToFieldKey.length > 0) {
       if (
         typeof nextMember !== "object" ||
         nextMember === null ||
@@ -319,7 +341,7 @@ class FieldReference extends Binding {
       !(nextMember instanceof Publisher)
     ) {
       throw new ViewScriptException(
-        `Cannot dereference invalid keyPath \`${input.keyPath}\``
+        `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
       );
     }
 
@@ -332,46 +354,23 @@ class FieldReference extends Binding {
  * A binding to a subscriber based on its name or path within the given fields.
  */
 class StreamReference extends Publisher implements Subscriber {
-  private readonly argument?: Field;
-  private readonly keyPath: Array<string>;
+  private readonly argument?: DataSource;
+  private readonly streamKey: string;
   private readonly subscriber: Subscriber;
 
   constructor(
-    output: Abstract.StreamReference,
+    streamReference: Abstract.StreamReference,
     terrain: Record<string, Field | Stream>
   ) {
     super();
 
-    this.argument = output.argument && Field.create(output.argument);
-    this.keyPath = output.keyPath;
-
-    const keyPath = [...this.keyPath];
-
-    const getNextKey = () => {
-      const key = keyPath.shift();
-
-      if (!key) {
-        throw new ViewScriptException(
-          `Cannot dereference invalid keyPath \`${output.keyPath}\``
-        );
-      }
-
-      return key;
-    };
-
-    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
-
-    while (keyPath.length > 0) {
-      if (
-        typeof nextMember !== "object" ||
-        nextMember === null ||
-        !(nextMember instanceof Field)
-      ) {
-        break;
-      }
-
-      nextMember = nextMember.getMember(getNextKey());
+    if (streamReference.argument) {
+      this.argument = new DataSource(streamReference.argument, terrain);
     }
+
+    this.streamKey = streamReference.streamKey;
+
+    let nextMember: Publisher | Subscriber = terrain[this.streamKey];
 
     if (
       typeof nextMember !== "object" ||
@@ -379,7 +378,7 @@ class StreamReference extends Publisher implements Subscriber {
       !("take" in nextMember)
     ) {
       throw new ViewScriptException(
-        `Cannot dereference invalid keyPath \`${output.keyPath}\``
+        `Cannot dereference invalid stream key \`${streamReference.streamKey}\``
       );
     }
 
@@ -395,23 +394,28 @@ class StreamReference extends Publisher implements Subscriber {
 /**
  * Forwards a value from a field, conditional, or input.
  */
-class Inlet extends Binding {
-  private readonly publisher: Publisher;
+class DataSource extends Binding<Abstract.Value> {
+  private readonly publisher: Publisher<Abstract.Value>;
 
-  constructor(inlet: Abstract.Inlet, fields: Record<string, Field>) {
+  constructor(
+    dataSource: Abstract.DataSource,
+    terrain: Record<string, Field | Stream>
+  ) {
     super();
 
-    if (inlet.connection.kind === "field") {
-      this.publisher = Field.create(inlet.connection);
-    } else if (inlet.connection.kind === "conditional") {
-      this.publisher = new ConditionalData(inlet.connection, fields);
-    } else if (inlet.connection.kind === "input") {
-      this.publisher = new FieldReference(inlet.connection, fields);
+    if (Abstract.isValue(dataSource)) {
+      this.publisher = new Value(dataSource);
+    } else if (Abstract.isFieldReference(dataSource)) {
+      this.publisher = new FieldReference(dataSource, terrain);
+    } else if (Abstract.isConditionalData(dataSource)) {
+      this.publisher = new ConditionalData(dataSource, terrain);
     } else {
       throw new ViewScriptException(
-        `Cannot construct an inlet with connection of unknown kind "${
-          (inlet.connection as { kind: unknown }).kind
-        }"`
+        `Cannot construct a data source of unknown kind \`${
+          typeof dataSource === "object" && dataSource !== null
+            ? (dataSource as { kind: unknown }).kind
+            : dataSource
+        }\``
       );
     }
 
@@ -422,25 +426,26 @@ class Inlet extends Binding {
 /**
  * Forwards a value to an output.
  */
-class Outlet extends Binding {
+class SideEffect extends Binding {
   private readonly argument?: Field;
   private readonly subscriber: Subscriber;
 
   constructor(
-    outlet: Abstract.Outlet,
+    sideEffect: Abstract.SideEffect,
     terrain: Record<string, Field | Stream>
   ) {
     super();
 
-    this.argument =
-      outlet.connection.argument && Field.create(outlet.connection.argument);
+    if (sideEffect.argument) {
+      this.argument = new DataSource(sideEffect.argument, terrain);
+    }
 
-    if (outlet.connection.kind === "output") {
-      this.subscriber = new StreamReference(outlet.connection, terrain);
+    if (sideEffect.connection.kind === "output") {
+      this.subscriber = new StreamReference(sideEffect.connection, terrain);
     } else {
       throw new ViewScriptException(
         `Cannot construct an outlet with connection of unknown kind "${
-          (outlet.connection as { kind: unknown }).kind
+          (sideEffect.connection as { kind: unknown }).kind
         }"`
       );
     }
@@ -457,7 +462,7 @@ class Outlet extends Binding {
  * Publishes a value from an HTML element's event to an outlet.
  */
 class EventPublisher extends Publisher {
-  constructor(element: HTMLElement, event: string, outlet: Outlet) {
+  constructor(element: HTMLElement, event: string, outlet: SideEffect) {
     super();
 
     this.subscribe(outlet);
@@ -473,7 +478,7 @@ class EventPublisher extends Publisher {
  */
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
-  private readonly properties: Record<string, Inlet | Outlet> = {};
+  private readonly properties: Record<string, DataSource | SideEffect> = {};
   private readonly terrain: Record<string, Field | Stream>;
   private readonly tagName: string;
 
@@ -492,18 +497,7 @@ class Atom extends Publisher<HTMLElement> {
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
       if (property.kind === "inlet") {
-        const inlet = new Inlet(
-          property,
-          Object.entries(this.terrain).reduce<Record<string, Field>>(
-            (result, [featureKey, feature]) => {
-              if (feature instanceof Field) {
-                result[featureKey] = feature;
-              }
-              return result;
-            },
-            {}
-          )
-        );
+        const inlet = new DataSource(property, Object.entries(this.terrain));
 
         let take: (value: Abstract.Value) => void;
 
@@ -546,7 +540,7 @@ class Atom extends Publisher<HTMLElement> {
         inlet.subscribe({ take });
         this.properties[propertyKey] = inlet;
       } else if (property.kind === "outlet") {
-        const outlet = new Outlet(property, terrain);
+        const outlet = new SideEffect(property, terrain);
         new EventPublisher(htmlElement, propertyKey, outlet);
         this.properties[propertyKey] = outlet;
       } else {
@@ -596,7 +590,7 @@ class Element extends Binding<HTMLElement> {
  */
 class View extends Binding<HTMLElement> {
   private readonly element: Element;
-  private readonly properties: Record<string, Inlet | Outlet> = {};
+  private readonly properties: Record<string, DataSource | SideEffect> = {};
   private readonly terrain: Record<string, Field | Stream>;
   private readonly key: string;
 
@@ -641,18 +635,7 @@ class View extends Binding<HTMLElement> {
           );
         }
 
-        const inlet = new Inlet(
-          property,
-          Object.entries(this.terrain).reduce<Record<string, Field>>(
-            (result, [featureKey, feature]) => {
-              if (feature instanceof Field) {
-                result[featureKey] = feature;
-              }
-              return result;
-            },
-            {}
-          )
-        );
+        const inlet = new DataSource(property, Object.entries(this.terrain));
         inlet.subscribe(feature);
         this.properties[propertyKey] = inlet;
       } else if (property.kind === "outlet") {
@@ -662,7 +645,7 @@ class View extends Binding<HTMLElement> {
           );
         }
 
-        const outlet = new Outlet(property, this.terrain);
+        const outlet = new SideEffect(property, this.terrain);
         feature.subscribe(outlet);
         this.properties[propertyKey] = outlet;
       } else {

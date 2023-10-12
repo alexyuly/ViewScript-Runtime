@@ -6,13 +6,13 @@
 export type DataSource =
   | Value
   | FieldReference
-  | ConditionalData
-  | MethodReference;
+  | MethodReference
+  | ConditionalData;
 
 /**
  * An anonymous source of data feeding into a subscriber.
  */
-export type Value = Primitive | Structure | Element | Array<DataSource>;
+export type Value = null | Primitive | Structure | Element | Array<DataSource>;
 
 /**
  * A primitive value.
@@ -95,16 +95,6 @@ export type ArrayField = Field<"Array", Array<DataSource>> & {
 };
 
 /**
- * A conditional source of data.
- */
-export type ConditionalData = {
-  kind: "conditionalData";
-  when: DataSource;
-  then: DataSource;
-  else?: DataSource;
-};
-
-/**
  * A source of data from subscribing to a method.
  */
 export type MethodReference = {
@@ -139,6 +129,16 @@ export type Method = {
  */
 export type MethodDelegateSlot = {
   kind: "methodDelegateSlot";
+};
+
+/**
+ * A conditional source of data.
+ */
+export type ConditionalData = {
+  kind: "conditionalData";
+  when: DataSource;
+  then: DataSource;
+  else?: DataSource;
 };
 
 // Side Effects
@@ -234,7 +234,7 @@ export function isDataSource(node: unknown): node is DataSource {
     isValue(node) ||
     isFieldReference(node) ||
     isConditionalData(node) ||
-    isMethodResult(node)
+    isMethodReference(node)
   );
 }
 
@@ -301,10 +301,20 @@ export function isStringField(field: Field): field is StringField {
   return field.modelKey === "String";
 }
 
-// TODO fix
-// export function isStructureField(field: Field): field is StructureField {
-//   return field.modelKey === "Structure";
-// }
+export function isStructureField<ModelKey extends string>(
+  field: Field<ModelKey>
+): field is StructureField<ModelKey> {
+  return (
+    isField(field) &&
+    !(
+      isBooleanField(field) ||
+      isNumberField(field) ||
+      isStringField(field) ||
+      isElementField(field) ||
+      isArrayField(field)
+    )
+  );
+}
 
 export function isElementField(field: Field): field is ElementField {
   return field.modelKey === "Element";
@@ -323,12 +333,12 @@ export function isConditionalData(node: unknown): node is ConditionalData {
   );
 }
 
-export function isMethodResult(node: unknown): node is MethodReference {
+export function isMethodReference(node: unknown): node is MethodReference {
   return (
     typeof node === "object" &&
     node !== null &&
     "kind" in node &&
-    node.kind === "methodResult"
+    node.kind === "methodReference"
   );
 }
 
