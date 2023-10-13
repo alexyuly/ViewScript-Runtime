@@ -536,7 +536,7 @@ class ActionReference extends Binding<Abstract.Value> {
 class StreamReference extends Binding<Abstract.Value> {
   private readonly argument?: DataSource;
   private readonly streamKey: string;
-  private readonly subscriber: Stream;
+  private readonly stream: Stream;
 
   constructor(streamReference: Abstract.StreamReference, terrain: Terrain) {
     super();
@@ -557,8 +557,8 @@ class StreamReference extends Binding<Abstract.Value> {
       throw new StreamReferenceConstructionError(streamReference);
     }
 
-    this.subscriber = nextMember;
-    this.subscribe(this.subscriber);
+    this.stream = nextMember;
+    this.subscribe(this.stream);
   }
 
   take() {
@@ -570,13 +570,25 @@ class StreamReference extends Binding<Abstract.Value> {
 
 class Stream extends Binding<Abstract.Value> {
   readonly key: string;
-  private readonly parameter?: Abstract.Field; // TODO ?
+  private readonly parameter?: Field;
 
   constructor(stream: Abstract.Stream) {
     super();
 
     this.key = stream.key;
-    this.parameter = stream.parameter;
+
+    if (stream.parameter) {
+      this.parameter = Field.create(stream.parameter);
+      this.parameter.subscribe(this);
+    }
+  }
+
+  take(value: Abstract.Value) {
+    if (this.parameter) {
+      this.parameter.take(value);
+    } else {
+      this.publish(value);
+    }
   }
 }
 
@@ -667,9 +679,9 @@ class Atom extends Publisher<HTMLElement> {
       } else if (Abstract.isSideEffect(property)) {
         const sideEffect = new SideEffect(property, terrain);
 
-        Dom.listen(htmlElement, propertyKey, (event) => {
-          // TODO Transform these events into something that a side effect can take:
-          sideEffect.take(event);
+        Dom.listen(htmlElement, propertyKey, () => {
+          // TODO Transform Events into Abstract.Values, and pass them to sideEffect.take:
+          sideEffect.take(null);
         });
 
         this.properties[propertyKey] = sideEffect;
