@@ -226,11 +226,18 @@ function isNode<Kind extends string>(x: unknown, kind: Kind): x is Node<Kind> {
 }
 
 export function isAction(node: unknown): node is Action {
+  return isNode(node, "action");
+}
+
+export function isActionReference(node: unknown): node is ActionReference {
+  return isNode(node, "actionReference");
+}
+
+export function isActionStep(node: unknown): node is ActionStep {
   return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "action"
+    isActionReference(node) ||
+    isStreamReference(node) ||
+    isConditionalFork(node)
   );
 }
 
@@ -243,30 +250,24 @@ export function isBooleanField(field: Field): field is BooleanField {
 }
 
 export function isConditionalData(node: unknown): node is ConditionalData {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "conditionalData"
-  );
+  return isNode(node, "conditionalData");
+}
+
+export function isConditionalFork(node: unknown): node is ConditionalFork {
+  return isNode(node, "conditionalFork");
 }
 
 export function isDataSource(node: unknown): node is DataSource {
   return (
     isValue(node) ||
     isFieldReference(node) ||
-    isConditionalData(node) ||
-    isMethodReference(node)
+    isMethodReference(node) ||
+    isConditionalData(node)
   );
 }
 
 export function isElement(node: unknown): node is Element {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "element"
-  );
+  return isNode(node, "element");
 }
 
 export function isElementField(field: Field): field is ElementField {
@@ -274,34 +275,27 @@ export function isElementField(field: Field): field is ElementField {
 }
 
 export function isField(node: unknown): node is Field {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "field"
-  );
+  return isNode(node, "field");
 }
 
 export function isFieldReference(node: unknown): node is FieldReference {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "fieldReference"
-  );
+  return isNode(node, "fieldReference");
 }
 
 export function isMethodReference(node: unknown): node is MethodReference {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "methodReference"
-  );
+  return isNode(node, "methodReference");
 }
 
 export function isNumberField(field: Field): field is NumberField {
   return field.modelKey === "Number";
+}
+
+export function isSideEffect(node: unknown): node is SideEffect {
+  return isAction(node) || isActionStep(node);
+}
+
+export function isStreamReference(node: unknown): node is StreamReference {
+  return isNode(node, "streamReference");
 }
 
 export function isStringField(field: Field): field is StringField {
@@ -310,10 +304,7 @@ export function isStringField(field: Field): field is StringField {
 
 export function isStructure(node: unknown): node is Structure {
   return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "structure" &&
+    isNode(node, "structure") &&
     "data" in node &&
     typeof node.data === "object" &&
     node.data !== null &&
@@ -332,20 +323,16 @@ export function isStructureField<ModelKey extends string>(
 
 export function isValue(node: unknown): node is Value {
   return (
+    node === null ||
     typeof node === "boolean" ||
     typeof node === "number" ||
     typeof node === "string" ||
-    isElement(node) ||
     isStructure(node) ||
+    isElement(node) ||
     (node instanceof Array && node.every(isDataSource))
   );
 }
 
 export function isView(node: unknown): node is View {
-  return (
-    typeof node === "object" &&
-    node !== null &&
-    "kind" in node &&
-    node.kind === "view"
-  );
+  return isNode(node, "view");
 }

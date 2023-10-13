@@ -2,27 +2,41 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
-// Convenient type aliases
-
-type Terrain = Record<string, Field | Stream>;
-
 // Errors that may occur during initialization
 
 class ViewScriptError extends Error {}
 
-class FieldUnknownModelKeyError extends ViewScriptError {
-  constructor(field: Abstract.Field) {
+class DataSourceConstructionError extends ViewScriptError {
+  constructor(something: unknown) {
+    super(`Cannot construct invalid data source: ${something}`);
+  }
+}
+
+class ElementConstructionError extends ViewScriptError {
+  constructor(element: Abstract.Element) {
     super(
-      `Cannot construct a field of unknown model key \`${field.modelKey}\``
+      `Cannot construct an element of unknown view key "${element.viewKey}"`
     );
+  }
+}
+
+class FieldReferenceConstructionError extends ViewScriptError {
+  constructor(fieldReference: Abstract.FieldReference) {
+    super(
+      `Cannot construct a field reference of unknown path to field key "${fieldReference.pathToFieldKey}"`
+    );
+  }
+}
+
+class FieldConstructionError extends ViewScriptError {
+  constructor(field: Abstract.Field) {
+    super(`Cannot construct a field of unknown model key "${field.modelKey}"`);
   }
 }
 
 class FieldUnknownMemberError extends ViewScriptError {
   constructor(field: Abstract.Field, name: string) {
-    super(
-      `Cannot get member \`${name}\` of \`${field.modelKey}\` field \`${field.key}\``
-    );
+    super(`Cannot get unknown member "${name}" of field "${field.key}"`);
   }
 }
 
@@ -70,11 +84,12 @@ abstract class Binding<T = unknown>
   }
 }
 
+// Convenient type aliases
+
+type Terrain = Record<string, Field | Stream>;
+
 // Concrete representations of abstract types
 
-/**
- * Forwards a value from a field, conditional, or input.
- */
 class DataSource extends Binding<Abstract.Value> {
   private readonly publisher: Publisher<Abstract.Value>;
 
@@ -85,25 +100,18 @@ class DataSource extends Binding<Abstract.Value> {
       this.publisher = new Value(dataSource);
     } else if (Abstract.isFieldReference(dataSource)) {
       this.publisher = new FieldReference(dataSource, terrain);
+    } else if (Abstract.isMethodReference(dataSource)) {
+      throw new ViewScriptError("Sorry, methods are not yet implemented."); // TODO implement
     } else if (Abstract.isConditionalData(dataSource)) {
       this.publisher = new ConditionalData(dataSource, terrain);
     } else {
-      throw new ViewScriptError(
-        `Cannot construct a data source of unknown kind \`${
-          typeof dataSource === "object" && dataSource !== null
-            ? (dataSource as { kind: unknown }).kind
-            : dataSource
-        }\``
-      );
+      throw new DataSourceConstructionError(dataSource);
     }
 
     this.publisher.subscribe(this);
   }
 }
 
-/**
- * Publishes a constant value to subscribers.
- */
 class Value<T extends Abstract.Value> extends Publisher<T> {
   constructor(value: T) {
     super();
@@ -112,9 +120,6 @@ class Value<T extends Abstract.Value> extends Publisher<T> {
   }
 }
 
-/**
- * Provides properties to an atom or a view, and publishes it or its HTML element.
- */
 class Element extends Binding<HTMLElement> {
   private readonly publisher: Publisher<HTMLElement>;
 
@@ -134,9 +139,7 @@ class Element extends Binding<HTMLElement> {
       const branch = branches[element.viewKey];
 
       if (!Abstract.isView(branch)) {
-        throw new ViewScriptError(
-          `Cannot construct an element of invalid view key \`${element.viewKey}\``
-        );
+        throw new ElementConstructionError(element);
       }
 
       this.publisher = new View(
@@ -150,9 +153,6 @@ class Element extends Binding<HTMLElement> {
   }
 }
 
-/**
- * A binding to a publisher based on its name or path within the given fields.
- */
 class FieldReference extends Binding<Abstract.Value> {
   private readonly pathToFieldKey: Array<string>;
   private readonly publisher: Publisher;
@@ -168,9 +168,7 @@ class FieldReference extends Binding<Abstract.Value> {
       const key = pathToFieldKey.shift();
 
       if (!key) {
-        throw new ViewScriptError(
-          `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
-        );
+        throw new FieldReferenceConstructionError(fieldReference);
       }
 
       return key;
@@ -195,9 +193,7 @@ class FieldReference extends Binding<Abstract.Value> {
       nextMember === null ||
       !(nextMember instanceof Publisher)
     ) {
-      throw new ViewScriptError(
-        `Cannot dereference invalid path to field key \`${fieldReference.pathToFieldKey}\``
-      );
+      throw new FieldReferenceConstructionError(fieldReference);
     }
 
     this.publisher = nextMember;
@@ -205,21 +201,22 @@ class FieldReference extends Binding<Abstract.Value> {
   }
 }
 
-/**
- * Forwards values of a specific type.
- * Allows the definition of sub-fields, actions, and methods.
- */
 class Field<
   ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
-  private readonly abstract: Abstract.Field;
+  readonly abstract: Abstract.Field<ModelKey, T>;
+  readonly key: string;
   private readonly members: Record<string, Publisher | Subscriber> = {};
+  private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
     super();
 
     this.abstract = field;
+    this.key = field.key;
+    this.modelKey = field.modelKey;
+
     const initialValue = field.value;
 
     if (initialValue !== undefined) {
@@ -255,7 +252,7 @@ class Field<
       return new StructureField(field);
     }
 
-    throw new FieldUnknownModelKeyError(field);
+    throw new FieldConstructionError(field);
   }
 
   protected defineAction<Argument extends Abstract.Value>(
@@ -286,9 +283,9 @@ class Field<
   }
 
   protected publish(value: T) {
-    if (this.abstract.key !== undefined) {
+    if (this.key !== undefined) {
       window.console.log(
-        `[VSR] ⛰️ Set ${this.abstract.modelKey} field ${this.abstract.key} =`,
+        `[VSR] ⛰️ Set ${this.modelKey} field ${this.key} =`,
         value
       );
     }
@@ -297,9 +294,6 @@ class Field<
   }
 }
 
-/**
- * A field that stores a boolean.
- */
 class BooleanField extends Field<"Boolean", boolean> {
   constructor(field: Abstract.BooleanField) {
     super(field);
@@ -310,9 +304,6 @@ class BooleanField extends Field<"Boolean", boolean> {
   }
 }
 
-/**
- * A field that stores a number.
- */
 class NumberField extends Field<"Number", number> {
   constructor(field: Abstract.NumberField) {
     super(field);
@@ -332,18 +323,12 @@ class NumberField extends Field<"Number", number> {
   }
 }
 
-/**
- * A field that stores a string.
- */
 class StringField extends Field<"String", string> {
   constructor(field: Abstract.StringField) {
     super(field);
   }
 }
 
-/**
- * A field that stores a structure of the given model.
- */
 class StructureField<ModelKey extends string = string> extends Field<
   ModelKey,
   Abstract.Structure
@@ -353,18 +338,12 @@ class StructureField<ModelKey extends string = string> extends Field<
   }
 }
 
-/**
- * A field that stores an element.
- */
 class ElementField extends Field<"Element", Abstract.Element> {
   constructor(field: Abstract.ElementField) {
     super(field);
   }
 }
 
-/**
- * A field that stores an array.
- */
 class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
   constructor(field: Abstract.ArrayField) {
     super(field);
@@ -381,9 +360,6 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
 
 // TODO Implement methods.
 
-/**
- * Forwards either a positive or negative value based on a condition.
- */
 class ConditionalData extends Binding<Abstract.Value> {
   private readonly when: DataSource;
   private readonly then: DataSource;
@@ -409,9 +385,6 @@ class ConditionalData extends Binding<Abstract.Value> {
   }
 }
 
-/**
- * Forwards a value to an output.
- */
 class SideEffect extends Binding {
   private readonly argument?: Field;
   private readonly subscriber: Subscriber;
@@ -443,9 +416,6 @@ class SideEffect extends Binding {
 
 // TODO Implement actions.
 
-/**
- * A binding to a subscriber based on its name or path within the given fields.
- */
 class StreamReference extends Publisher implements Subscriber {
   private readonly argument?: DataSource;
   private readonly streamKey: string;
@@ -481,9 +451,6 @@ class StreamReference extends Publisher implements Subscriber {
   }
 }
 
-/**
- * Forwards events from child to parent components.
- */
 class Stream extends Binding<Abstract.Value> {
   readonly key: string;
 
@@ -494,9 +461,6 @@ class Stream extends Binding<Abstract.Value> {
   }
 }
 
-/**
- * Provides properties to an HTML element and publishes it.
- */
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string> = [];
   private readonly properties: Record<string, DataSource | SideEffect> = {};
@@ -531,7 +495,6 @@ class Atom extends Publisher<HTMLElement> {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Abstract.isElement(child)) {
-                // TODO account for elements that aren't values
                 const elementChild = new Element(child, branches, this.terrain);
                 this.children.push(elementChild);
                 elementChild.subscribe({
@@ -539,11 +502,27 @@ class Atom extends Publisher<HTMLElement> {
                     htmlElementChildren.push(htmlElementChild);
                   },
                 });
-              } else if (child !== null && child !== undefined) {
-                // TODO account for strings that aren't values
-                const textContent = String(child);
+              } else if (Abstract.isValue(child)) {
+                const textContent = String(child); // TODO properly handle structures
                 this.children.push(textContent);
                 htmlElementChildren.push(textContent);
+              } else if (Abstract.isFieldReference(child)) {
+                const fieldReference = new FieldReference(child, this.terrain);
+                fieldReference.subscribe({
+                  take: populate,
+                });
+              } else if (Abstract.isMethodReference(child)) {
+                throw new ViewScriptError("not implemented"); // TODO implement
+              } else if (Abstract.isConditionalData(child)) {
+                const conditionalData = new ConditionalData(
+                  child,
+                  this.terrain
+                );
+                conditionalData.subscribe({
+                  take: populate,
+                });
+              } else {
+                throw new ViewScriptError(); // TODO should never happen, but be defensive
               }
             };
 
@@ -591,9 +570,6 @@ class Atom extends Publisher<HTMLElement> {
   }
 }
 
-/**
- * Provides properties to an element and publishes its HTML element.
- */
 class View extends Binding<HTMLElement> {
   private readonly key: string;
 
@@ -629,7 +605,7 @@ class View extends Binding<HTMLElement> {
         );
       }
 
-      if (property.kind === "inlet") {
+      if (Abstract.isDataSource(property)) {
         if (feature instanceof Stream) {
           throw new ViewScriptError(
             `Cannot construct an inlet for stream name \`${propertyKey}\``
@@ -642,10 +618,10 @@ class View extends Binding<HTMLElement> {
           );
         }
 
-        const inlet = new DataSource(property, Object.entries(this.terrain));
+        const inlet = new DataSource(property, this.terrain);
         inlet.subscribe(feature);
         this.properties[propertyKey] = inlet;
-      } else if (property.kind === "outlet") {
+      } else if (Abstract.isSideEffect(property)) {
         if (feature instanceof Field) {
           throw new ViewScriptError(
             `Cannot construct an outlet for field name \`${propertyKey}\``
@@ -669,9 +645,6 @@ class View extends Binding<HTMLElement> {
   }
 }
 
-/**
- * A special field that provides access to the window's console object.
- */
 class Console extends Field {
   constructor() {
     super({ kind: "field", key: "console", modelKey: "Console" });
@@ -680,9 +653,6 @@ class Console extends Field {
   }
 }
 
-/**
- * A special field that provides access to the browser's window object.
- */
 class Browser extends Field {
   constructor() {
     super({ kind: "field", key: "browser", modelKey: "Browser" });
@@ -691,10 +661,6 @@ class Browser extends Field {
   }
 }
 
-/**
- * Starts an abstract app.
- * Provides the entry point for ViewScript-Bridge.
- */
 export class RunningApp {
   private static readonly browser = new Browser();
   private readonly fields = { browser: RunningApp.browser };
