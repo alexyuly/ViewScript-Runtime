@@ -205,25 +205,28 @@ class Field<
   ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
-  readonly abstract: Abstract.Field<ModelKey, T>;
   readonly key: string;
-  private readonly members: Record<string, Publisher | Subscriber> = {};
+
+  private readonly abstract: Abstract.Field<ModelKey, T>;
+  private readonly initialValue?: T;
+  private readonly members: Record<string, Publisher | Subscriber>;
   private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
     super();
 
-    this.abstract = field;
     this.key = field.key;
+
+    this.abstract = field;
+    this.initialValue = field.initialValue;
+    this.members = {};
     this.modelKey = field.modelKey;
 
-    const initialValue = field.value;
-
-    if (initialValue !== undefined) {
-      this.take(initialValue);
+    if (this.initialValue !== undefined) {
+      this.take(this.initialValue);
     }
 
-    this.defineAction("reset", () => initialValue);
+    this.defineAction("reset", () => this.initialValue);
     this.defineAction("setTo", (value: T) => value);
   }
 
@@ -416,7 +419,7 @@ class SideEffect extends Binding {
 
 // TODO Implement actions.
 
-class StreamReference extends Publisher implements Subscriber {
+class StreamReference extends Binding<Abstract.Value> {
   private readonly argument?: DataSource;
   private readonly streamKey: string;
   private readonly subscriber: Subscriber;
@@ -447,7 +450,9 @@ class StreamReference extends Publisher implements Subscriber {
   }
 
   take() {
-    this.publish(this.argument?.getValue());
+    const nextValue = this.argument?.getValue();
+
+    this.publish(nextValue ?? null);
   }
 }
 
@@ -462,8 +467,8 @@ class Stream extends Binding<Abstract.Value> {
 }
 
 class Atom extends Publisher<HTMLElement> {
-  private children: Array<Element | string> = [];
-  private readonly properties: Record<string, DataSource | SideEffect> = {};
+  private children: Array<Element | string>;
+  private readonly properties: Record<string, DataSource | SideEffect>;
   private readonly tagName: string;
   private readonly terrain: Terrain;
 
@@ -475,6 +480,8 @@ class Atom extends Publisher<HTMLElement> {
   ) {
     super();
 
+    this.children = [];
+    this.properties = {};
     this.terrain = terrain;
     this.tagName = tagName;
 
@@ -574,7 +581,7 @@ class View extends Binding<HTMLElement> {
   private readonly key: string;
 
   private readonly element: Element;
-  private readonly properties: Record<string, DataSource | SideEffect> = {};
+  private readonly properties: Record<string, DataSource | SideEffect>;
   private readonly terrain: Terrain;
 
   constructor(
@@ -586,6 +593,8 @@ class View extends Binding<HTMLElement> {
     super();
 
     this.key = root.key;
+
+    this.properties = {};
     this.terrain = terrain;
 
     Object.entries(root.terrain).forEach(([featureKey, feature]) => {

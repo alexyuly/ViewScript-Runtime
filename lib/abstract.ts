@@ -1,4 +1,4 @@
-// Data Sources
+// Data Sources:
 
 /**
  * An abstract source of data feeding into a subscriber.
@@ -57,7 +57,7 @@ export type Field<
 > = Node<"field"> & {
   key: string;
   modelKey: ModelKey;
-  value?: T;
+  initialValue?: T;
 };
 
 /**
@@ -138,7 +138,7 @@ export type ConditionalData = Node<"conditionalData"> & {
   else?: DataSource;
 };
 
-// Side Effects
+// Side Effects:
 
 /**
  * An abstract sink for data flowing out of a publisher.
@@ -188,11 +188,11 @@ export type ConditionalFork = Node<"conditionalFork"> & {
   then?: Array<ActionStep>;
 };
 
-// Model & View
+// Model & View:
 
 /**
  * A template used to construct an element.
- * It has a set of fields and streams which may bind to element properties.
+ * It has a set of fields and streams which bind to element properties at runtime.
  */
 export type View = Node<"view"> & {
   key: string;
@@ -202,13 +202,14 @@ export type View = Node<"view"> & {
 
 /**
  * A template used to construct, use, and manipulate data.
+ * It has a set of fields, methods, and actions which bind to field members at runtime.
  */
 export type Model = Node<"model"> & {
   key: string;
   members: Record<string, Field | Method | Action>;
 };
 
-// Apps
+// Apps:
 
 /**
  * An abstract ViewScript app.
@@ -219,7 +220,7 @@ export type App = Node<"app"> & {
   branches: Record<string, View | Model>;
 };
 
-// Type guards
+// Type Guards:
 
 function isNode<Kind extends string>(x: unknown, kind: Kind): x is Node<Kind> {
   return typeof x === "object" && x !== null && "kind" in x && x.kind === kind;
@@ -317,7 +318,7 @@ export function isStructureField<ModelKey extends string>(
 ): field is StructureField<ModelKey> {
   return (
     isField(field) &&
-    (field["value"] === undefined || isStructure(field["value"]))
+    (field.initialValue === undefined || isStructure(field.initialValue))
   );
 }
 
