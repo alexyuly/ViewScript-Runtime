@@ -19,6 +19,9 @@ export type Value = Primitive | Structure | Element | Array<DataSource>;
  */
 export type Primitive = null | boolean | number | string;
 
+/**
+ * A node in the abstract syntax tree.
+ */
 export type Node<Kind extends string> = {
   kind: Kind;
 };

@@ -201,7 +201,7 @@ class FieldReference extends Binding<Abstract.Value> {
   }
 }
 
-class Field<
+abstract class Field<
   ModelKey extends string = string,
   T extends Abstract.Value = Abstract.Value,
 > extends Binding<T> {
@@ -247,10 +247,12 @@ class Field<
       return new ElementField(field);
     }
 
+    // TODO pass in terrain to new ArrayField
     if (Abstract.isArrayField(field)) {
       return new ArrayField(field);
     }
 
+    // TODO pass in terrain to new StructureField
     if (Abstract.isStructureField(field)) {
       return new StructureField(field);
     }
@@ -419,6 +421,32 @@ class SideEffect extends Binding {
 
 // TODO Implement actions.
 
+class Action implements Subscriber<Abstract.Value> {
+  private readonly parameter?: Abstract.Field;
+  private readonly steps: Array<Abstract.ActionStep>; // TODO should be concrete steps
+  private readonly terrain: Terrain;
+
+  constructor(action: Abstract.Action, terrain: Terrain) {
+    this.parameter = action.parameter;
+    this.steps = action.steps;
+    this.terrain = terrain;
+  }
+
+  take(value: Abstract.Value) {
+    const terrain = {
+      ...this.terrain,
+    };
+
+    if (this.parameter) {
+      terrain[this.parameter.key] = Field.create(this.parameter);
+    }
+
+    for (const step of this.steps) {
+      // TODO
+    }
+  }
+}
+
 class StreamReference extends Binding<Abstract.Value> {
   private readonly argument?: DataSource;
   private readonly streamKey: string;
@@ -482,8 +510,8 @@ class Atom extends Publisher<HTMLElement> {
 
     this.children = [];
     this.properties = {};
-    this.terrain = terrain;
     this.tagName = tagName;
+    this.terrain = terrain;
 
     const htmlElement = Dom.create(tagName);
 
