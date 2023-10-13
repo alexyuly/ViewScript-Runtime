@@ -40,6 +40,28 @@ class FieldUnknownMemberError extends ViewScriptError {
   }
 }
 
+class SideEffectConstructionError extends ViewScriptError {
+  constructor(something: unknown) {
+    super(`Cannot construct invalid side effect: ${something}`);
+  }
+}
+
+class ActionReferenceConstructionError extends ViewScriptError {
+  constructor(actionReference: Abstract.ActionReference) {
+    super(
+      `Cannot construct an action reference of unknown path to action key "${actionReference.pathToActionKey}"`
+    );
+  }
+}
+
+class StreamReferenceConstructionError extends ViewScriptError {
+  constructor(streamReference: Abstract.StreamReference) {
+    super(
+      `Cannot construct a stream reference of unknown stream key "${streamReference.streamKey}"`
+    );
+  }
+}
+
 // Publish/subscribe framework
 
 interface Subscriber<T = unknown> {
@@ -154,8 +176,8 @@ class Element extends Binding<HTMLElement> {
 }
 
 class FieldReference extends Binding<Abstract.Value> {
+  private readonly field: Field;
   private readonly pathToFieldKey: Array<string>;
-  private readonly publisher: Publisher;
 
   constructor(fieldReference: Abstract.FieldReference, terrain: Terrain) {
     super();
@@ -174,7 +196,7 @@ class FieldReference extends Binding<Abstract.Value> {
       return key;
     };
 
-    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
+    let nextMember: Field | Subscriber = terrain[getNextKey()];
 
     while (pathToFieldKey.length > 0) {
       if (
@@ -191,13 +213,13 @@ class FieldReference extends Binding<Abstract.Value> {
     if (
       typeof nextMember !== "object" ||
       nextMember === null ||
-      !(nextMember instanceof Publisher)
+      !(nextMember instanceof Field)
     ) {
       throw new FieldReferenceConstructionError(fieldReference);
     }
 
-    this.publisher = nextMember;
-    this.publisher.subscribe(this);
+    this.field = nextMember;
+    this.field.subscribe(this);
   }
 }
 
@@ -209,7 +231,7 @@ abstract class Field<
 
   private readonly abstract: Abstract.Field<ModelKey, T>;
   private readonly initialValue?: T;
-  private readonly members: Record<string, Publisher | Subscriber>;
+  private readonly members: Record<string, Field | Subscriber>; // TODO add Method to type union
   private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
@@ -275,7 +297,7 @@ abstract class Field<
     };
   }
 
-  protected defineChild(name: string, field: Field) {
+  protected defineField(name: string, field: Field) {
     this.members[name] = field;
   }
 
@@ -390,67 +412,131 @@ class ConditionalData extends Binding<Abstract.Value> {
   }
 }
 
-class SideEffect extends Binding {
-  private readonly argument?: Field;
-  private readonly subscriber: Subscriber;
+class SideEffect extends Binding<Abstract.Value> {
+  private readonly subscriber: Subscriber<Abstract.Value>;
 
   constructor(sideEffect: Abstract.SideEffect, terrain: Terrain) {
     super();
 
-    if (sideEffect.argument) {
-      this.argument = new DataSource(sideEffect.argument, terrain);
-    }
-
-    if (sideEffect.connection.kind === "output") {
-      this.subscriber = new StreamReference(sideEffect.connection, terrain);
-    } else {
+    if (Abstract.isAction(sideEffect)) {
+      this.subscriber = new Action(sideEffect, terrain);
+    } else if (Abstract.isActionReference(sideEffect)) {
+      this.subscriber = new ActionReference(sideEffect, terrain);
+    } else if (Abstract.isStreamReference(sideEffect)) {
+      this.subscriber = new StreamReference(sideEffect, terrain);
+    } else if (Abstract.isConditionalFork(sideEffect)) {
       throw new ViewScriptError(
-        `Cannot construct an outlet with connection of unknown kind "${
-          (sideEffect.connection as { kind: unknown }).kind
-        }"`
-      );
+        "Sorry, conditional forks are not yet implemented."
+      ); // TODO implement
+    } else {
+      throw new SideEffectConstructionError(sideEffect);
     }
 
     this.subscribe(this.subscriber);
   }
-
-  getArgumentValue() {
-    return this.argument?.getValue();
-  }
 }
 
-// TODO Implement actions.
-
 class Action implements Subscriber<Abstract.Value> {
-  private readonly parameter?: Abstract.Field;
-  private readonly steps: Array<Abstract.ActionStep>; // TODO should be concrete steps
-  private readonly terrain: Terrain;
+  private readonly parameter?: Field;
+  private readonly steps: Array<ActionReference | StreamReference>;
 
   constructor(action: Abstract.Action, terrain: Terrain) {
-    this.parameter = action.parameter;
-    this.steps = action.steps;
-    this.terrain = terrain;
+    const stepTerrain = { ...terrain };
+
+    if (action.parameter) {
+      this.parameter = Field.create(action.parameter);
+      stepTerrain[this.parameter.key] = this.parameter;
+    }
+
+    this.steps = action.steps.map((step) => {
+      if (Abstract.isActionReference(step)) {
+        return new ActionReference(step, terrain);
+      }
+
+      if (Abstract.isStreamReference(step)) {
+        return new StreamReference(step, terrain);
+      }
+
+      throw new ViewScriptError(
+        "Sorry, conditional forks are not yet implemented."
+      ); // TODO implement
+    });
   }
 
   take(value: Abstract.Value) {
-    const terrain = {
-      ...this.terrain,
+    if (this.parameter) {
+      this.parameter.take(value);
+    }
+
+    this.steps.forEach((step) => {
+      step.take();
+    });
+  }
+}
+
+class ActionReference extends Binding<Abstract.Value> {
+  private readonly action: Action;
+  private readonly argument?: DataSource;
+  private readonly pathToActionKey: Array<string>;
+
+  constructor(actionReference: Abstract.ActionReference, terrain: Terrain) {
+    super();
+
+    if (actionReference.argument) {
+      this.argument = new DataSource(actionReference.argument, terrain);
+    }
+
+    this.pathToActionKey = actionReference.pathToActionKey;
+
+    const pathToFieldKey = [...this.pathToActionKey];
+
+    const getNextKey = () => {
+      const key = pathToFieldKey.shift();
+
+      if (!key) {
+        throw new ActionReferenceConstructionError(actionReference);
+      }
+
+      return key;
     };
 
-    if (this.parameter) {
-      terrain[this.parameter.key] = Field.create(this.parameter);
+    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
+
+    while (pathToFieldKey.length > 0) {
+      if (
+        typeof nextMember !== "object" ||
+        nextMember === null ||
+        !(nextMember instanceof Field)
+      ) {
+        break;
+      }
+
+      nextMember = nextMember.getMember(getNextKey());
     }
 
-    for (const step of this.steps) {
-      // TODO
+    if (
+      typeof nextMember !== "object" ||
+      nextMember === null ||
+      !(nextMember instanceof Action)
+    ) {
+      throw new ActionReferenceConstructionError(actionReference);
     }
+
+    this.action = nextMember;
+    this.subscribe(this.action);
+  }
+
+  take() {
+    const nextValue = this.argument?.getValue();
+
+    this.publish(nextValue ?? null);
   }
 }
 
 class StreamReference extends Binding<Abstract.Value> {
   private readonly argument?: DataSource;
   private readonly streamKey: string;
-  private readonly subscriber: Subscriber;
+  private readonly subscriber: Stream;
 
   constructor(streamReference: Abstract.StreamReference, terrain: Terrain) {
     super();
@@ -461,16 +547,14 @@ class StreamReference extends Binding<Abstract.Value> {
 
     this.streamKey = streamReference.streamKey;
 
-    let nextMember: Publisher | Subscriber = terrain[this.streamKey];
+    let nextMember = terrain[this.streamKey];
 
     if (
       typeof nextMember !== "object" ||
       nextMember === null ||
-      !("take" in nextMember)
+      !(nextMember instanceof Stream)
     ) {
-      throw new ViewScriptError(
-        `Cannot dereference invalid stream key \`${streamReference.streamKey}\``
-      );
+      throw new StreamReferenceConstructionError(streamReference);
     }
 
     this.subscriber = nextMember;
@@ -486,13 +570,17 @@ class StreamReference extends Binding<Abstract.Value> {
 
 class Stream extends Binding<Abstract.Value> {
   readonly key: string;
+  private readonly parameter?: Abstract.Field; // TODO ?
 
   constructor(stream: Abstract.Stream) {
     super();
 
     this.key = stream.key;
+    this.parameter = stream.parameter;
   }
 }
+
+// TODO Implement ConditionalFork.
 
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Element | string>;
@@ -577,21 +665,14 @@ class Atom extends Publisher<HTMLElement> {
         dataSource.subscribe({ take });
         this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
-        const outlet = new SideEffect(property, terrain);
+        const sideEffect = new SideEffect(property, terrain);
 
-        new (class AtomicEventPublisher extends Publisher {
-          constructor() {
-            super();
+        Dom.listen(htmlElement, propertyKey, (event) => {
+          // TODO Transform these events into something that a side effect can take:
+          sideEffect.take(event);
+        });
 
-            this.subscribe(outlet);
-
-            Dom.listen(htmlElement, propertyKey, () => {
-              this.publish(outlet.getArgumentValue());
-            });
-          }
-        })();
-
-        this.properties[propertyKey] = outlet;
+        this.properties[propertyKey] = sideEffect;
       } else {
         throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
@@ -645,29 +726,29 @@ class View extends Binding<HTMLElement> {
       if (Abstract.isDataSource(property)) {
         if (feature instanceof Stream) {
           throw new ViewScriptError(
-            `Cannot construct an inlet for stream name \`${propertyKey}\``
+            `Cannot construct a data source for stream name \`${propertyKey}\``
           );
         }
 
         if (feature.getValue() !== undefined) {
           throw new ViewScriptError(
-            `Cannot construct an inlet for private field name \`${propertyKey}\``
+            `Cannot construct a data source for private field name \`${propertyKey}\``
           );
         }
 
-        const inlet = new DataSource(property, this.terrain);
-        inlet.subscribe(feature);
-        this.properties[propertyKey] = inlet;
+        const dataSource = new DataSource(property, this.terrain);
+        dataSource.subscribe(feature);
+        this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
         if (feature instanceof Field) {
           throw new ViewScriptError(
-            `Cannot construct an outlet for field name \`${propertyKey}\``
+            `Cannot construct an sideEffect for field name \`${propertyKey}\``
           );
         }
 
-        const outlet = new SideEffect(property, this.terrain);
-        feature.subscribe(outlet);
-        this.properties[propertyKey] = outlet;
+        const sideEffect = new SideEffect(property, this.terrain);
+        feature.subscribe(sideEffect);
+        this.properties[propertyKey] = sideEffect;
       } else {
         throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
@@ -682,6 +763,8 @@ class View extends Binding<HTMLElement> {
   }
 }
 
+// TODO Implement models.
+
 class Console extends Field {
   constructor() {
     super({ kind: "field", key: "console", modelKey: "Console" });
@@ -694,7 +777,7 @@ class Browser extends Field {
   constructor() {
     super({ kind: "field", key: "browser", modelKey: "Browser" });
 
-    this.defineChild("console", new Console());
+    this.defineField("console", new Console());
   }
 }
 

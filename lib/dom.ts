@@ -55,13 +55,13 @@ export const attribute = (
 export const listen = (
   element: HTMLElement,
   event: string,
-  callback: () => void
+  callback: (value: Event) => void
 ) => {
-  element.addEventListener(event, () => {
+  element.addEventListener(event, (value) => {
     window.console.log(
       `[DOM] 🔥 Fire ${event} on <${element.tagName.toLowerCase()}>`
     );
-    callback();
+    callback(value);
   });
 };
 
