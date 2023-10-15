@@ -218,7 +218,7 @@ export type Model = Node<"model"> & {
  * An abstract ViewScript app.
  */
 export type App = Node<"app"> & {
-  version: "ViewScript v0.4.0";
+  version: "ViewScript v0.3.4";
   root: View;
   branches: Record<string, View | Model>;
 };
@@ -226,7 +226,12 @@ export type App = Node<"app"> & {
 // Type Guards:
 
 function isNode<Kind extends string>(x: unknown, kind: Kind): x is Node<Kind> {
-  return typeof x === "object" && x !== null && "kind" in x && x.kind === kind;
+  return (
+    x !== null &&
+    (typeof x === "object" || typeof x === "function") &&
+    "kind" in x &&
+    x.kind === kind
+  );
 }
 
 export function isAction(node: unknown): node is Action {

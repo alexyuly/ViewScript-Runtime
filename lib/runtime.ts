@@ -149,22 +149,14 @@ class FieldReference extends Binding<Abstract.Value> {
     let nextMember: Field | Subscriber = terrain[getNextKey()];
 
     while (pathToFieldKey.length > 0) {
-      if (
-        typeof nextMember !== "object" ||
-        nextMember === null ||
-        !(nextMember instanceof Field)
-      ) {
+      if (!(nextMember instanceof Field)) {
         break;
       }
 
       nextMember = nextMember.getMember(getNextKey());
     }
 
-    if (
-      typeof nextMember !== "object" ||
-      nextMember === null ||
-      !(nextMember instanceof Field)
-    ) {
+    if (!(nextMember instanceof Field)) {
       throw new ViewScriptError(
         `Cannot construct a field reference of unknown path to field key "${fieldReference.pathToFieldKey}"`
       );
@@ -467,22 +459,14 @@ class ActionReference extends Binding<Abstract.Value> {
     let nextMember: Publisher | Subscriber = terrain[getNextKey()];
 
     while (pathToFieldKey.length > 0) {
-      if (
-        typeof nextMember !== "object" ||
-        nextMember === null ||
-        !(nextMember instanceof Field)
-      ) {
+      if (!(nextMember instanceof Field)) {
         break;
       }
 
       nextMember = nextMember.getMember(getNextKey());
     }
 
-    if (
-      typeof nextMember !== "object" ||
-      nextMember === null ||
-      !(nextMember instanceof Action)
-    ) {
+    if (!(nextMember instanceof Action)) {
       throw new ViewScriptError(
         `Cannot construct an action reference of unknown path to action key "${actionReference.pathToActionKey}"`
       );
@@ -515,11 +499,7 @@ class StreamReference extends Binding<Abstract.Value> {
 
     let nextMember = terrain[this.streamKey];
 
-    if (
-      typeof nextMember !== "object" ||
-      nextMember === null ||
-      !(nextMember instanceof Stream)
-    ) {
+    if (!(nextMember instanceof Stream)) {
       throw new ViewScriptError(
         `Cannot construct a stream reference of unknown stream key "${streamReference.streamKey}"`
       );
