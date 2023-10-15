@@ -250,11 +250,6 @@ abstract class Field<
     const methodMember = new Method(method, this.members);
     this.subscribe(methodMember);
     this.members[name] = methodMember;
-
-    // (event) => {
-    //   const nextValue = method(event);
-    //   return nextValue;
-    // };
   }
 
   getMember(name: string) {
@@ -286,6 +281,12 @@ class BooleanField extends Field<"Boolean", boolean> {
     this.defineAction("disable", () => false);
     this.defineAction("enable", () => true);
     this.defineAction("toggle", () => !this.getValue());
+
+    this.defineMethod(
+      "and",
+      (argument) => Boolean(this.getValue()) && Boolean(argument)
+    );
+    this.defineMethod("not", () => !this.getValue());
   }
 }
 
@@ -295,19 +296,24 @@ class NumberField extends Field<"Number", number> {
 
     this.defineAction(
       "add",
-      (amount?: Abstract.Value) =>
-        Number(this.getValue() || 0) + Number(amount || 0)
+      (argument) => Number(this.getValue() || 0) + Number(argument || 0)
     );
     this.defineAction(
       "multiplyBy",
-      (amount?: Abstract.Value) =>
-        Number(this.getValue() || 0) * Number(amount || 0)
+      (argument) => Number(this.getValue() || 0) * Number(argument || 0)
     );
+
     this.defineMethod(
       "isAtLeast",
-      (amount?: Abstract.Value) =>
-        !Number.isNaN(Number(amount)) &&
-        Number(this.getValue() || 0) >= Number(amount || 0)
+      (argument) =>
+        !Number.isNaN(Number(argument)) &&
+        Number(this.getValue() || 0) >= Number(argument || 0)
+    );
+    this.defineMethod(
+      "isExactly",
+      (argument) =>
+        !Number.isNaN(Number(argument)) &&
+        Number(this.getValue() || 0) === Number(argument || 0)
     );
   }
 }
