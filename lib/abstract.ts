@@ -129,7 +129,7 @@ export type ConditionalData = Node<"conditionalData"> & {
 // Side Effects:
 
 /**
- * An abstract sink for data flowing out of a publisher.
+ * An abstract drain for data flowing out of a publisher.
  */
 export type SideEffect = Action | ActionStep;
 
@@ -168,7 +168,6 @@ export type StreamReference = Node<"streamReference"> & {
  */
 export type Stream = Node<"stream"> & {
   key: string;
-  parameter?: Field;
 };
 
 /**

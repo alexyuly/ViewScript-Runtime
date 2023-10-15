@@ -52,13 +52,13 @@ abstract class Binding<T = unknown>
 
 type ActionStep = ActionReference | StreamReference;
 
-type BasicAction = (argument?: Abstract.Value) => void;
+type BasicAction = (argument: Abstract.Value) => Abstract.Value | void;
 
-type BasicMethod = (argument?: Abstract.Value) => Abstract.Value;
+type BasicMethod = (argument: Abstract.Value) => Abstract.Value;
 
-type Terrain = Record<string, Stream | Field>;
+type Terrain = Record<string, TerrainFeature>;
 
-type TerrainMember = Stream | Field | Action | Method;
+type TerrainFeature = Stream | Field | Action | Method;
 
 // Concrete representations of abstract types
 
@@ -156,7 +156,7 @@ class FieldReference extends Binding<Abstract.Value> {
       return key;
     };
 
-    let nextMember: TerrainMember = terrain[getNextKey()];
+    let nextMember: TerrainFeature = terrain[getNextKey()];
 
     while (pathToFieldKey.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -201,7 +201,7 @@ abstract class Field<
     }
 
     this.defineAction("reset", () => this.initialValue);
-    this.defineAction("setTo", (value?: T) => value);
+    this.defineAction("setTo", (value) => value);
   }
 
   static create(field: Abstract.Field): Field {
@@ -240,28 +240,21 @@ abstract class Field<
     this.members[name] = field;
   }
 
-  protected defineAction<Argument extends Abstract.Value>(
-    name: string,
-    reducer: (argument?: Argument) => T | void
-  ) {
-    this.members[name] = new Action((event) => {
-      const nextValue = reducer(event as Argument);
-
-      if (nextValue !== undefined) {
-        this.take(nextValue);
-      }
-    }, {});
+  protected defineAction(name: string, action: BasicAction) {
+    const actionMember = new Action(action, this.members);
+    actionMember.subscribe(this);
+    this.members[name] = actionMember;
   }
 
-  protected defineMethod<Argument extends Abstract.Value>(
-    name: string,
-    reducer: (argument?: Argument) => Abstract.Value
-  ) {
-    this.members[name] = new Method((event) => {
-      const nextValue = reducer(event as Argument);
+  protected defineMethod(name: string, method: BasicMethod) {
+    const methodMember = new Method(method, this.members);
+    this.subscribe(methodMember);
+    this.members[name] = methodMember;
 
-      return nextValue;
-    }, {});
+    // (event) => {
+    //   const nextValue = method(event);
+    //   return nextValue;
+    // };
   }
 
   getMember(name: string) {
@@ -302,15 +295,19 @@ class NumberField extends Field<"Number", number> {
 
     this.defineAction(
       "add",
-      (amount?: number) => Number(this.getValue() || 0) + Number(amount || 0)
+      (amount?: Abstract.Value) =>
+        Number(this.getValue() || 0) + Number(amount || 0)
     );
     this.defineAction(
       "multiplyBy",
-      (amount?: number) => Number(this.getValue() || 0) * Number(amount || 0)
+      (amount?: Abstract.Value) =>
+        Number(this.getValue() || 0) * Number(amount || 0)
     );
     this.defineMethod(
       "isAtLeast",
-      (amount?: number) => Number(this.getValue() || 0) >= Number(amount || 0)
+      (amount?: Abstract.Value) =>
+        !Number.isNaN(Number(amount)) &&
+        Number(this.getValue() || 0) >= Number(amount || 0)
     );
   }
 }
@@ -342,7 +339,7 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
 
     this.defineAction(
       "push",
-      (item = null) =>
+      (item) =>
         (this.getValue() || []).concat?.(
           item instanceof Array ? [item] : item
         ) || [item]
@@ -350,8 +347,12 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
   }
 }
 
-class MethodReference extends Binding<Abstract.Value> {
-  readonly argument?: DataSource;
+// TODO handle higher-order methods
+class MethodReference
+  extends Publisher<Abstract.Value>
+  implements Subscriber<void>
+{
+  private readonly argument?: DataSource;
   private readonly method: Method;
   private readonly pathToMethodKey: Array<string>;
 
@@ -378,7 +379,7 @@ class MethodReference extends Binding<Abstract.Value> {
       return key;
     };
 
-    let nextMember: TerrainMember = terrain[getNextKey()];
+    let nextMember: TerrainFeature = terrain[getNextKey()];
 
     while (pathToMethodKey.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -394,48 +395,65 @@ class MethodReference extends Binding<Abstract.Value> {
       );
     }
 
+    this.argument =
+      methodReference.argument === undefined
+        ? undefined
+        : new DataSource(methodReference.argument, terrain);
+
     this.method = nextMember;
-    this.method.subscribe(this);
+    this.method.connect(this, terrain, this.argument);
+  }
+
+  take() {
+    const nextValue = this.method.call(this.argument?.getValue() ?? null);
+
+    if (nextValue !== undefined) {
+      this.publish(nextValue);
+    }
   }
 }
 
 class Method extends Binding<Abstract.Value> {
-  private readonly parameter?: Field;
-  private readonly result: DataSource | BasicMethod;
+  private readonly method: BasicMethod | Abstract.Method;
+  private readonly terrain: Terrain;
 
-  constructor(method: Abstract.Method | BasicMethod, terrain: Terrain) {
+  constructor(method: BasicMethod | Abstract.Method, terrain: Terrain) {
     super();
 
-    if (typeof method === "function") {
-      this.result = method;
-    } else {
-      const stepTerrain = { ...terrain };
-
-      if (method.parameter) {
-        this.parameter = Field.create(method.parameter);
-        stepTerrain[this.parameter.key] = this.parameter;
-      }
-
-      this.result = new DataSource(method.result, stepTerrain);
-      this.result.subscribe(this);
-    }
+    this.method = method;
+    this.terrain = terrain;
   }
 
-  subscribe(listener: MethodReference) {
-    if (this.parameter && listener.argument) {
-      this.parameter.subscribe(listener.argument);
+  call(argument: Abstract.Value) {
+    if (typeof this.method !== "function") {
+      throw new ViewScriptError(`An abstract method cannot be called.`);
     }
 
-    super.subscribe(listener);
+    const nextValue = this.method(argument);
+
+    return nextValue;
   }
 
-  take(value: Abstract.Value) {
-    if (typeof this.result === "function") {
-      const nextResult = this.result(value);
-      this.publish(nextResult);
-    } else if (this.parameter) {
-      this.parameter.take(value);
+  connect(
+    methodReference: MethodReference,
+    terrain: Terrain,
+    argument?: DataSource
+  ) {
+    if (typeof this.method === "function") {
+      this.subscribe(methodReference);
+      return;
     }
+
+    const stepTerrain = { ...this.terrain, ...terrain };
+
+    if (this.method.parameter !== undefined && argument !== undefined) {
+      const parameter = Field.create(this.method.parameter);
+      argument.subscribe(parameter);
+      stepTerrain[parameter.key] = parameter;
+    }
+
+    const result = new DataSource(this.method.result, stepTerrain);
+    result.subscribe(methodReference);
   }
 }
 
@@ -459,7 +477,6 @@ class ConditionalData extends Binding<Abstract.Value> {
 
   take(value: Abstract.Value) {
     const nextValue = (value ? this.then : this.else)?.getValue();
-
     this.publish(nextValue ?? null);
   }
 }
@@ -490,48 +507,67 @@ class SideEffect extends Binding<Abstract.Value> {
   }
 }
 
-class Action implements Subscriber<Abstract.Value> {
-  private readonly parameter?: Field;
-  private readonly steps: Array<ActionStep> | BasicAction;
+class Action extends Binding<Abstract.Value> {
+  private readonly action: BasicAction | Abstract.Action;
+  private readonly terrain: Terrain;
 
-  constructor(action: Abstract.Action | BasicAction, terrain: Terrain) {
-    if (typeof action === "function") {
-      this.steps = action;
-    } else {
-      const stepTerrain = { ...terrain };
+  constructor(action: BasicAction | Abstract.Action, terrain: Terrain) {
+    super();
 
-      if (action.parameter) {
-        this.parameter = Field.create(action.parameter);
-        stepTerrain[this.parameter.key] = this.parameter;
+    this.action = action;
+    this.terrain = terrain;
+  }
+
+  connect(
+    actionReference: ActionReference,
+    terrain: Terrain,
+    argument?: DataSource
+  ) {
+    if (typeof this.action === "function") {
+      actionReference.subscribe(this);
+      return;
+    }
+
+    const stepTerrain = { ...this.terrain, ...terrain };
+
+    if (this.action.parameter !== undefined && argument !== undefined) {
+      const parameter = Field.create(this.action.parameter);
+      argument.subscribe(parameter);
+      stepTerrain[parameter.key] = parameter;
+    }
+
+    const steps: Array<ActionStep> = this.action.steps.map((step) => {
+      if (Abstract.isActionReference(step)) {
+        return new ActionReference(step, stepTerrain);
       }
 
-      this.steps = action.steps.map((step) => {
-        if (Abstract.isActionReference(step)) {
-          return new ActionReference(step, stepTerrain);
-        }
+      if (Abstract.isStreamReference(step)) {
+        return new StreamReference(step, stepTerrain);
+      }
 
-        if (Abstract.isStreamReference(step)) {
-          return new StreamReference(step, stepTerrain);
-        }
+      throw new ViewScriptError(
+        "Sorry, conditional forks are not yet implemented."
+      ); // TODO implement
+    });
 
-        throw new ViewScriptError(
-          "Sorry, conditional forks are not yet implemented."
-        ); // TODO implement
-      });
-    }
+    actionReference.subscribe({
+      take: () => {
+        steps.forEach((step) => {
+          step.take();
+        });
+      },
+    });
   }
 
   take(value: Abstract.Value) {
-    if (typeof this.steps === "function") {
-      this.steps(value);
-    } else {
-      if (this.parameter) {
-        this.parameter.take(value);
-      }
+    if (typeof this.action !== "function") {
+      throw new ViewScriptError(`An abstract action cannot take values.`);
+    }
 
-      this.steps.forEach((step) => {
-        step.take();
-      });
+    const nextValue = this.action(value);
+
+    if (nextValue !== undefined) {
+      this.publish(nextValue);
     }
   }
 }
@@ -546,10 +582,6 @@ class ActionReference
 
   constructor(actionReference: Abstract.ActionReference, terrain: Terrain) {
     super();
-
-    if (actionReference.argument) {
-      this.argument = new DataSource(actionReference.argument, terrain);
-    }
 
     this.pathToActionKey = actionReference.pathToActionKey;
 
@@ -567,7 +599,7 @@ class ActionReference
       return key;
     };
 
-    let nextMember: TerrainMember = terrain[getNextKey()];
+    let nextMember: TerrainFeature = terrain[getNextKey()];
 
     while (pathToActionKey.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -583,13 +615,17 @@ class ActionReference
       );
     }
 
+    this.argument =
+      actionReference.argument === undefined
+        ? undefined
+        : new DataSource(actionReference.argument, terrain);
+
     this.action = nextMember;
-    this.subscribe(this.action);
+    this.action.connect(this, terrain, this.argument);
   }
 
   take() {
     const nextValue = this.argument?.getValue();
-
     this.publish(nextValue ?? null);
   }
 }
@@ -625,32 +661,17 @@ class StreamReference
 
   take() {
     const nextValue = this.argument?.getValue();
-
     this.publish(nextValue ?? null);
   }
 }
 
 class Stream extends Binding<Abstract.Value> {
   readonly key: string;
-  private readonly parameter?: Field;
 
   constructor(stream: Abstract.Stream) {
     super();
 
     this.key = stream.key;
-
-    if (stream.parameter) {
-      this.parameter = Field.create(stream.parameter);
-      this.parameter.subscribe(this);
-    }
-  }
-
-  take(value: Abstract.Value) {
-    if (this.parameter) {
-      this.parameter.take(value);
-    } else {
-      this.publish(value);
-    }
   }
 }
 
@@ -794,7 +815,9 @@ class View extends Binding<HTMLElement> {
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
       const feature = Object.values(this.terrain).find(
-        (feature) => feature.key === propertyKey
+        (feature) =>
+          (feature instanceof Stream || feature instanceof Field) &&
+          feature.key === propertyKey
       );
 
       if (feature === undefined) {
