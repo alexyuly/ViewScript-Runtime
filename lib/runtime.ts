@@ -50,14 +50,24 @@ abstract class Binding<T = unknown>
 
 // Convenient type aliases
 
-type ConcreteAction = (argument?: Abstract.Value) => void;
+type ActionStep = ActionReference | StreamReference;
 
-type Terrain = Record<string, Field | Stream>;
+type BasicAction = (argument?: Abstract.Value) => void;
+
+type BasicMethod = (argument?: Abstract.Value) => Abstract.Value;
+
+type Terrain = Record<string, Stream | Field>;
+
+type TerrainMember = Stream | Field | Action | Method;
 
 // Concrete representations of abstract types
 
 class DataSource extends Binding<Abstract.Value> {
-  private readonly publisher: Publisher<Abstract.Value>;
+  private readonly publisher:
+    | Value
+    | FieldReference
+    | MethodReference
+    | ConditionalData;
 
   constructor(dataSource: Abstract.DataSource, terrain: Terrain) {
     super();
@@ -67,7 +77,7 @@ class DataSource extends Binding<Abstract.Value> {
     } else if (Abstract.isFieldReference(dataSource)) {
       this.publisher = new FieldReference(dataSource, terrain);
     } else if (Abstract.isMethodReference(dataSource)) {
-      throw new ViewScriptError("Sorry, methods are not yet implemented."); // TODO implement
+      this.publisher = new MethodReference(dataSource, terrain);
     } else if (Abstract.isConditionalData(dataSource)) {
       this.publisher = new ConditionalData(dataSource, terrain);
     } else {
@@ -80,7 +90,7 @@ class DataSource extends Binding<Abstract.Value> {
   }
 }
 
-class Value<T extends Abstract.Value> extends Publisher<T> {
+class Value<T extends Abstract.Value = Abstract.Value> extends Publisher<T> {
   constructor(value: T) {
     super();
 
@@ -146,7 +156,7 @@ class FieldReference extends Binding<Abstract.Value> {
       return key;
     };
 
-    let nextMember: Field | Subscriber = terrain[getNextKey()];
+    let nextMember: TerrainMember = terrain[getNextKey()];
 
     while (pathToFieldKey.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -174,7 +184,7 @@ abstract class Field<
   readonly key: string;
 
   private readonly initialValue?: T;
-  private readonly members: Record<string, Field | Action>; // TODO add Method to type union
+  private readonly members: Record<string, Field | Action | Method>;
   private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
@@ -191,7 +201,7 @@ abstract class Field<
     }
 
     this.defineAction("reset", () => this.initialValue);
-    this.defineAction("setTo", (value: T) => value);
+    this.defineAction("setTo", (value?: T) => value);
   }
 
   static create(field: Abstract.Field): Field {
@@ -226,9 +236,13 @@ abstract class Field<
     );
   }
 
+  protected defineField(name: string, field: Field) {
+    this.members[name] = field;
+  }
+
   protected defineAction<Argument extends Abstract.Value>(
     name: string,
-    reducer: (argument: Argument) => T | void
+    reducer: (argument?: Argument) => T | void
   ) {
     this.members[name] = new Action((event) => {
       const nextValue = reducer(event as Argument);
@@ -239,8 +253,15 @@ abstract class Field<
     }, {});
   }
 
-  protected defineField(name: string, field: Field) {
-    this.members[name] = field;
+  protected defineMethod<Argument extends Abstract.Value>(
+    name: string,
+    reducer: (argument?: Argument) => Abstract.Value
+  ) {
+    this.members[name] = new Method((event) => {
+      const nextValue = reducer(event as Argument);
+
+      return nextValue;
+    }, {});
   }
 
   getMember(name: string) {
@@ -281,16 +302,16 @@ class NumberField extends Field<"Number", number> {
 
     this.defineAction(
       "add",
-      (amount: number) => Number(this.getValue() || 0) + Number(amount || 0)
+      (amount?: number) => Number(this.getValue() || 0) + Number(amount || 0)
     );
     this.defineAction(
       "multiplyBy",
-      (amount: number) => Number(this.getValue() || 0) * Number(amount || 0)
+      (amount?: number) => Number(this.getValue() || 0) * Number(amount || 0)
     );
-    // this.defineMethod(
-    //   "isAtLeast",
-    //   (amount: number): boolean => (this.getValue() ?? 0) >= amount
-    // );
+    this.defineMethod(
+      "isAtLeast",
+      (amount?: number) => Number(this.getValue() || 0) >= Number(amount || 0)
+    );
   }
 }
 
@@ -321,7 +342,7 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
 
     this.defineAction(
       "push",
-      (item) =>
+      (item = null) =>
         (this.getValue() || []).concat?.(
           item instanceof Array ? [item] : item
         ) || [item]
@@ -329,7 +350,94 @@ class ArrayField extends Field<"Array", Array<Abstract.DataSource>> {
   }
 }
 
-// TODO Implement methods.
+class MethodReference extends Binding<Abstract.Value> {
+  readonly argument?: DataSource;
+  private readonly method: Method;
+  private readonly pathToMethodKey: Array<string>;
+
+  constructor(methodReference: Abstract.MethodReference, terrain: Terrain) {
+    super();
+
+    if (methodReference.argument) {
+      this.argument = new DataSource(methodReference.argument, terrain);
+    }
+
+    this.pathToMethodKey = methodReference.pathToMethodKey;
+
+    const pathToMethodKey = [...this.pathToMethodKey];
+
+    const getNextKey = () => {
+      const key = pathToMethodKey.shift();
+
+      if (!key) {
+        throw new ViewScriptError(
+          `Cannot construct a method reference of unknown path to method key "${methodReference.pathToMethodKey}"`
+        );
+      }
+
+      return key;
+    };
+
+    let nextMember: TerrainMember = terrain[getNextKey()];
+
+    while (pathToMethodKey.length > 0) {
+      if (!(nextMember instanceof Field)) {
+        break;
+      }
+
+      nextMember = nextMember.getMember(getNextKey());
+    }
+
+    if (!(nextMember instanceof Method)) {
+      throw new ViewScriptError(
+        `Cannot construct a method reference of unknown path to method key "${methodReference.pathToMethodKey}"`
+      );
+    }
+
+    this.method = nextMember;
+    this.method.subscribe(this);
+  }
+}
+
+class Method extends Binding<Abstract.Value> {
+  private readonly parameter?: Field;
+  private readonly result: DataSource | BasicMethod;
+
+  constructor(method: Abstract.Method | BasicMethod, terrain: Terrain) {
+    super();
+
+    if (typeof method === "function") {
+      this.result = method;
+    } else {
+      const stepTerrain = { ...terrain };
+
+      if (method.parameter) {
+        this.parameter = Field.create(method.parameter);
+        stepTerrain[this.parameter.key] = this.parameter;
+      }
+
+      this.result = new DataSource(method.result, stepTerrain);
+      this.result.subscribe(this);
+    }
+  }
+
+  subscribe(listener: MethodReference) {
+    if (this.parameter && listener.argument) {
+      this.parameter.subscribe(listener.argument);
+    }
+
+    super.subscribe(listener);
+  }
+
+  take(value: Abstract.Value) {
+    if (typeof this.result === "function") {
+      const nextResult = this.result(value);
+      this.publish(nextResult);
+    } else if (this.parameter) {
+      this.parameter.take(value);
+    }
+  }
+}
 
 class ConditionalData extends Binding<Abstract.Value> {
   private readonly when: DataSource;
@@ -357,7 +465,7 @@ class ConditionalData extends Binding<Abstract.Value> {
 }
 
 class SideEffect extends Binding<Abstract.Value> {
-  private readonly subscriber: Subscriber<Abstract.Value>;
+  private readonly subscriber: Action | ActionStep;
 
   constructor(sideEffect: Abstract.SideEffect, terrain: Terrain) {
     super();
@@ -384,9 +492,9 @@ class SideEffect extends Binding<Abstract.Value> {
 
 class Action implements Subscriber<Abstract.Value> {
   private readonly parameter?: Field;
-  private readonly steps: Array<Subscriber<void>> | ConcreteAction;
+  private readonly steps: Array<ActionStep> | BasicAction;
 
-  constructor(action: Abstract.Action | ConcreteAction, terrain: Terrain) {
+  constructor(action: Abstract.Action | BasicAction, terrain: Terrain) {
     if (typeof action === "function") {
       this.steps = action;
     } else {
@@ -399,11 +507,11 @@ class Action implements Subscriber<Abstract.Value> {
 
       this.steps = action.steps.map((step) => {
         if (Abstract.isActionReference(step)) {
-          return new ActionReference(step, terrain);
+          return new ActionReference(step, stepTerrain);
         }
 
         if (Abstract.isStreamReference(step)) {
-          return new StreamReference(step, terrain);
+          return new StreamReference(step, stepTerrain);
         }
 
         throw new ViewScriptError(
@@ -428,7 +536,10 @@ class Action implements Subscriber<Abstract.Value> {
   }
 }
 
-class ActionReference extends Binding<Abstract.Value> {
+class ActionReference
+  extends Publisher<Abstract.Value>
+  implements Subscriber<void>
+{
   private readonly action: Action;
   private readonly argument?: DataSource;
   private readonly pathToActionKey: Array<string>;
@@ -442,10 +553,10 @@ class ActionReference extends Binding<Abstract.Value> {
 
     this.pathToActionKey = actionReference.pathToActionKey;
 
-    const pathToFieldKey = [...this.pathToActionKey];
+    const pathToActionKey = [...this.pathToActionKey];
 
     const getNextKey = () => {
-      const key = pathToFieldKey.shift();
+      const key = pathToActionKey.shift();
 
       if (!key) {
         throw new ViewScriptError(
@@ -456,9 +567,9 @@ class ActionReference extends Binding<Abstract.Value> {
       return key;
     };
 
-    let nextMember: Publisher | Subscriber = terrain[getNextKey()];
+    let nextMember: TerrainMember = terrain[getNextKey()];
 
-    while (pathToFieldKey.length > 0) {
+    while (pathToActionKey.length > 0) {
       if (!(nextMember instanceof Field)) {
         break;
       }
@@ -483,7 +594,10 @@ class ActionReference extends Binding<Abstract.Value> {
   }
 }
 
-class StreamReference extends Binding<Abstract.Value> {
+class StreamReference
+  extends Publisher<Abstract.Value>
+  implements Subscriber<void>
+{
   private readonly argument?: DataSource;
   private readonly streamKey: string;
   private readonly stream: Stream;
@@ -595,7 +709,13 @@ class Atom extends Publisher<HTMLElement> {
                   take: populate,
                 });
               } else if (Abstract.isMethodReference(child)) {
-                throw new ViewScriptError("not implemented"); // TODO implement
+                const methodReference = new MethodReference(
+                  child,
+                  this.terrain
+                );
+                methodReference.subscribe({
+                  take: populate,
+                });
               } else if (Abstract.isConditionalData(child)) {
                 const conditionalData = new ConditionalData(
                   child,
@@ -690,19 +810,13 @@ class View extends Binding<HTMLElement> {
           );
         }
 
-        if (feature.getValue() !== undefined) {
-          throw new ViewScriptError(
-            `Cannot construct a data source for private field name \`${propertyKey}\``
-          );
-        }
-
         const dataSource = new DataSource(property, this.terrain);
         dataSource.subscribe(feature);
         this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
         if (feature instanceof Field) {
           throw new ViewScriptError(
-            `Cannot construct an sideEffect for field name \`${propertyKey}\``
+            `Cannot construct a side effect for field name \`${propertyKey}\``
           );
         }
 

@@ -105,17 +105,7 @@ export type ArrayField = Field<"Array", Array<DataSource>> & {
  */
 export type MethodReference = Node<"methodReference"> & {
   pathToMethodKey: Array<string>;
-  argument?: DataSource | MethodDelegate;
-};
-
-/**
- * An anonymous mapping of a parameter to a result.
- * It can be passed as an argument when subscribing to a method.
- * It is used to implement array methods like `map` and `filter`.
- */
-export type MethodDelegate = Node<"methodDelegate"> & {
-  parameter: Field;
-  result: DataSource;
+  argument?: DataSource;
 };
 
 /**
@@ -123,14 +113,9 @@ export type MethodDelegate = Node<"methodDelegate"> & {
  */
 export type Method = Node<"method"> & {
   key: string;
-  parameter?: Field | MethodDelegateSlot;
+  parameter?: Field;
   result: DataSource;
 };
-
-/**
- * A method parameter which accepts a method delegate as an argument.
- */
-export type MethodDelegateSlot = Node<"methodDelegateSlot">;
 
 /**
  * A conditional source of data.
@@ -157,6 +142,9 @@ export type Action = Node<"action"> & {
   steps: Array<ActionStep>;
 };
 
+/**
+ * A step taken by an action.
+ */
 export type ActionStep = ActionReference | StreamReference | ConditionalFork;
 
 /**
@@ -200,7 +188,7 @@ export type ConditionalFork = Node<"conditionalFork"> & {
 export type View = Node<"view"> & {
   key: string;
   element: Element;
-  terrain: Record<string, Field | Stream>;
+  terrain: Record<string, Stream | Field>;
 };
 
 /**
@@ -289,6 +277,10 @@ export function isField(node: unknown): node is Field {
 
 export function isFieldReference(node: unknown): node is FieldReference {
   return isNode(node, "fieldReference");
+}
+
+export function isMethod(node: unknown): node is Method {
+  return isNode(node, "method");
 }
 
 export function isMethodReference(node: unknown): node is MethodReference {
