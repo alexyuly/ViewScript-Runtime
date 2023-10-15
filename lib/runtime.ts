@@ -2,65 +2,7 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
-// Errors that may occur during initialization
-
 class ViewScriptError extends Error {}
-
-class DataSourceConstructionError extends ViewScriptError {
-  constructor(something: unknown) {
-    super(`Cannot construct invalid data source: ${something}`);
-  }
-}
-
-class ElementConstructionError extends ViewScriptError {
-  constructor(element: Abstract.Element) {
-    super(
-      `Cannot construct an element of unknown view key "${element.viewKey}"`
-    );
-  }
-}
-
-class FieldReferenceConstructionError extends ViewScriptError {
-  constructor(fieldReference: Abstract.FieldReference) {
-    super(
-      `Cannot construct a field reference of unknown path to field key "${fieldReference.pathToFieldKey}"`
-    );
-  }
-}
-
-class FieldConstructionError extends ViewScriptError {
-  constructor(field: Abstract.Field) {
-    super(`Cannot construct a field of unknown model key "${field.modelKey}"`);
-  }
-}
-
-class FieldUnknownMemberError extends ViewScriptError {
-  constructor(field: Abstract.Field, name: string) {
-    super(`Cannot get unknown member "${name}" of field "${field.key}"`);
-  }
-}
-
-class SideEffectConstructionError extends ViewScriptError {
-  constructor(something: unknown) {
-    super(`Cannot construct invalid side effect: ${something}`);
-  }
-}
-
-class ActionReferenceConstructionError extends ViewScriptError {
-  constructor(actionReference: Abstract.ActionReference) {
-    super(
-      `Cannot construct an action reference of unknown path to action key "${actionReference.pathToActionKey}"`
-    );
-  }
-}
-
-class StreamReferenceConstructionError extends ViewScriptError {
-  constructor(streamReference: Abstract.StreamReference) {
-    super(
-      `Cannot construct a stream reference of unknown stream key "${streamReference.streamKey}"`
-    );
-  }
-}
 
 // Publish/subscribe framework
 
@@ -108,6 +50,8 @@ abstract class Binding<T = unknown>
 
 // Convenient type aliases
 
+type ConcreteAction = (argument?: Abstract.Value) => void;
+
 type Terrain = Record<string, Field | Stream>;
 
 // Concrete representations of abstract types
@@ -127,7 +71,9 @@ class DataSource extends Binding<Abstract.Value> {
     } else if (Abstract.isConditionalData(dataSource)) {
       this.publisher = new ConditionalData(dataSource, terrain);
     } else {
-      throw new DataSourceConstructionError(dataSource);
+      throw new ViewScriptError(
+        `Cannot construct invalid data source: ${dataSource}`
+      );
     }
 
     this.publisher.subscribe(this);
@@ -161,7 +107,9 @@ class Element extends Binding<HTMLElement> {
       const branch = branches[element.viewKey];
 
       if (!Abstract.isView(branch)) {
-        throw new ElementConstructionError(element);
+        throw new ViewScriptError(
+          `Cannot construct an element of unknown view key "${element.viewKey}"`
+        );
       }
 
       this.publisher = new View(
@@ -190,7 +138,9 @@ class FieldReference extends Binding<Abstract.Value> {
       const key = pathToFieldKey.shift();
 
       if (!key) {
-        throw new FieldReferenceConstructionError(fieldReference);
+        throw new ViewScriptError(
+          `Cannot construct a field reference of unknown path to field key "${fieldReference.pathToFieldKey}"`
+        );
       }
 
       return key;
@@ -215,7 +165,9 @@ class FieldReference extends Binding<Abstract.Value> {
       nextMember === null ||
       !(nextMember instanceof Field)
     ) {
-      throw new FieldReferenceConstructionError(fieldReference);
+      throw new ViewScriptError(
+        `Cannot construct a field reference of unknown path to field key "${fieldReference.pathToFieldKey}"`
+      );
     }
 
     this.field = nextMember;
@@ -229,9 +181,8 @@ abstract class Field<
 > extends Binding<T> {
   readonly key: string;
 
-  private readonly abstract: Abstract.Field<ModelKey, T>;
   private readonly initialValue?: T;
-  private readonly members: Record<string, Field | Subscriber>; // TODO add Method to type union
+  private readonly members: Record<string, Field | Action>; // TODO add Method to type union
   private readonly modelKey: ModelKey;
 
   constructor(field: Abstract.Field<ModelKey, T>) {
@@ -239,7 +190,6 @@ abstract class Field<
 
     this.key = field.key;
 
-    this.abstract = field;
     this.initialValue = field.initialValue;
     this.members = {};
     this.modelKey = field.modelKey;
@@ -279,22 +229,22 @@ abstract class Field<
       return new StructureField(field);
     }
 
-    throw new FieldConstructionError(field);
+    throw new ViewScriptError(
+      `Cannot construct a field of unknown model key "${field.modelKey}"`
+    );
   }
 
   protected defineAction<Argument extends Abstract.Value>(
     name: string,
     reducer: (argument: Argument) => T | void
   ) {
-    this.members[name] = {
-      take: (event: Argument) => {
-        const nextValue = reducer(event);
+    this.members[name] = new Action((event) => {
+      const nextValue = reducer(event as Argument);
 
-        if (nextValue !== undefined) {
-          this.take(nextValue);
-        }
-      },
-    };
+      if (nextValue !== undefined) {
+        this.take(nextValue);
+      }
+    }, {});
   }
 
   protected defineField(name: string, field: Field) {
@@ -303,7 +253,9 @@ abstract class Field<
 
   getMember(name: string) {
     if (!(name in this.members)) {
-      throw new FieldUnknownMemberError(this.abstract, name);
+      throw new ViewScriptError(
+        `Cannot get unknown member "${name}" of field "${this.key}"`
+      );
     }
 
     return this.members[name];
@@ -429,7 +381,9 @@ class SideEffect extends Binding<Abstract.Value> {
         "Sorry, conditional forks are not yet implemented."
       ); // TODO implement
     } else {
-      throw new SideEffectConstructionError(sideEffect);
+      throw new ViewScriptError(
+        `Cannot construct invalid side effect: ${sideEffect}`
+      );
     }
 
     this.subscribe(this.subscriber);
@@ -438,29 +392,33 @@ class SideEffect extends Binding<Abstract.Value> {
 
 class Action implements Subscriber<Abstract.Value> {
   private readonly parameter?: Field;
-  private readonly steps: Array<ActionReference | StreamReference>;
+  private readonly steps: Array<Subscriber<void>> | ConcreteAction;
 
-  constructor(action: Abstract.Action, terrain: Terrain) {
-    const stepTerrain = { ...terrain };
+  constructor(action: Abstract.Action | ConcreteAction, terrain: Terrain) {
+    if (typeof action === "function") {
+      this.steps = action;
+    } else {
+      const stepTerrain = { ...terrain };
 
-    if (action.parameter) {
-      this.parameter = Field.create(action.parameter);
-      stepTerrain[this.parameter.key] = this.parameter;
+      if (action.parameter) {
+        this.parameter = Field.create(action.parameter);
+        stepTerrain[this.parameter.key] = this.parameter;
+      }
+
+      this.steps = action.steps.map((step) => {
+        if (Abstract.isActionReference(step)) {
+          return new ActionReference(step, terrain);
+        }
+
+        if (Abstract.isStreamReference(step)) {
+          return new StreamReference(step, terrain);
+        }
+
+        throw new ViewScriptError(
+          "Sorry, conditional forks are not yet implemented."
+        ); // TODO implement
+      });
     }
-
-    this.steps = action.steps.map((step) => {
-      if (Abstract.isActionReference(step)) {
-        return new ActionReference(step, terrain);
-      }
-
-      if (Abstract.isStreamReference(step)) {
-        return new StreamReference(step, terrain);
-      }
-
-      throw new ViewScriptError(
-        "Sorry, conditional forks are not yet implemented."
-      ); // TODO implement
-    });
   }
 
   take(value: Abstract.Value) {
@@ -468,9 +426,13 @@ class Action implements Subscriber<Abstract.Value> {
       this.parameter.take(value);
     }
 
-    this.steps.forEach((step) => {
-      step.take();
-    });
+    if (typeof this.steps === "function") {
+      this.steps(value);
+    } else {
+      this.steps.forEach((step) => {
+        step.take();
+      });
+    }
   }
 }
 
@@ -494,7 +456,9 @@ class ActionReference extends Binding<Abstract.Value> {
       const key = pathToFieldKey.shift();
 
       if (!key) {
-        throw new ActionReferenceConstructionError(actionReference);
+        throw new ViewScriptError(
+          `Cannot construct an action reference of unknown path to action key "${actionReference.pathToActionKey}"`
+        );
       }
 
       return key;
@@ -519,7 +483,9 @@ class ActionReference extends Binding<Abstract.Value> {
       nextMember === null ||
       !(nextMember instanceof Action)
     ) {
-      throw new ActionReferenceConstructionError(actionReference);
+      throw new ViewScriptError(
+        `Cannot construct an action reference of unknown path to action key "${actionReference.pathToActionKey}"`
+      );
     }
 
     this.action = nextMember;
@@ -554,7 +520,9 @@ class StreamReference extends Binding<Abstract.Value> {
       nextMember === null ||
       !(nextMember instanceof Stream)
     ) {
-      throw new StreamReferenceConstructionError(streamReference);
+      throw new ViewScriptError(
+        `Cannot construct a stream reference of unknown stream key "${streamReference.streamKey}"`
+      );
     }
 
     this.stream = nextMember;

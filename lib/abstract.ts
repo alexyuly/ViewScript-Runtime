@@ -56,11 +56,11 @@ export type FieldReference = Node<"fieldReference"> & {
  */
 export type Field<
   ModelKey extends string = string,
-  T extends Value = Value,
+  FieldValue extends Value = Value,
 > = Node<"field"> & {
   key: string;
   modelKey: ModelKey;
-  initialValue?: T;
+  initialValue?: FieldValue;
 };
 
 /**
@@ -82,7 +82,7 @@ export type StringField = Field<"String", string>;
  * A field containing structures.
  * It is validated by a model.
  */
-export type StructureField<ModelKey extends string> = Field<
+export type StructureField<ModelKey extends string = string> = Field<
   ModelKey,
   Structure
 >;
