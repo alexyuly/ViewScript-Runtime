@@ -414,13 +414,13 @@ class Action implements Subscriber<Abstract.Value> {
   }
 
   take(value: Abstract.Value) {
-    if (this.parameter) {
-      this.parameter.take(value);
-    }
-
     if (typeof this.steps === "function") {
       this.steps(value);
     } else {
+      if (this.parameter) {
+        this.parameter.take(value);
+      }
+
       this.steps.forEach((step) => {
         step.take();
       });
