@@ -1,4 +1,4 @@
-/* Tree Nodes */
+/* Nodes */
 
 export type Node<Kind extends string> = {
   kind: Kind;
@@ -12,18 +12,7 @@ export type Modeled<T extends Model> = {
   modelName?: T["name"];
 };
 
-/* Fields */
-
-export type Field<T extends Model = Model> = Node<"field"> &
-  Modeled<T> & {
-    publisher: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
-  };
-
-export type NamedField<T extends Model = Model> = Field<T> & Named;
-
-export type PublicField<T extends Model> = NamedField<T> & {
-  public: true;
-};
+/** Values */
 
 export type Value<T extends Model> = T["name"] extends "Boolean"
   ? boolean
@@ -50,15 +39,15 @@ export type StructuredData<T extends Model> = {
     : never;
 };
 
-export type Element = Node<"element"> & {
+export interface Element extends Node<"element"> {
   properties: Record<string, EventHandler | Field>;
-};
+}
 
-export interface AtomicElement extends Element {
+export interface Atom extends Element {
   tagName: string;
 }
 
-export interface ViewElement<T extends View> extends Element {
+export interface Molecule<T extends View> extends Element {
   viewName: T["name"];
   properties: {
     [Key in keyof T["terrain"]]: T["terrain"][Key] extends Stream<
@@ -70,6 +59,34 @@ export interface ViewElement<T extends View> extends Element {
       : never;
   };
 }
+
+/* Fields */
+
+export type Field<T extends Model = Model> = Node<"field"> &
+  Modeled<T> & {
+    publisher: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
+  };
+
+export type NamedField<T extends Model = Model> = Field<T> & Named;
+
+export type PublicField<T extends Model> = NamedField<T> & {
+  public: true;
+};
+
+/** Methods */
+
+export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
+  Modeled<T> & {
+    parameter?: NamedField<Parameter>;
+    result: Field<T>;
+  };
+
+export type NamedMethod<
+  T extends Model = Model,
+  Parameter extends Model = Model,
+> = Method<T, Parameter> & Named;
+
+/** Pointers */
 
 export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
@@ -86,17 +103,6 @@ export type MethodPointer<
     chainedResult?: FieldPointer<T> | MethodPointer<T>;
   };
 
-export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
-  Modeled<T> & {
-    parameter?: NamedField<Parameter>;
-    result: Field<T>;
-  };
-
-export type NamedMethod<
-  T extends Model = Model,
-  Parameter extends Model = Model,
-> = Method<T, Parameter> & Named;
-
 export type Condition<T extends Model> = Node<"condition"> &
   Modeled<T> & {
     yieldIf: Field<Model<"Boolean">>;
@@ -104,7 +110,7 @@ export type Condition<T extends Model> = Node<"condition"> &
     resultOtherwise?: Field<T>;
   };
 
-/* Event Handlers */
+/* Events */
 
 export type EventHandler<Event extends Model = Model> =
   | Action<Event>
