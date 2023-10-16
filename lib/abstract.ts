@@ -1,8 +1,5 @@
-// Tree structures and concepts:
+/* Tree Nodes */
 
-/**
- * A node in the abstract syntax tree.
- */
 export type Node<Kind extends string> = {
   kind: Kind;
 };
@@ -12,14 +9,11 @@ export type Named<Name extends string = string> = {
 };
 
 export type Modeled<T extends Model> = {
-  modelName: T["name"];
+  modelName?: T["name"];
 };
 
-// Fields:
+/* Fields */
 
-/**
- * An abstract source of data feeding into a subscriber.
- */
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
     publisher: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
@@ -27,16 +21,11 @@ export type Field<T extends Model = Model> = Node<"field"> &
 
 export type NamedField<T extends Model = Model> = Field<T> & Named;
 
-export type PublicField<T extends Model = Model> = NamedField<T> & {
+export type PublicField<T extends Model> = NamedField<T> & {
   public: true;
 };
 
-// Values:
-
-/**
- * An anonymous source of data feeding into a subscriber.
- */
-export type Value<T extends Model = Model> = T["name"] extends "Boolean"
+export type Value<T extends Model> = T["name"] extends "Boolean"
   ? boolean
   : T["name"] extends "Number"
   ? number
@@ -50,9 +39,6 @@ export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   ? Array<Field<Model<InnerModelName>>>
   : Structure<Model>;
 
-/**
- * A mapping of keys to data sources.
- */
 export type Structure<T extends Model> = Node<"structure"> &
   Modeled<T> & {
     data: StructuredData<T>;
@@ -64,41 +50,32 @@ export type StructuredData<T extends Model> = {
     : never;
 };
 
-/**
- * A binding to an HTML element.
- * It is rendered using either a view or an HTML tag name.
- */
-export type Element = Node<"element">;
-
-export type AtomicElement = Element & {
-  tagName: string;
-  properties: Record<string, Field | SideEffect>;
+export type Element = Node<"element"> & {
+  properties: Record<string, EventHandler | Field>;
 };
 
-export type ViewElement<T extends View> = Element & {
+export interface AtomicElement extends Element {
+  tagName: string;
+}
+
+export interface ViewElement<T extends View> extends Element {
   viewName: T["name"];
   properties: {
-    [Key in keyof T["terrain"]]: T["terrain"][Key] extends Stream
-      ? T["terrain"][Key]
+    [Key in keyof T["terrain"]]: T["terrain"][Key] extends Stream<
+      infer FieldModel
+    >
+      ? EventHandler<FieldModel>
       : T["terrain"][Key] extends PublicField<infer FieldModel>
       ? Field<FieldModel>
       : never;
   };
-};
+}
 
-// Other publishers of data:
-
-/**
- * A reference to a field, or a data source within its structure.
- */
 export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
     pathToField: Array<string>;
   };
 
-/**
- * A source of data from subscribing to a method.
- */
 export type MethodPointer<
   T extends Model,
   Parameter extends Model = Model,
@@ -106,18 +83,12 @@ export type MethodPointer<
   Modeled<T> & {
     pathToMethod: Array<string>;
     argument?: Field<Parameter>;
-    continuation?: FieldPointer<T> | MethodPointer<T, Parameter>;
+    chainedResult?: FieldPointer<T> | MethodPointer<T>;
   };
 
-/**
- * An identifiable mapping of an optional parameter to a result.
- */
-export type Method<
-  T extends Model = Model,
-  Parameter extends Model = Model,
-> = Node<"method"> &
+export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
   Modeled<T> & {
-    parameter?: Field<Parameter>;
+    parameter?: NamedField<Parameter>;
     result: Field<T>;
   };
 
@@ -126,101 +97,67 @@ export type NamedMethod<
   Parameter extends Model = Model,
 > = Method<T, Parameter> & Named;
 
-/**
- * A conditional source of data.
- */
 export type Condition<T extends Model> = Node<"condition"> &
   Modeled<T> & {
-    when: Field<Model<"Boolean">>;
-    then: Field<T>;
-    else?: Field<T>;
+    yieldIf: Field<Model<"Boolean">>;
+    resultOfYield: Field<T>;
+    resultOtherwise?: Field<T>;
   };
 
-// Side Effects:
+/* Event Handlers */
 
-/**
- * An abstract drain for data flowing out of a publisher.
- */
-export type SideEffect = Action | ActionStep;
+export type EventHandler<Event extends Model = Model> =
+  | Action<Event>
+  | ActionStep;
 
-/**
- * An identifiable mapping of an optional parameter to a series of steps.
- */
-export type Action<Parameter extends Model = Model> = Node<"action"> & {
-  parameter?: Field<Parameter>;
+export type Action<Event extends Model> = Node<"action"> & {
+  parameter?: NamedField<Event>;
   steps: Array<ActionStep>;
 };
 
-export type NamedAction<Parameter extends Model = Model> = Action<Parameter> &
-  Named;
+export type NamedAction<Event extends Model = Model> = Action<Event> & Named;
 
-/**
- * A step taken by an action.
- */
 export type ActionStep = ActionPointer | StreamPointer | Fork;
 
-/**
- * An aggregate side effect which results from calling an action.
- */
-export type ActionPointer<Parameter extends Model = Model> =
-  Node<"actionReference"> & {
+export type ActionPointer<Event extends Model = Model> =
+  Node<"actionPointer"> & {
     pathToAction: Array<string>;
-    argument?: Field<Parameter>;
+    argument?: Field<Event>;
   };
 
-/**
- * A reference to a stream.
- */
-export type StreamPointer<T extends Model = Model> = Node<"streamReference"> &
-  Modeled<T> & {
+export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
+  Modeled<Event> & {
     streamName: string;
   };
 
-/**
- * An identifiable channel for data flowing out of an element.
- */
-export type Stream<T extends Model = Model> = Node<"stream"> &
+export type Stream<Event extends Model = Model> = Node<"stream"> &
   Named &
-  Modeled<T>;
+  Modeled<Event>;
 
-/**
- * A conditional fork in a series of steps.
- */
 export type Fork = Node<"fork"> & {
-  when: Field<Model<"Boolean">>;
-  then?: Array<ActionStep>;
+  breakIf: Field<Model<"Boolean">>;
+  stepsBeforeBreak?: Array<ActionStep>;
 };
 
-// Applications:
+/* Views */
 
-/**
- * A template used to construct an element.
- * It has a set of fields and streams which bind to element properties at runtime.
- */
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
     element: Element;
     terrain: Record<string, Stream | NamedField>;
   };
 
-/**
- * A template used to construct, use, and manipulate data.
- * It has a set of fields, methods, and actions which bind to field members at runtime.
- */
+/* Models */
+
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
     members: Record<string, NamedField | NamedMethod | NamedAction>;
   };
 
-/**
- * An abstract ViewScript app.
- */
+/* Apps */
+
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   root: View;
   branches: Record<string, View | Model>;
 };
-
-// Type Guards:
-
-// TODO Add these as needed.
