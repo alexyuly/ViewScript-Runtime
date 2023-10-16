@@ -107,7 +107,7 @@ export type Condition<T extends Model> = Node<"condition"> &
   Modeled<T> & {
     yieldIf: Field<Model<"Boolean">>;
     resultOfYield: Field<T>;
-    resultOtherwise?: Field<T>;
+    resultOtherwise: Field<T>;
   };
 
 /* Events */
