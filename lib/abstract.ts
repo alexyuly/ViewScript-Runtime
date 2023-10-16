@@ -106,6 +106,7 @@ export type ArrayField = Field<"Array", Array<DataSource>> & {
 export type MethodReference = Node<"methodReference"> & {
   pathToMethodKey: Array<string>;
   argument?: DataSource;
+  continuation?: FieldReference | MethodReference;
 };
 
 /**

@@ -359,15 +359,12 @@ class MethodReference
   implements Subscriber<void>
 {
   private readonly argument?: DataSource;
+  private readonly continuation?: FieldReference | MethodReference;
   private readonly method: Method;
   private readonly pathToMethodKey: Array<string>;
 
   constructor(methodReference: Abstract.MethodReference, terrain: Terrain) {
     super();
-
-    if (methodReference.argument) {
-      this.argument = new DataSource(methodReference.argument, terrain);
-    }
 
     this.pathToMethodKey = methodReference.pathToMethodKey;
 
@@ -401,13 +398,18 @@ class MethodReference
       );
     }
 
-    this.argument =
-      methodReference.argument === undefined
-        ? undefined
-        : new DataSource(methodReference.argument, terrain);
+    this.argument = Abstract.isDataSource(methodReference.argument)
+      ? new DataSource(methodReference.argument, terrain)
+      : undefined;
 
     this.method = nextMember;
-    this.method.connect(this, terrain, this.argument);
+
+    this.continuation = this.method.connect(
+      this,
+      terrain,
+      this.argument,
+      methodReference.continuation
+    );
   }
 
   take() {
@@ -443,8 +445,9 @@ class Method extends Binding<Abstract.Value> {
   connect(
     methodReference: MethodReference,
     terrain: Terrain,
-    argument?: DataSource
-  ) {
+    argument?: DataSource,
+    abstractContinuation?: Abstract.MethodReference["continuation"]
+  ): FieldReference | MethodReference | undefined {
     if (typeof this.method === "function") {
       this.subscribe(methodReference);
       return;
@@ -459,6 +462,18 @@ class Method extends Binding<Abstract.Value> {
     }
 
     const result = new DataSource(this.method.result, stepTerrain);
+
+    if (abstractContinuation) {
+      const continuation = Abstract.isFieldReference(abstractContinuation)
+        ? new FieldReference(abstractContinuation, terrain) // TODO Replace terrain with method result's members
+        : new MethodReference(abstractContinuation, terrain); // TODO Replace terrain with method result's members
+
+      continuation.subscribe(result);
+      result.subscribe(continuation);
+
+      return continuation;
+    }
+
     result.subscribe(methodReference);
   }
 }
@@ -621,10 +636,9 @@ class ActionReference
       );
     }
 
-    this.argument =
-      actionReference.argument === undefined
-        ? undefined
-        : new DataSource(actionReference.argument, terrain);
+    this.argument = Abstract.isDataSource(actionReference.argument)
+      ? new DataSource(actionReference.argument, terrain)
+      : undefined;
 
     this.action = nextMember;
     this.action.connect(this, terrain, this.argument);
