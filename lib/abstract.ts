@@ -56,14 +56,12 @@ export type Field<T extends Model = Model> = Node<"field"> &
     publisher?: Value<T> | FieldPointer<T> | MethodPointer<T> | Option<T>;
   };
 
-export type NamedField<T extends Model = Model> = Named & Field<T>;
-
 export type Method<
   T extends Model = Model,
   Parameter extends Model = Model,
 > = Node<"method"> &
   Modeled<T> & {
-    parameter?: NamedField<Parameter>;
+    parameter?: Named & Field<Parameter>;
     result: Field<T>;
   };
 
@@ -91,12 +89,11 @@ export type Option<T extends Model> = Node<"option"> &
   };
 
 export type Action<Event extends Model = Model> = Node<"action"> & {
-  parameter?: NamedField<Event>;
+  parameter?: Named & Field<Event>;
   steps: Array<ActionPointer | StreamPointer | Exception>;
 };
 
 export type Stream<Event extends Model = Model> = Node<"stream"> &
-  Named &
   Modeled<Event>;
 
 export type ActionPointer<Event extends Model = Model> =
@@ -118,12 +115,12 @@ export type Exception = Node<"exception"> & {
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
     renders: Renderable;
-    members: Record<string, Stream | NamedField>;
+    members: Record<string, Stream | Field>;
   };
 
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
-    members: Record<string, NamedField | (Named & Method) | (Named & Action)>;
+    members: Record<string, Field | Method | Action>;
   };
 
 export type App = Node<"app"> & {
