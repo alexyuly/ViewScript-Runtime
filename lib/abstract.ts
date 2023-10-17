@@ -16,13 +16,33 @@ export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   ? number
   : T["name"] extends "String"
   ? string
-  : T["name"] extends "Element"
-  ? Atom | Molecule
+  : T["name"] extends "Renderable"
+  ? Renderable
   : T["name"] extends "Array"
   ? Array<Field>
   : T["name"] extends `Array of ${infer InnerModelName}`
   ? Array<Field<Model<InnerModelName>>>
   : Structure<Model>;
+
+export type Renderable = Node<"renderable"> & {
+  body: Atom | Organism;
+};
+
+export type Atom = Node<"atom"> & {
+  tagName: string;
+  properties: Record<string, EventHandler | Field>;
+};
+
+export type Organism<T extends View = View> = Node<"organism"> & {
+  viewName: T["name"];
+  properties: {
+    [Key in keyof T["members"]]?: T["members"][Key] extends Stream<
+      infer FieldModel
+    >
+      ? EventHandler<FieldModel>
+      : T["members"][Key];
+  };
+};
 
 export type Structure<T extends Model> = Node<"structure"> &
   Modeled<T> & {
@@ -32,22 +52,6 @@ export type Structure<T extends Model> = Node<"structure"> &
         : never;
     };
   };
-
-export type Atom = Node<"atom"> & {
-  tagName: string;
-  properties: Record<string, EventHandler | Field>;
-};
-
-export type Molecule<T extends View = View> = Node<"molecule"> & {
-  viewName: T["name"];
-  properties: {
-    [Key in keyof T["terrain"]]?: T["terrain"][Key] extends Stream<
-      infer FieldModel
-    >
-      ? EventHandler<FieldModel>
-      : T["terrain"][Key];
-  };
-};
 
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
@@ -124,8 +128,8 @@ export type Fork = Node<"fork"> & {
 
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
-    element: Atom | Molecule;
-    terrain: Record<string, Stream | NamedField>;
+    renders: Renderable;
+    members: Record<string, Stream | NamedField>;
   };
 
 export type Model<Name extends string = string> = Node<"model"> &
@@ -135,6 +139,6 @@ export type Model<Name extends string = string> = Node<"model"> &
 
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
-  root: Atom | Molecule;
-  branches: Record<string, View | Model>;
+  renders: Renderable;
+  members: Record<string, View | Model>;
 };
