@@ -56,24 +56,22 @@ export type Field<T extends Model = Model> = Node<"field"> &
     publisher?: Value<T> | FieldPointer<T> | MethodPointer<T> | Option<T>;
   };
 
-export type NamedField<T extends Model = Model> = Field<T> & Named;
+export type NamedField<T extends Model = Model> = Named & Field<T>;
+
+export type Method<
+  T extends Model = Model,
+  Parameter extends Model = Model,
+> = Node<"method"> &
+  Modeled<T> & {
+    parameter?: NamedField<Parameter>;
+    result: Field<T>;
+  };
 
 export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
     leader?: FieldPointer<T> | MethodPointer<T>;
     fieldPath: Array<string>;
   };
-
-export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
-  Modeled<T> & {
-    parameter?: NamedField<Parameter>;
-    result: Field<T>;
-  };
-
-export type NamedMethod<
-  T extends Model = Model,
-  Parameter extends Model = Model,
-> = Method<T, Parameter> & Named;
 
 export type MethodPointer<
   T extends Model,
@@ -94,12 +92,12 @@ export type Option<T extends Model> = Node<"option"> &
 
 export type Action<Event extends Model = Model> = Node<"action"> & {
   parameter?: NamedField<Event>;
-  steps: Array<ActionStep>;
+  steps: Array<ActionPointer | StreamPointer | Exception>;
 };
 
-export type NamedAction<Event extends Model = Model> = Action<Event> & Named;
-
-export type ActionStep = ActionPointer | StreamPointer | Fork;
+export type Stream<Event extends Model = Model> = Node<"stream"> &
+  Named &
+  Modeled<Event>;
 
 export type ActionPointer<Event extends Model = Model> =
   Node<"actionPointer"> & {
@@ -112,13 +110,9 @@ export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
     streamName: string;
   };
 
-export type Stream<Event extends Model = Model> = Node<"stream"> &
-  Named &
-  Modeled<Event>;
-
-export type Fork = Node<"fork"> & {
+export type Exception = Node<"exception"> & {
   condition: Field<Model<"Boolean">>;
-  steps?: Array<ActionStep>;
+  steps?: Array<ActionPointer | StreamPointer | Exception>;
 };
 
 export type View<Name extends string = string> = Node<"view"> &
@@ -129,7 +123,7 @@ export type View<Name extends string = string> = Node<"view"> &
 
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
-    members: Record<string, NamedField | NamedMethod | NamedAction>;
+    members: Record<string, NamedField | (Named & Method) | (Named & Action)>;
   };
 
 export type App = Node<"app"> & {
