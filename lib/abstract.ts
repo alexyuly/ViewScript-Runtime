@@ -17,7 +17,7 @@ export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   : T["name"] extends "String"
   ? string
   : T["name"] extends "Element"
-  ? Element
+  ? Atom | Molecule
   : T["name"] extends "Array"
   ? Array<Field>
   : T["name"] extends `Array of ${infer InnerModelName}`
@@ -33,14 +33,12 @@ export type Structure<T extends Model> = Node<"structure"> &
     };
   };
 
-export type Element = Node<"element">;
-
-export type Atom = Element & {
+export type Atom = Node<"atom"> & {
   tagName: string;
   properties: Record<string, EventHandler | Field>;
 };
 
-export type Molecule<T extends View> = Element & {
+export type Molecule<T extends View = View> = Node<"molecule"> & {
   viewName: T["name"];
   properties: {
     [Key in keyof T["terrain"]]?: T["terrain"][Key] extends Stream<
@@ -88,7 +86,7 @@ export type Option<T extends Model> = Node<"option"> &
   Modeled<T> & {
     condition: Field<Model<"Boolean">>;
     result: Field<T>;
-    resultOtherwise: Field<T>;
+    resultElse: Field<T>;
   };
 
 export type EventHandler<Event extends Model = Model> =
@@ -126,7 +124,7 @@ export type Fork = Node<"fork"> & {
 
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
-    element: Element;
+    element: Atom | Molecule;
     terrain: Record<string, Stream | NamedField>;
   };
 
@@ -137,6 +135,6 @@ export type Model<Name extends string = string> = Node<"model"> &
 
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
-  root: View;
+  root: Atom | Molecule;
   branches: Record<string, View | Model>;
 };
