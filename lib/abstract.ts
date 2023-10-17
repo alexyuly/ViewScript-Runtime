@@ -1,5 +1,3 @@
-/* Nodes */
-
 export type Node<Kind extends string> = {
   kind: Kind;
 };
@@ -11,8 +9,6 @@ export type Named<Name extends string = string> = {
 export type Modeled<T extends Model> = {
   modelName?: T["name"];
 };
-
-/** Values */
 
 export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   ? boolean
@@ -37,8 +33,6 @@ export type Structure<T extends Model> = Node<"structure"> &
     };
   };
 
-/** Elements */
-
 export type Element = Node<"element">;
 
 export type Atom = Element & {
@@ -57,16 +51,17 @@ export type Molecule<T extends View> = Element & {
   };
 };
 
-/* Fields */
-
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
-    publisher?: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
+    publisher?: Value<T> | FieldPointer<T> | MethodPointer<T> | Option<T>;
   };
 
 export type NamedField<T extends Model = Model> = Field<T> & Named;
 
-/** Methods */
+export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
+  Modeled<T> & {
+    pathToField: Array<string>;
+  };
 
 export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
   Modeled<T> & {
@@ -79,13 +74,6 @@ export type NamedMethod<
   Parameter extends Model = Model,
 > = Method<T, Parameter> & Named;
 
-/** Pointers */
-
-export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
-  Modeled<T> & {
-    pathToField: Array<string>;
-  };
-
 export type MethodPointer<
   T extends Model,
   Parameter extends Model = Model,
@@ -93,17 +81,15 @@ export type MethodPointer<
   Modeled<T> & {
     pathToMethod: Array<string>;
     argument?: Field<Parameter>;
-    chainedResult?: FieldPointer<T> | MethodPointer<T>;
+    result?: FieldPointer<T> | MethodPointer<T>;
   };
 
-export type Condition<T extends Model> = Node<"condition"> &
+export type Option<T extends Model> = Node<"option"> &
   Modeled<T> & {
-    yieldIf: Field<Model<"Boolean">>;
-    resultOfYield: Field<T>;
+    condition: Field<Model<"Boolean">>;
+    result: Field<T>;
     resultOtherwise: Field<T>;
   };
-
-/* Events */
 
 export type EventHandler<Event extends Model = Model> =
   | Action<Event>
@@ -134,11 +120,9 @@ export type Stream<Event extends Model = Model> = Node<"stream"> &
   Modeled<Event>;
 
 export type Fork = Node<"fork"> & {
-  breakIf: Field<Model<"Boolean">>;
-  stepsBeforeBreak?: Array<ActionStep>;
+  condition: Field<Model<"Boolean">>;
+  steps?: Array<ActionStep>;
 };
-
-/* Views */
 
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
@@ -146,14 +130,10 @@ export type View<Name extends string = string> = Node<"view"> &
     terrain: Record<string, Stream | NamedField>;
   };
 
-/* Models */
-
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
     members: Record<string, NamedField | NamedMethod | NamedAction>;
   };
-
-/* Apps */
 
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
