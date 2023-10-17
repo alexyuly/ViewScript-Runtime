@@ -14,7 +14,7 @@ export type Modeled<T extends Model> = {
 
 /** Values */
 
-export type Value<T extends Model> = T["name"] extends "Boolean"
+export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   ? boolean
   : T["name"] extends "Number"
   ? number
@@ -31,10 +31,8 @@ export type Value<T extends Model> = T["name"] extends "Boolean"
 export type Structure<T extends Model> = Node<"structure"> &
   Modeled<T> & {
     data: {
-      [Key in keyof T["members"]]?: T["members"][Key] extends PublicField<
-        infer FieldModel
-      >
-        ? Field<FieldModel>
+      [Key in keyof T["members"]]?: T["members"][Key] extends Field
+        ? T["members"][Key]
         : never;
     };
   };
@@ -55,9 +53,7 @@ export type Molecule<T extends View> = Element & {
       infer FieldModel
     >
       ? EventHandler<FieldModel>
-      : T["terrain"][Key] extends PublicField<infer FieldModel>
-      ? Field<FieldModel>
-      : never;
+      : T["terrain"][Key];
   };
 };
 
@@ -69,10 +65,6 @@ export type Field<T extends Model = Model> = Node<"field"> &
   };
 
 export type NamedField<T extends Model = Model> = Field<T> & Named;
-
-export type PublicField<T extends Model> = NamedField<T> & {
-  public: true;
-};
 
 /** Methods */
 
