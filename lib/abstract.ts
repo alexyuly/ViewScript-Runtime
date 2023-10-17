@@ -62,7 +62,8 @@ export type NamedField<T extends Model = Model> = Field<T> & Named;
 
 export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
-    pathToField: Array<string>;
+    leader?: FieldPointer<T> | MethodPointer<T>;
+    fieldPath: Array<string>;
   };
 
 export type Method<T extends Model, Parameter extends Model> = Node<"method"> &
@@ -81,16 +82,16 @@ export type MethodPointer<
   Parameter extends Model = Model,
 > = Node<"methodPointer"> &
   Modeled<T> & {
-    pathToMethod: Array<string>;
+    leader?: FieldPointer<T> | MethodPointer<T>;
+    methodPath: Array<string>;
     argument?: Field<Parameter>;
-    result?: FieldPointer<T> | MethodPointer<T>;
   };
 
 export type Option<T extends Model> = Node<"option"> &
   Modeled<T> & {
     condition: Field<Model<"Boolean">>;
     result: Field<T>;
-    resultElse: Field<T>;
+    opposite: Field<T>;
   };
 
 export type EventHandler<Event extends Model = Model> =
@@ -108,7 +109,7 @@ export type ActionStep = ActionPointer | StreamPointer | Fork;
 
 export type ActionPointer<Event extends Model = Model> =
   Node<"actionPointer"> & {
-    pathToAction: Array<string>;
+    actionPath: Array<string>;
     argument?: Field<Event>;
   };
 
