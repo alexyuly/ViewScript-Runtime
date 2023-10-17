@@ -30,14 +30,14 @@ export type Renderable = Node<"renderable"> & {
 
 export type Atom = Node<"atom"> & {
   tagName: string;
-  properties: Record<string, EventHandler | Field>;
+  properties: Record<string, Action | Field>;
 };
 
 export type Organism<T extends View = View> = Node<"organism"> & {
   viewName: T["name"];
   properties: {
     [Key in keyof T["members"]]?: T["members"][Key] extends Stream<infer Event>
-      ? EventHandler<Event>
+      ? Action<Event>
       : T["members"][Key];
   };
 };
@@ -92,11 +92,7 @@ export type Option<T extends Model> = Node<"option"> &
     opposite: Field<T>;
   };
 
-export type EventHandler<Event extends Model = Model> =
-  | Action<Event>
-  | ActionStep;
-
-export type Action<Event extends Model> = Node<"action"> & {
+export type Action<Event extends Model = Model> = Node<"action"> & {
   parameter?: NamedField<Event>;
   steps: Array<ActionStep>;
 };
