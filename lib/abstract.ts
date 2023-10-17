@@ -36,10 +36,8 @@ export type Atom = Node<"atom"> & {
 export type Organism<T extends View = View> = Node<"organism"> & {
   viewName: T["name"];
   properties: {
-    [Key in keyof T["members"]]?: T["members"][Key] extends Stream<
-      infer FieldModel
-    >
-      ? EventHandler<FieldModel>
+    [Key in keyof T["members"]]?: T["members"][Key] extends Stream<infer Event>
+      ? EventHandler<Event>
       : T["members"][Key];
   };
 };
