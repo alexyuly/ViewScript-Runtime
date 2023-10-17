@@ -30,27 +30,28 @@ export type Value<T extends Model> = T["name"] extends "Boolean"
 
 export type Structure<T extends Model> = Node<"structure"> &
   Modeled<T> & {
-    data: StructuredData<T>;
+    data: {
+      [Key in keyof T["members"]]?: T["members"][Key] extends PublicField<
+        infer FieldModel
+      >
+        ? Field<FieldModel>
+        : never;
+    };
   };
 
-export type StructuredData<T extends Model> = {
-  [Key in keyof T["members"]]: T["members"][Key] extends Field
-    ? T["members"][Key]
-    : never;
+/** Elements */
+
+export type Element = Node<"element">;
+
+export type Atom = Element & {
+  tagName: string;
+  properties: Record<string, EventHandler | Field>;
 };
 
-export interface Element extends Node<"element"> {
-  properties: Record<string, EventHandler | Field>;
-}
-
-export interface Atom extends Element {
-  tagName: string;
-}
-
-export interface Molecule<T extends View> extends Element {
+export type Molecule<T extends View> = Element & {
   viewName: T["name"];
   properties: {
-    [Key in keyof T["terrain"]]: T["terrain"][Key] extends Stream<
+    [Key in keyof T["terrain"]]?: T["terrain"][Key] extends Stream<
       infer FieldModel
     >
       ? EventHandler<FieldModel>
@@ -58,13 +59,13 @@ export interface Molecule<T extends View> extends Element {
       ? Field<FieldModel>
       : never;
   };
-}
+};
 
 /* Fields */
 
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
-    publisher: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
+    publisher?: Value<T> | FieldPointer<T> | MethodPointer<T> | Condition<T>;
   };
 
 export type NamedField<T extends Model = Model> = Field<T> & Named;
