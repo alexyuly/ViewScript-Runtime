@@ -52,16 +52,16 @@ export type Option<T extends Model> = Node<"option"> &
 
 export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
-    leader?: MethodPointer<T>;
+    leader?: MethodPointer;
     fieldPath: Array<string>;
   };
 
 export type MethodPointer<
-  T extends Model,
+  T extends Model = Model,
   Parameter extends Model = Model,
 > = Node<"methodPointer"> &
   Modeled<T> & {
-    leader?: MethodPointer<T>;
+    leader?: MethodPointer;
     methodPath: Array<string>;
     argument?: Field<Parameter>;
   };
