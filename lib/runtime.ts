@@ -32,7 +32,7 @@ class Store<T extends Abstract.Value>
   extends Publisher<T>
   implements Listener<T>
 {
-  private value?: T;
+  private value: T;
 
   constructor(store: Abstract.Store) {
     super();
