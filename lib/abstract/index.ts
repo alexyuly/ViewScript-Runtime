@@ -17,12 +17,8 @@ export type Modeled<T extends Model> = {
 
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
-    publisher: Store<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
+    publisher?: Value<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
   };
-
-export type Store<T extends Model = Model> = Node<"store"> & {
-  value?: Value<T>;
-};
 
 export type Value<T extends Model = Model> = T["name"] extends "Boolean"
   ? boolean
