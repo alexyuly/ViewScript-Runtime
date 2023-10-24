@@ -1,7 +1,7 @@
 import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
-import { Binding, Listener, Publisher, Store } from "./base";
+import { Binding, Listener, Publisher, Store, ValueOf } from "./base";
 
 export type Feature = Stream | Field | Method | Action;
 export type Terrain = Record<string, Feature>;
@@ -26,19 +26,19 @@ export class RunningApp {
   }
 }
 
-class Field<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
+class Field<ModelName extends string = string> extends Binding<
+  ValueOf<ModelName>
 > {
   private readonly members: Record<string, Field | Method | Action>;
 
   private readonly publisher?:
-    | Store<ModelKey>
-    | Option<ModelKey>
-    | FieldPointer<ModelKey>
-    | MethodPointer<ModelKey>;
+    | Store<ModelName>
+    | Option<ModelName>
+    | FieldPointer<ModelName>
+    | MethodPointer<ModelName>;
 
   constructor(
-    field: Abstract.Field<Abstract.Model<ModelKey>>,
+    field: Abstract.Field<Abstract.Model<ModelName>>,
     terrain: Terrain
   ) {
     super();
@@ -99,16 +99,16 @@ class Field<ModelKey extends string = string> extends Binding<
   }
 }
 
-class Option<ModelKey extends string = string>
-  extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Listener<Abstract.Value<Abstract.Model<"Boolean">>>
+class Option<ModelName extends string = string>
+  extends Publisher<ValueOf<ModelName>>
+  implements Listener<ValueOf<"Boolean">>
 {
   private readonly condition: Field<"Boolean">;
   private readonly result: Field;
   private readonly opposite?: Field;
 
   constructor(
-    option: Abstract.Option<Abstract.Model<ModelKey>>,
+    option: Abstract.Option<Abstract.Model<ModelName>>,
     terrain: Terrain
   ) {
     super();
@@ -120,20 +120,20 @@ class Option<ModelKey extends string = string>
     this.condition.listen(this);
   }
 
-  take(value: Abstract.Value<Abstract.Model<"Boolean">>) {
+  take(value: ValueOf<"Boolean">) {
     const nextValue = (value ? this.result : this.opposite)?.getValue();
     this.publish(nextValue ?? undefined);
   }
 }
 
-class FieldPointer<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
+class FieldPointer<ModelName extends string = string> extends Binding<
+  ValueOf<ModelName>
 > {
-  private readonly field: Field<ModelKey>;
+  private readonly field: Field<ModelName>;
   private readonly fieldPath: Array<string>;
 
   constructor(
-    fieldPointer: Abstract.FieldPointer<Abstract.Model<ModelKey>>,
+    fieldPointer: Abstract.FieldPointer<Abstract.Model<ModelName>>,
     terrain: Terrain
   ) {
     super();
@@ -176,8 +176,8 @@ class FieldPointer<ModelKey extends string = string> extends Binding<
 }
 
 // TODO Should I handle higher-order methods?
-class MethodPointer<ModelKey extends string = string>
-  extends Binding<Abstract.Value<Abstract.Model<ModelKey>>>
+class MethodPointer<ModelName extends string = string>
+  extends Binding<ValueOf<ModelName>>
   implements Listener<void>
 {
   private readonly argument?: Field;
@@ -243,8 +243,8 @@ class MethodPointer<ModelKey extends string = string>
   }
 }
 
-class Method<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
+class Method<ModelName extends string = string> extends Binding<
+  ValueOf<ModelName>
 > {
   private readonly method: BasicMethod | Abstract.Method;
   private readonly terrain: Terrain;
@@ -302,8 +302,8 @@ class Method<ModelKey extends string = string> extends Binding<
   }
 }
 
-class Action<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
+class Action<ModelName extends string = string> extends Binding<
+  ValueOf<ModelName>
 > {
   private readonly action: BasicAction | Abstract.Action;
   private readonly terrain: Terrain;
@@ -365,8 +365,8 @@ class Action<ModelKey extends string = string> extends Binding<
   }
 }
 
-class ActionPointer<ModelKey extends string = string>
-  extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
+class ActionPointer<ModelName extends string = string>
+  extends Publisher<ValueOf<ModelName>>
   implements Listener<void>
 {
   private readonly action: Action;
@@ -422,8 +422,8 @@ class ActionPointer<ModelKey extends string = string>
   }
 }
 
-class StreamPointer<ModelKey extends string = string>
-  extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
+class StreamPointer<ModelName extends string = string>
+  extends Publisher<ValueOf<ModelName>>
   implements Listener<void>
 {
   private readonly argument?: Field;

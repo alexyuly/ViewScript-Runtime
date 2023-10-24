@@ -27,13 +27,17 @@ export abstract class Binding<T = unknown>
   }
 }
 
-export class Store<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
-> {
-  private readonly firstValue: Abstract.Value<Abstract.Model<ModelKey>>;
-  private lastValue: Abstract.Value<Abstract.Model<ModelKey>>;
+export type ValueOf<ModelName extends string> = Abstract.Value<
+  Abstract.Model<ModelName>
+>;
 
-  constructor(store: Abstract.Store<Abstract.Model<ModelKey>>) {
+export class Store<ModelName extends string> extends Binding<
+  ValueOf<ModelName>
+> {
+  private readonly firstValue: ValueOf<ModelName>;
+  private lastValue: ValueOf<ModelName>;
+
+  constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
     super();
 
     this.firstValue = store.value;
@@ -41,7 +45,7 @@ export class Store<ModelKey extends string = string> extends Binding<
     super.take(store.value);
   }
 
-  listen(listener: Listener<Abstract.Value<Abstract.Model<ModelKey>>>) {
+  listen(listener: Listener<ValueOf<ModelName>>) {
     listener.take(this.lastValue);
     super.listen(listener);
   }
@@ -54,7 +58,7 @@ export class Store<ModelKey extends string = string> extends Binding<
     this.take(this.firstValue);
   }
 
-  take(value: Abstract.Value<Abstract.Model<ModelKey>>) {
+  take(value: ValueOf<ModelName>) {
     this.lastValue = value;
     super.take(value);
   }
