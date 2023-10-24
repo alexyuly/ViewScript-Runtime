@@ -1,60 +1,30 @@
 import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
+import { Binding, Publisher, Store, Subscriber } from "./base";
 
-class ViewScriptError extends Error {}
+export type Feature = Stream | Field | Method | Action;
+export type Terrain = Record<string, Feature>;
 
-interface Subscriber<T = unknown> {
-  take(value?: T): void;
-}
+export class ViewScriptError extends Error {}
 
-abstract class Publisher<T = unknown> {
-  private lastValue?: T;
-  private readonly listeners: Array<Subscriber<T>> = [];
+export class RunningApp {
+  private static readonly browser = new Browser();
+  private readonly fields = { browser: RunningApp.browser };
+  private readonly root: Atom | Organism;
 
-  getValue() {
-    return this.lastValue;
-  }
-
-  protected publish(value?: T) {
-    this.lastValue = value;
-
-    this.listeners.forEach((listener) => {
-      listener.take(value);
+  constructor(app: Abstract.App) {
+    this.root = new Organism(app.root, app.members, { ...this.fields }, {});
+    this.root.subscribe({
+      take: (htmlElement) => {
+        Dom.render(htmlElement);
+      },
     });
-  }
 
-  subscribe(listener: Subscriber<T>) {
-    if (this.lastValue !== undefined) {
-      listener.take(this.lastValue);
-    }
-
-    this.listeners.push(listener);
+    window.console.log(`[VSR] 🟢 Start app:`);
+    window.console.log(this);
   }
 }
-
-abstract class Binding<T = unknown>
-  extends Publisher<T>
-  implements Subscriber<T>
-{
-  take(value: T) {
-    this.publish(value);
-  }
-}
-
-// Convenient type aliases
-
-type ActionStep = ActionPointer | StreamPointer;
-
-type BasicAction = (argument: Abstract.Value) => Abstract.Value | void;
-
-type BasicMethod = (argument: Abstract.Value) => Abstract.Value;
-
-type Terrain = Record<string, TerrainFeature>;
-
-type TerrainFeature = Stream | Field | Method | Action;
-
-// Concrete representations of abstract types
 
 class Field<ModelKey extends string = string> extends Binding<
   Abstract.Value<Abstract.Model<ModelKey>>
@@ -129,41 +99,30 @@ class Field<ModelKey extends string = string> extends Binding<
   }
 }
 
-class Renderable extends Binding<HTMLElement> {
-  private readonly publisher: Publisher<HTMLElement>;
+class Option<ModelKey extends string = string>
+  extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
+  implements Subscriber<Abstract.Value<Abstract.Model<"Boolean">>>
+{
+  private readonly condition: Field<"Boolean">;
+  private readonly result: Field;
+  private readonly opposite?: Field;
 
   constructor(
-    renderable: Abstract.Renderable,
-    appMembers: Record<string, Abstract.Model | Abstract.View>,
+    option: Abstract.Option<Abstract.Model<ModelKey>>,
     terrain: Terrain
   ) {
     super();
 
-    if ("tagName" in renderable.body) {
-      this.publisher = new Atom(
-        renderable.body.tagName,
-        appMembers,
-        terrain,
-        renderable.body.properties
-      );
-      this.publisher.subscribe(this);
-    } else {
-      const branch = appMembers[renderable.body.viewName];
+    this.result = new Field(option.result, terrain);
+    this.opposite = new Field(option.opposite, terrain);
 
-      if (branch.kind !== "view") {
-        throw new ViewScriptError(
-          `Cannot construct unknown view "${renderable.body.viewName}"`
-        );
-      }
+    this.condition = new Field<"Boolean">(option.condition, terrain);
+    this.condition.subscribe(this);
+  }
 
-      this.publisher = new View(
-        branch,
-        appMembers,
-        { ...terrain },
-        renderable.body.properties
-      );
-      this.publisher.subscribe(this);
-    }
+  take(value: Abstract.Value<Abstract.Model<"Boolean">>) {
+    const nextValue = (value ? this.result : this.opposite)?.getValue();
+    this.publish(nextValue ?? undefined);
   }
 }
 
@@ -195,53 +154,24 @@ class FieldPointer<ModelKey extends string = string> extends Binding<
       return key;
     };
 
-    let nextMember: TerrainFeature = terrain[getNextKey()];
+    let nextFeature: Feature = terrain[getNextKey()];
 
     while (fieldPath.length > 0) {
-      if (!(nextMember instanceof Field)) {
+      if (!(nextFeature instanceof Field)) {
         break;
       }
 
-      nextMember = nextMember.getMember(getNextKey());
+      nextFeature = nextFeature.getMember(getNextKey());
     }
 
-    if (!(nextMember instanceof Field)) {
+    if (!(nextFeature instanceof Field)) {
       throw new ViewScriptError(
         `Cannot construct a pointer to unknown field at path: ${fieldPointer.fieldPath}`
       );
     }
 
-    this.field = nextMember;
+    this.field = nextFeature;
     this.field.subscribe(this);
-  }
-}
-
-class Store<ModelKey extends string = string> extends Binding<
-  Abstract.Value<Abstract.Model<ModelKey>>
-> {
-  private readonly initialValue: Abstract.Value<Abstract.Model<ModelKey>>;
-  private readonly modelKey: ModelKey;
-
-  constructor(store: Abstract.Store<Abstract.Model<ModelKey>>) {
-    super();
-
-    this.initialValue = store.value;
-    this.modelKey = field.modelKey;
-
-    if (this.initialValue !== undefined) {
-      this.take(this.initialValue);
-    }
-  }
-
-  protected publish(value: T) {
-    if (this.key !== undefined) {
-      window.console.log(
-        `[VSR] ⛰️ Set ${this.modelKey} store ${this.key} =`,
-        value
-      );
-    }
-
-    super.publish(value);
   }
 }
 
@@ -274,17 +204,17 @@ class MethodPointer<ModelKey extends string = string>
       return key;
     };
 
-    let nextMember: TerrainFeature = terrain[getNextKey()];
+    let nextFeature: Feature = terrain[getNextKey()];
 
     while (methodPath.length > 0) {
-      if (!(nextMember instanceof Field)) {
+      if (!(nextFeature instanceof Field)) {
         break;
       }
 
-      nextMember = nextMember.getMember(getNextKey());
+      nextFeature = nextFeature.getMember(getNextKey());
     }
 
-    if (!(nextMember instanceof Method)) {
+    if (!(nextFeature instanceof Method)) {
       throw new ViewScriptError(
         `Cannot construct a method reference of unknown path to method key "${methodPointer.methodPath}"`
       );
@@ -294,7 +224,7 @@ class MethodPointer<ModelKey extends string = string>
       ? new Field(methodPointer.argument, terrain)
       : undefined;
 
-    this.method = nextMember;
+    this.method = nextFeature;
 
     this.continuation = this.method.connect(
       this,
@@ -372,33 +302,6 @@ class Method<ModelKey extends string = string> extends Binding<
   }
 }
 
-class Option<ModelKey extends string = string>
-  extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Subscriber<Abstract.Value<Abstract.Model<"Boolean">>>
-{
-  private readonly condition: Field<"Boolean">;
-  private readonly result: Field;
-  private readonly opposite?: Field;
-
-  constructor(
-    option: Abstract.Option<Abstract.Model<ModelKey>>,
-    terrain: Terrain
-  ) {
-    super();
-
-    this.result = new Field(option.result, terrain);
-    this.opposite = new Field(option.opposite, terrain);
-
-    this.condition = new Field<"Boolean">(option.condition, terrain);
-    this.condition.subscribe(this);
-  }
-
-  take(value: Abstract.Value<Abstract.Model<"Boolean">>) {
-    const nextValue = (value ? this.result : this.opposite)?.getValue();
-    this.publish(nextValue ?? undefined);
-  }
-}
-
 class Action<ModelKey extends string = string> extends Binding<
   Abstract.Value<Abstract.Model<ModelKey>>
 > {
@@ -426,17 +329,19 @@ class Action<ModelKey extends string = string> extends Binding<
       stepTerrain[parameter.key] = parameter;
     }
 
-    const steps: Array<ActionStep> = this.action.steps.map((step) => {
-      if (Abstract.isActionReference(step)) {
-        return new ActionPointer(step, stepTerrain);
-      }
+    const steps: Array<ActionPointer | StreamPointer> = this.action.steps.map(
+      (step) => {
+        if (Abstract.isActionReference(step)) {
+          return new ActionPointer(step, stepTerrain);
+        }
 
-      if (Abstract.isStreamReference(step)) {
-        return new StreamPointer(step, stepTerrain);
-      }
+        if (Abstract.isStreamReference(step)) {
+          return new StreamPointer(step, stepTerrain);
+        }
 
-      throw new ViewScriptError("Sorry, exceptions are not yet implemented."); // TODO implement
-    });
+        throw new ViewScriptError("Sorry, exceptions are not yet implemented."); // TODO implement
+      }
+    );
 
     actionPointer.subscribe({
       take: () => {
@@ -487,17 +392,17 @@ class ActionPointer<ModelKey extends string = string>
       return key;
     };
 
-    let nextMember: TerrainFeature = terrain[getNextKey()];
+    let nextFeature: Feature = terrain[getNextKey()];
 
     while (actionPath.length > 0) {
-      if (!(nextMember instanceof Field)) {
+      if (!(nextFeature instanceof Field)) {
         break;
       }
 
-      nextMember = nextMember.getMember(getNextKey());
+      nextFeature = nextFeature.getMember(getNextKey());
     }
 
-    if (!(nextMember instanceof Action)) {
+    if (!(nextFeature instanceof Action)) {
       throw new ViewScriptError(
         `Cannot construct an action reference of unknown path to action key "${actionPointer.actionPath}"`
       );
@@ -507,7 +412,7 @@ class ActionPointer<ModelKey extends string = string>
       ? new Field(actionPointer.argument, terrain)
       : undefined;
 
-    this.action = nextMember;
+    this.action = nextFeature;
     this.action.connect(this, terrain, this.argument);
   }
 
@@ -534,15 +439,15 @@ class StreamPointer<ModelKey extends string = string>
 
     this.streamName = streamPointer.streamName;
 
-    let nextMember = terrain[this.streamName];
+    let nextFeature = terrain[this.streamName];
 
-    if (!(nextMember instanceof Stream)) {
+    if (!(nextFeature instanceof Stream)) {
       throw new ViewScriptError(
         `Cannot construct a pointer to unknown stream "${streamPointer.streamName}"`
       );
     }
 
-    this.stream = nextMember;
+    this.stream = nextFeature;
     this.subscribe(this.stream);
   }
 
@@ -562,7 +467,43 @@ class Stream extends Binding<Abstract.Value> {
   }
 }
 
-// TODO Implement Exceptions.
+class Renderable extends Binding<HTMLElement> {
+  private readonly body: Atom | Organism;
+
+  constructor(
+    renderable: Abstract.Renderable,
+    appMembers: Record<string, Abstract.Model | Abstract.View>,
+    terrain: Terrain
+  ) {
+    super();
+
+    if ("tagName" in renderable.body) {
+      this.body = new Atom(
+        renderable.body.tagName,
+        appMembers,
+        terrain,
+        renderable.body.properties
+      );
+      this.body.subscribe(this);
+    } else {
+      const member = appMembers[renderable.body.viewName];
+
+      if (member.kind !== "view") {
+        throw new ViewScriptError(
+          `Cannot construct unknown view "${renderable.body.viewName}"`
+        );
+      }
+
+      this.body = new Organism(
+        member,
+        appMembers,
+        { ...terrain },
+        renderable.body.properties
+      );
+      this.body.subscribe(this);
+    }
+  }
+}
 
 class Atom extends Publisher<HTMLElement> {
   private children: Array<Renderable | string>;
@@ -672,7 +613,7 @@ class Atom extends Publisher<HTMLElement> {
   }
 }
 
-class View extends Binding<HTMLElement> {
+class Organism extends Binding<HTMLElement> {
   private readonly key: string;
 
   private readonly element: Renderable;
@@ -742,23 +683,5 @@ class View extends Binding<HTMLElement> {
 
     this.element = new Renderable(root.element, branches, this.terrain);
     this.element.subscribe(this);
-  }
-}
-
-export class RunningApp {
-  private static readonly browser = new Browser();
-  private readonly fields = { browser: RunningApp.browser };
-  private readonly root: View;
-
-  constructor(app: Abstract.App) {
-    this.root = new View(app.root, app.branches, { ...this.fields }, {});
-    this.root.subscribe({
-      take: (htmlElement) => {
-        Dom.render(htmlElement);
-      },
-    });
-
-    window.console.log(`[VSR] 🟢 Start app:`);
-    window.console.log(this);
   }
 }

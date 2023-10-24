@@ -82,9 +82,7 @@ export type Method<
   Modeled<T> &
   (
     | {
-        delegate: (
-          arg: Param extends Model ? Value<Param> : unknown
-        ) => Value<T>;
+        delegate: (arg: Value<Param>) => Value<T>;
       }
     | {
         parameter: Param extends Model ? Called & Field<Param> : never;
@@ -95,7 +93,7 @@ export type Method<
 export type Action<Param extends Model | null = Model | null> = Node<"action"> &
   (
     | {
-        delegate: (arg: Param extends Model ? Value<Param> : unknown) => void;
+        delegate: (arg: Value<Param>) => void;
       }
     | {
         parameter: Param extends Model ? Called & Field<Param> : never;

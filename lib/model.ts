@@ -1,4 +1,30 @@
-// TODO
+import * as Abstract from "./abstract";
+import { Store } from "./base";
+
+export const boolean = (
+  store: Store<"Boolean">
+): Abstract.Model<"Boolean"> => ({
+  kind: "model",
+  name: "Boolean",
+  members: {
+    disable: {
+      kind: "action",
+      delegate: () => store.take(false),
+    },
+    enable: {
+      kind: "action",
+      delegate: () => store.take(true),
+    },
+    toggle: {
+      kind: "action",
+      delegate: () => store.take(!store.read()),
+    },
+    and: {
+      kind: "method",
+      delegate: (arg: boolean): boolean => store.read() && arg,
+    },
+  },
+});
 
 // class BooleanField extends Field<"Boolean"> {
 //   constructor(field: Abstract.BooleanField) {
