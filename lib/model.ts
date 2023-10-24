@@ -39,7 +39,7 @@ export const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
     equals: {
       kind: "method",
       modelName: "Boolean",
-      delegate: (arg) => store.read() === (arg as number),
+      delegate: (arg) => store.read() == (arg as number),
     },
     isAtLeast: {
       kind: "method",
