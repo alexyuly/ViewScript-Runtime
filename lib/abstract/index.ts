@@ -67,32 +67,46 @@ export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
 
 export type MethodPointer<
   T extends Model = Model,
-  Parameter extends Model = Model,
+  Param extends Model | null = Model | null,
 > = Node<"methodPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
     methodPath: Array<string>;
-    argument?: Field<Parameter>;
+    argument: Param extends Model ? Field<Param> : never;
   };
 
 export type Method<
   T extends Model = Model,
-  Parameter extends Model = Model,
+  Param extends Model | null = Model | null,
 > = Node<"method"> &
-  Modeled<T> & {
-    parameter?: Called & Field<Parameter>;
-    result: Field<T>;
-  };
+  Modeled<T> &
+  (
+    | {
+        delegate: (
+          arg: Param extends Model ? Value<Param> : unknown
+        ) => Value<T>;
+      }
+    | {
+        parameter: Param extends Model ? Called & Field<Param> : never;
+        result: Field<T>;
+      }
+  );
 
-export type Action<Parameter extends Model = Model> = Node<"action"> & {
-  parameter?: Called & Field<Parameter>;
-  steps: Array<ActionPointer | Exception | StreamPointer>;
-};
+export type Action<Param extends Model | null = Model | null> = Node<"action"> &
+  (
+    | {
+        delegate: (arg: Param extends Model ? Value<Param> : unknown) => void;
+      }
+    | {
+        parameter: Param extends Model ? Called & Field<Param> : never;
+        steps: Array<ActionPointer | Exception | StreamPointer>;
+      }
+  );
 
-export type ActionPointer<Parameter extends Model = Model> =
+export type ActionPointer<Param extends Model | null = Model | null> =
   Node<"actionPointer"> & {
     actionPath: Array<string>;
-    argument?: Field<Parameter>;
+    argument: Param extends Model ? Field<Param> : never;
   };
 
 export type Exception = Node<"exception"> & {
