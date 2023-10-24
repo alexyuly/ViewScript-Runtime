@@ -1,4 +1,4 @@
-import type { Node, Named } from "./helpers";
+import type { Node, Called, Name } from "./helpers";
 
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
@@ -7,12 +7,12 @@ export type App = Node<"app"> & {
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
-  Named<Name> & {
+  Called<Name> & {
     members: Record<string, Field | Method | Action>;
   };
 
 export type Modeled<T extends Model | null> = {
-  modelName: T extends Model ? T["name"] : never;
+  modelName: T extends Model ? Name<T> : never;
 };
 
 export type Field<T extends Model = Model> = Node<"field"> &
@@ -25,17 +25,17 @@ export type Store<T extends Model> = Node<"store"> & {
 };
 
 export type Value<T extends Model | null = Model | null> = T extends Model
-  ? T["name"] extends "Boolean"
+  ? Name<T> extends "Boolean"
     ? boolean
-    : T["name"] extends "Number"
+    : Name<T> extends "Number"
     ? number
-    : T["name"] extends "String"
+    : Name<T> extends "String"
     ? string
-    : T["name"] extends "Renderable"
+    : Name<T> extends "Renderable"
     ? Renderable
-    : T["name"] extends "Array"
+    : Name<T> extends "Array"
     ? Array<Field>
-    : T["name"] extends `Array of ${infer InnerModelName}`
+    : Name<T> extends `Array of ${infer InnerModelName}`
     ? Array<Field<Model<InnerModelName>>>
     : Structure<Model>
   : boolean | number | string | Renderable | Array<Field> | Structure;
@@ -80,12 +80,12 @@ export type Method<
   Parameter extends Model = Model,
 > = Node<"method"> &
   Modeled<T> & {
-    parameter?: Named & Field<Parameter>;
+    parameter?: Called & Field<Parameter>;
     result: Field<T>;
   };
 
 export type Action<Parameter extends Model = Model> = Node<"action"> & {
-  parameter?: Named & Field<Parameter>;
+  parameter?: Called & Field<Parameter>;
   steps: Array<ActionPointer | Exception | StreamPointer>;
 };
 
@@ -109,9 +109,10 @@ export type Stream<Event extends Model = Model> = Node<"stream"> &
   Modeled<Event>;
 
 export type View<Name extends string = string> = Node<"view"> &
-  Named<Name> & {
-    members: Record<string, Stream | Field>;
+  Called<Name> & {
     renders: Renderable;
+    fields: Record<string, Field>;
+    streams: Record<`on${string}`, Stream>;
   };
 
 export type Renderable = Node<"renderable"> & {
@@ -120,14 +121,20 @@ export type Renderable = Node<"renderable"> & {
 
 export type Atom = Node<"atom"> & {
   tagName: string;
-  properties: Record<string, Action | Field>;
+  properties: Record<string, Field>;
+  handlers: Record<`on${string}`, Action>;
 };
 
 export type Organism<T extends View = View> = Node<"organism"> & {
-  viewName: T["name"];
+  viewName: Name<T>;
   properties: {
-    [Key in keyof T["members"]]?: T["members"][Key] extends Stream<infer Event>
+    [Key in keyof T["fields"]]: T["fields"][Key]["publisher"] extends undefined
+      ? T["fields"][Key]
+      : never;
+  };
+  handlers: {
+    [Key in keyof T["streams"]]?: T["streams"][Key] extends Stream<infer Event>
       ? Action<Event>
-      : T["members"][Key];
+      : never;
   };
 };
