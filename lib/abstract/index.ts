@@ -11,8 +11,8 @@ export type Model<Name extends string = string> = Node<"model"> &
     members: Record<string, Field | Method | Action>;
   };
 
-export type Modeled<T extends Model> = {
-  modelName?: T["name"];
+export type Modeled<T extends Model | null> = {
+  modelName: T extends Model ? T["name"] : never;
 };
 
 export type Field<T extends Model = Model> = Node<"field"> &
@@ -20,28 +20,33 @@ export type Field<T extends Model = Model> = Node<"field"> &
     publisher?: Value<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
   };
 
-export type Value<T extends Model = Model> = T["name"] extends "Boolean"
-  ? boolean
-  : T["name"] extends "Number"
-  ? number
-  : T["name"] extends "String"
-  ? string
-  : T["name"] extends "Renderable"
-  ? Renderable
-  : T["name"] extends "Array"
-  ? Array<Field>
-  : T["name"] extends `Array of ${infer InnerModelName}`
-  ? Array<Field<Model<InnerModelName>>>
-  : Structure<Model>;
+export type Value<T extends Model | null = Model | null> = T extends Model
+  ? T["name"] extends "Boolean"
+    ? boolean
+    : T["name"] extends "Number"
+    ? number
+    : T["name"] extends "String"
+    ? string
+    : T["name"] extends "Renderable"
+    ? Renderable
+    : T["name"] extends "Array"
+    ? Array<Field>
+    : T["name"] extends `Array of ${infer InnerModelName}`
+    ? Array<Field<Model<InnerModelName>>>
+    : Structure<Model>
+  : boolean | number | string | Renderable | Array<Field> | Structure;
 
-export type Structure<T extends Model> = Node<"structure"> &
-  Modeled<T> & {
-    data: {
-      [Key in keyof T["members"]]?: T["members"][Key] extends Field
-        ? T["members"][Key]
-        : never;
+export type Structure<T extends Model | null = Model | null> =
+  Node<"structure"> &
+    Modeled<T> & {
+      data: T extends Model
+        ? {
+            [Key in keyof T["members"]]?: T["members"][Key] extends Field
+              ? T["members"][Key]
+              : never;
+          }
+        : Record<string, Field>;
     };
-  };
 
 export type Option<T extends Model> = Node<"option"> &
   Modeled<T> & {
@@ -75,15 +80,15 @@ export type Method<
     result: Field<T>;
   };
 
-export type Action<Event extends Model = Model> = Node<"action"> & {
-  parameter?: Named & Field<Event>;
+export type Action<Parameter extends Model = Model> = Node<"action"> & {
+  parameter?: Named & Field<Parameter>;
   steps: Array<ActionPointer | Exception | StreamPointer>;
 };
 
-export type ActionPointer<Event extends Model = Model> =
+export type ActionPointer<Parameter extends Model = Model> =
   Node<"actionPointer"> & {
     actionPath: Array<string>;
-    argument?: Field<Event>;
+    argument?: Field<Parameter>;
   };
 
 export type Exception = Node<"exception"> & {
