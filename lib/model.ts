@@ -7,6 +7,16 @@ export const boolean = (
   kind: "model",
   name: "Boolean",
   members: {
+    and: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: (arg) => store.read() && (arg as boolean),
+    },
+    not: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: () => !store.read(),
+    },
     disable: {
       kind: "action",
       delegate: () => store.take(false),
@@ -19,78 +29,47 @@ export const boolean = (
       kind: "action",
       delegate: () => store.take(!store.read()),
     },
-    and: {
+  },
+});
+
+export const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
+  kind: "model",
+  name: "Number",
+  members: {
+    equals: {
       kind: "method",
-      delegate: (arg: boolean): boolean => store.read() && arg,
+      modelName: "Boolean",
+      delegate: (arg) => store.read() === (arg as number),
+    },
+    isAtLeast: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: (arg) => store.read() >= (arg as number),
+    },
+    add: {
+      kind: "action",
+      delegate: (arg) => store.take(store.read() + (arg as number)),
+    },
+    multiplyBy: {
+      kind: "action",
+      delegate: (arg) => store.take(store.read() * (arg as number)),
     },
   },
 });
 
-// class BooleanField extends Field<"Boolean"> {
-//   constructor(field: Abstract.BooleanField) {
-//     super(field);
+export const string = (): Abstract.Model<"String"> => ({
+  kind: "model",
+  name: "String",
+  members: {},
+});
 
-//     this.defineAction("disable", () => false);
-//     this.defineAction("enable", () => true);
-//     this.defineAction("toggle", () => !this.getValue());
+export const renderable = (): Abstract.Model<"Renderable"> => ({
+  kind: "model",
+  name: "Renderable",
+  members: {},
+});
 
-//     this.defineMethod(
-//       "and",
-//       (argument) => Boolean(this.getValue()) && Boolean(argument)
-//     );
-//     this.defineMethod("not", () => !this.getValue());
-//   }
-// }
-
-// class NumberField extends Field<"Number"> {
-//   constructor(field: Abstract.NumberField) {
-//     super(field);
-
-//     this.defineAction(
-//       "add",
-//       (argument) => Number(this.getValue() || 0) + Number(argument || 0)
-//     );
-//     this.defineAction(
-//       "multiplyBy",
-//       (argument) => Number(this.getValue() || 0) * Number(argument || 0)
-//     );
-
-//     this.defineMethod(
-//       "isAtLeast",
-//       (argument) =>
-//         !Number.isNaN(Number(argument)) &&
-//         Number(this.getValue() || 0) >= Number(argument || 0)
-//     );
-//     this.defineMethod(
-//       "isExactly",
-//       (argument) =>
-//         !Number.isNaN(Number(argument)) &&
-//         Number(this.getValue() || 0) === Number(argument || 0)
-//     );
-//   }
-// }
-
-// class StringField extends Field<"String"> {
-//   constructor(field: Abstract.StringField) {
-//     super(field);
-//   }
-// }
-
-// class StructureField<ModelKey extends string = string> extends Field<
-//   ModelKey,
-//   Abstract.Structure
-// > {
-//   constructor(field: Abstract.StructureField<ModelKey>) {
-//     super(field);
-//   }
-// }
-
-// class ElementField extends Field<"Renderable"> {
-//   constructor(field: Abstract.ElementField) {
-//     super(field);
-//   }
-// }
-
+// TODO How to handle generic vs specific arrays?
 // class ArrayField extends Field<"Array"> {
 //   constructor(field: Abstract.ArrayField) {
 //     super(field);
@@ -102,6 +81,15 @@ export const boolean = (
 //           item instanceof Array ? [item] : item
 //         ) || [item]
 //     );
+//   }
+// }
+
+// class StructureField<ModelKey extends string = string> extends Field<
+//   ModelKey,
+//   Abstract.Structure
+// > {
+//   constructor(field: Abstract.StructureField<ModelKey>) {
+//     super(field);
 //   }
 // }
 

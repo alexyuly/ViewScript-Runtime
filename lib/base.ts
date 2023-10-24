@@ -1,11 +1,11 @@
 import * as Abstract from "./abstract";
 
-export interface Subscriber<T = unknown> {
+export interface Listener<T = unknown> {
   take(value: T): void;
 }
 
 export abstract class Publisher<T = unknown> {
-  private readonly listeners: Array<Subscriber<T>> = [];
+  private readonly listeners: Array<Listener<T>> = [];
 
   protected publish(value: T) {
     this.listeners.forEach((listener) => {
@@ -13,14 +13,14 @@ export abstract class Publisher<T = unknown> {
     });
   }
 
-  subscribe(listener: Subscriber<T>) {
+  listen(listener: Listener<T>) {
     this.listeners.push(listener);
   }
 }
 
 export abstract class Binding<T = unknown>
   extends Publisher<T>
-  implements Subscriber<T>
+  implements Listener<T>
 {
   take(value: T) {
     this.publish(value);
@@ -41,17 +41,17 @@ export class Store<ModelKey extends string = string> extends Binding<
     super.take(store.value);
   }
 
+  listen(listener: Listener<Abstract.Value<Abstract.Model<ModelKey>>>) {
+    listener.take(this.lastValue);
+    super.listen(listener);
+  }
+
   read() {
     return this.lastValue;
   }
 
   reset() {
     this.take(this.firstValue);
-  }
-
-  subscribe(listener: Subscriber<Abstract.Value<Abstract.Model<ModelKey>>>) {
-    listener.take(this.lastValue);
-    super.subscribe(listener);
   }
 
   take(value: Abstract.Value<Abstract.Model<ModelKey>>) {

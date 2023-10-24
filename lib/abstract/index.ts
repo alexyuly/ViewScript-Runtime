@@ -15,12 +15,12 @@ export type Modeled<T extends Model | null> = {
   modelName: T extends Model ? Name<T> : never;
 };
 
-export type Field<T extends Model = Model> = Node<"field"> &
+export type Field<T extends Model | null = Model | null> = Node<"field"> &
   Modeled<T> & {
     publisher?: Store<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
   };
 
-export type Store<T extends Model> = Node<"store"> & {
+export type Store<T extends Model | null> = Node<"store"> & {
   value: Value<T>;
 };
 
@@ -52,21 +52,21 @@ export type Structure<T extends Model | null = Model | null> =
         : Record<string, Field>;
     };
 
-export type Option<T extends Model> = Node<"option"> &
+export type Option<T extends Model | null> = Node<"option"> &
   Modeled<T> & {
     condition: Field<Model<"Boolean">>;
     result: Field<T>;
     opposite: Field<T>;
   };
 
-export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
+export type FieldPointer<T extends Model | null> = Node<"fieldPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
     fieldPath: Array<string>;
   };
 
 export type MethodPointer<
-  T extends Model = Model,
+  T extends Model | null = Model | null,
   Param extends Model | null = Model | null,
 > = Node<"methodPointer"> &
   Modeled<T> & {
@@ -76,13 +76,13 @@ export type MethodPointer<
   };
 
 export type Method<
-  T extends Model = Model,
+  T extends Model | null = Model | null,
   Param extends Model | null = Model | null,
 > = Node<"method"> &
   Modeled<T> &
   (
     | {
-        delegate: (arg: Value<Param>) => Value<T>;
+        delegate: (argument: Value<Param>) => Value<T>;
       }
     | {
         parameter: Param extends Model ? Called & Field<Param> : never;
@@ -93,7 +93,7 @@ export type Method<
 export type Action<Param extends Model | null = Model | null> = Node<"action"> &
   (
     | {
-        delegate: (arg: Value<Param>) => void;
+        delegate: (argument: Value<Param>) => void;
       }
     | {
         parameter: Param extends Model ? Called & Field<Param> : never;

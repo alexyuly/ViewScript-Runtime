@@ -1,7 +1,7 @@
 import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
-import { Binding, Publisher, Store, Subscriber } from "./base";
+import { Binding, Listener, Publisher, Store } from "./base";
 
 export type Feature = Stream | Field | Method | Action;
 export type Terrain = Record<string, Feature>;
@@ -15,7 +15,7 @@ export class RunningApp {
 
   constructor(app: Abstract.App) {
     this.root = new Organism(app.root, app.members, { ...this.fields }, {});
-    this.root.subscribe({
+    this.root.listen({
       take: (htmlElement) => {
         Dom.render(htmlElement);
       },
@@ -62,7 +62,7 @@ class Field<ModelKey extends string = string> extends Binding<
         );
       }
 
-      this.publisher.subscribe(this);
+      this.publisher.listen(this);
     }
 
     // TODO Implement the consumption of abstract models.
@@ -78,13 +78,13 @@ class Field<ModelKey extends string = string> extends Binding<
 
   protected defineMethod(name: string, method: BasicMethod) {
     const methodMember = new Method(method, this.members);
-    this.subscribe(methodMember);
+    this.listen(methodMember);
     this.members[name] = methodMember;
   }
 
   protected defineAction(name: string, action: BasicAction) {
     const actionMember = new Action(action, this.members);
-    actionMember.subscribe(this);
+    actionMember.listen(this);
     this.members[name] = actionMember;
   }
 
@@ -101,7 +101,7 @@ class Field<ModelKey extends string = string> extends Binding<
 
 class Option<ModelKey extends string = string>
   extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Subscriber<Abstract.Value<Abstract.Model<"Boolean">>>
+  implements Listener<Abstract.Value<Abstract.Model<"Boolean">>>
 {
   private readonly condition: Field<"Boolean">;
   private readonly result: Field;
@@ -117,7 +117,7 @@ class Option<ModelKey extends string = string>
     this.opposite = new Field(option.opposite, terrain);
 
     this.condition = new Field<"Boolean">(option.condition, terrain);
-    this.condition.subscribe(this);
+    this.condition.listen(this);
   }
 
   take(value: Abstract.Value<Abstract.Model<"Boolean">>) {
@@ -171,14 +171,14 @@ class FieldPointer<ModelKey extends string = string> extends Binding<
     }
 
     this.field = nextFeature;
-    this.field.subscribe(this);
+    this.field.listen(this);
   }
 }
 
 // TODO Should I handle higher-order methods?
 class MethodPointer<ModelKey extends string = string>
   extends Binding<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Subscriber<void>
+  implements Listener<void>
 {
   private readonly argument?: Field;
   private readonly continuation?: FieldPointer | MethodPointer;
@@ -273,7 +273,7 @@ class Method<ModelKey extends string = string> extends Binding<
     abstractContinuation?: Abstract.MethodPointer["continuation"]
   ): FieldPointer | MethodPointer | undefined {
     if (typeof this.method === "function") {
-      this.subscribe(methodPointer);
+      this.listen(methodPointer);
       return;
     }
 
@@ -281,7 +281,7 @@ class Method<ModelKey extends string = string> extends Binding<
 
     if (this.method.parameter !== undefined && argument !== undefined) {
       const parameter = Field.create(this.method.parameter);
-      argument.subscribe(parameter);
+      argument.listen(parameter);
       stepTerrain[parameter.key] = parameter;
     }
 
@@ -292,13 +292,13 @@ class Method<ModelKey extends string = string> extends Binding<
         ? new FieldPointer(abstractContinuation, terrain) // TODO Replace terrain with method result's members
         : new MethodPointer(abstractContinuation, terrain); // TODO Replace terrain with method result's members
 
-      continuation.subscribe(result);
-      result.subscribe(continuation);
+      continuation.listen(result);
+      result.listen(continuation);
 
       return continuation;
     }
 
-    result.subscribe(methodPointer);
+    result.listen(methodPointer);
   }
 }
 
@@ -317,7 +317,7 @@ class Action<ModelKey extends string = string> extends Binding<
 
   connect(actionPointer: ActionPointer, terrain: Terrain, argument?: Field) {
     if (typeof this.action === "function") {
-      actionPointer.subscribe(this);
+      actionPointer.listen(this);
       return;
     }
 
@@ -325,7 +325,7 @@ class Action<ModelKey extends string = string> extends Binding<
 
     if (this.action.parameter !== undefined && argument !== undefined) {
       const parameter = Field.create(this.action.parameter);
-      argument.subscribe(parameter);
+      argument.listen(parameter);
       stepTerrain[parameter.key] = parameter;
     }
 
@@ -343,7 +343,7 @@ class Action<ModelKey extends string = string> extends Binding<
       }
     );
 
-    actionPointer.subscribe({
+    actionPointer.listen({
       take: () => {
         steps.forEach((step) => {
           step.take();
@@ -367,7 +367,7 @@ class Action<ModelKey extends string = string> extends Binding<
 
 class ActionPointer<ModelKey extends string = string>
   extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Subscriber<void>
+  implements Listener<void>
 {
   private readonly action: Action;
   private readonly actionPath: Array<string>;
@@ -424,7 +424,7 @@ class ActionPointer<ModelKey extends string = string>
 
 class StreamPointer<ModelKey extends string = string>
   extends Publisher<Abstract.Value<Abstract.Model<ModelKey>>>
-  implements Subscriber<void>
+  implements Listener<void>
 {
   private readonly argument?: Field;
   private readonly streamName: string;
@@ -448,7 +448,7 @@ class StreamPointer<ModelKey extends string = string>
     }
 
     this.stream = nextFeature;
-    this.subscribe(this.stream);
+    this.listen(this.stream);
   }
 
   take() {
@@ -484,7 +484,7 @@ class Renderable extends Binding<HTMLElement> {
         terrain,
         renderable.body.properties
       );
-      this.body.subscribe(this);
+      this.body.listen(this);
     } else {
       const member = appMembers[renderable.body.viewName];
 
@@ -500,7 +500,7 @@ class Renderable extends Binding<HTMLElement> {
         { ...terrain },
         renderable.body.properties
       );
-      this.body.subscribe(this);
+      this.body.listen(this);
     }
   }
 }
@@ -547,7 +547,7 @@ class Atom extends Publisher<HTMLElement> {
                   this.terrain
                 );
                 this.children.push(elementChild);
-                elementChild.subscribe({
+                elementChild.listen({
                   take: (htmlElementChild) => {
                     htmlElementChildren.push(htmlElementChild);
                   },
@@ -558,17 +558,17 @@ class Atom extends Publisher<HTMLElement> {
                 htmlElementChildren.push(textContent);
               } else if (Abstract.isFieldReference(child)) {
                 const fieldPointer = new FieldPointer(child, this.terrain);
-                fieldPointer.subscribe({
+                fieldPointer.listen({
                   take: populate,
                 });
               } else if (Abstract.isMethodReference(child)) {
                 const methodPointer = new MethodPointer(child, this.terrain);
-                methodPointer.subscribe({
+                methodPointer.listen({
                   take: populate,
                 });
               } else if (Abstract.isConditionalData(child)) {
                 const option = new Option(child, this.terrain);
-                option.subscribe({
+                option.listen({
                   take: populate,
                 });
               } else {
@@ -589,7 +589,7 @@ class Atom extends Publisher<HTMLElement> {
           };
         }
 
-        dataSource.subscribe({ take });
+        dataSource.listen({ take });
         this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
         const sideEffect = new Action(property, terrain);
@@ -660,7 +660,7 @@ class Organism extends Binding<HTMLElement> {
         }
 
         const dataSource = new Field(property, this.terrain);
-        dataSource.subscribe(feature);
+        dataSource.listen(feature);
         this.properties[propertyKey] = dataSource;
       } else if (Abstract.isSideEffect(property)) {
         if (feature instanceof Field) {
@@ -670,7 +670,7 @@ class Organism extends Binding<HTMLElement> {
         }
 
         const sideEffect = new Action(property, this.terrain);
-        feature.subscribe(sideEffect);
+        feature.listen(sideEffect);
         this.properties[propertyKey] = sideEffect;
       } else {
         throw new ViewScriptError(
@@ -682,6 +682,6 @@ class Organism extends Binding<HTMLElement> {
     });
 
     this.element = new Renderable(root.element, branches, this.terrain);
-    this.element.subscribe(this);
+    this.element.listen(this);
   }
 }
