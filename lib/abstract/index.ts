@@ -15,15 +15,23 @@ export type Modeled<T extends Model | null> = {
   modelName: T extends Model ? Name<T> : never;
 };
 
-export type Field<T extends Model | null = Model | null> = Node<"field"> &
-  Modeled<T> & {
-    source: Slot<T> | Store<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
-  };
+export type Field<T extends Model | null = Model | null> = ImmutableField<T> | MutableField<T>;
 
-export type Slot<T extends Model | null> = Node<"slot"> &
-  Modeled<T> & {
-    mutable?: true;
-  };
+export type ImmutableField<T extends Model | null = Model | null> = BaseField<T> & {
+  source: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
+};
+
+export type MutableField<T extends Model | null = Model | null> = BaseField<T> & {
+  source: MutableSlot<T> | Store<T>;
+};
+
+export type BaseField<T extends Model | null> = Node<"field"> & Modeled<T>;
+
+export type Slot<T extends Model | null> = Node<"slot"> & Modeled<T>;
+
+export type MutableSlot<T extends Model | null> = Slot<T> & {
+  mutable: true;
+};
 
 export type Store<T extends Model | null> = Node<"store"> & {
   value: Value<T>;
@@ -139,7 +147,9 @@ export type Landscape<T extends View = View> = Node<"landscape"> & {
   viewName: Name<T>;
   fieldProps: {
     [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<infer State>
-      ? Field<State>
+      ? ImmutableField<State>
+      : T["fields"][Key]["source"] extends MutableSlot<infer State>
+      ? MutableField<State>
       : never;
   };
   actionProps: {
