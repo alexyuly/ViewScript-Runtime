@@ -3,7 +3,7 @@ import type { Node, Called, Name } from "./helpers";
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   members: Record<string, Model | View>;
-  renders: Landscape;
+  renders: Component;
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
@@ -36,12 +36,12 @@ export type Value<T extends Model | null = Model | null> = T extends Model
     ? number
     : Name<T> extends "String"
     ? string
-    : Name<T> extends "Landscape"
-    ? Landscape
+    : Name<T> extends "Component"
+    ? Component
     : Name<T> extends "Array"
     ? Array<Field>
     : Structure<Model>
-  : boolean | number | string | Landscape | Array<Field> | Structure;
+  : boolean | number | string | Component | Array<Field> | Structure;
 
 export type Structure<T extends Model | null = Model | null> = Node<"structure"> &
   Modeled<T> & {
@@ -122,11 +122,11 @@ export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
-    renders: Landscape;
+    renders: Component;
   };
 
-export type Landscape = Node<"landscape"> & {
-  renders: Element | Component;
+export type Component = Node<"component"> & {
+  renders: Element | Landscape;
 };
 
 export type Element = Node<"element"> & {
@@ -135,7 +135,7 @@ export type Element = Node<"element"> & {
   actionProps: Record<`on${string}`, Action>;
 };
 
-export type Component<T extends View = View> = Node<"component"> & {
+export type Landscape<T extends View = View> = Node<"landscape"> & {
   viewName: Name<T>;
   fieldProps: {
     [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<infer State>
