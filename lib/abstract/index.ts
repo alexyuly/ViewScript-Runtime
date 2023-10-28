@@ -3,7 +3,7 @@ import type { Node, Called, Name } from "./helpers";
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   members: Record<string, Model | View>;
-  renders: Renderable;
+  renders: Landscape;
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
@@ -31,14 +31,12 @@ export type Value<T extends Model | null = Model | null> = T extends Model
     ? number
     : Name<T> extends "String"
     ? string
-    : Name<T> extends "Renderable"
-    ? Renderable
+    : Name<T> extends "Landscape"
+    ? Landscape
     : Name<T> extends "Array"
     ? Array<Field>
-    : Name<T> extends `Array of ${infer InnerModelName}`
-    ? Array<Field<Model<InnerModelName>>>
     : Structure<Model>
-  : boolean | number | string | Renderable | Array<Field> | Structure;
+  : boolean | number | string | Landscape | Array<Field> | Structure;
 
 export type Structure<T extends Model | null = Model | null> =
   Node<"structure"> &
@@ -67,44 +65,47 @@ export type FieldPointer<T extends Model | null> = Node<"fieldPointer"> &
 
 export type MethodPointer<
   T extends Model | null = Model | null,
-  Param extends Model | null = Model | null,
+  Parameter extends Model | null = Model | null,
 > = Node<"methodPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
     methodPath: Array<string>;
-    argument: Param extends Model ? Field<Param> : never;
+    argument: Parameter extends Model ? Field<Parameter> : never;
   };
 
 export type Method<
   T extends Model | null = Model | null,
-  Param extends Model | null = Model | null,
+  Parameter extends Model | null = Model | null,
 > = Node<"method"> &
   Modeled<T> &
   (
     | {
-        delegate: (argument: Value<Param>) => Value<T>;
+        handler: (argument: Value<Parameter>) => Value<T>;
       }
     | {
-        parameter: Param extends Model ? Called & Field<Param> : never;
+        parameter: Parameter extends Model ? Called & Field<Parameter> : never;
         result: Field<T>;
       }
   );
 
-export type Action<Param extends Model | null = Model | null> = Node<"action"> &
-  (
-    | {
-        delegate: (argument: Value<Param>) => void;
-      }
-    | {
-        parameter: Param extends Model ? Called & Field<Param> : never;
-        steps: Array<ActionPointer | Exception | StreamPointer>;
-      }
-  );
+export type Action<Parameter extends Model | null = Model | null> =
+  Node<"action"> &
+    (
+      | {
+          handler: (argument: Value<Parameter>) => void;
+        }
+      | {
+          parameter: Parameter extends Model
+            ? Called & Field<Parameter>
+            : never;
+          steps: Array<ActionPointer | Exception | StreamPointer>;
+        }
+    );
 
-export type ActionPointer<Param extends Model | null = Model | null> =
+export type ActionPointer<Parameter extends Model | null = Model | null> =
   Node<"actionPointer"> & {
     actionPath: Array<string>;
-    argument: Param extends Model ? Field<Param> : never;
+    argument: Parameter extends Model ? Field<Parameter> : never;
   };
 
 export type Exception = Node<"exception"> & {
@@ -122,29 +123,29 @@ export type Stream<Event extends Model = Model> = Node<"stream"> &
 
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
-    renders: Renderable;
+    renders: Landscape;
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
   };
 
-export type Renderable = Node<"renderable"> & {
-  body: Atom | Organism;
+export type Landscape = Node<"landscape"> & {
+  renders: Element | Component;
 };
 
-export type Atom = Node<"atom"> & {
+export type Element = Node<"element"> & {
   tagName: string;
-  properties: Record<string, Field>;
-  handlers: Record<`on${string}`, Action>;
+  fieldProps: Record<string, Field>;
+  actionProps: Record<`on${string}`, Action>;
 };
 
-export type Organism<T extends View = View> = Node<"organism"> & {
+export type Component<T extends View = View> = Node<"component"> & {
   viewName: Name<T>;
-  properties: {
+  fieldProps: {
     [Key in keyof T["fields"]]: T["fields"][Key]["publisher"] extends undefined
       ? T["fields"][Key]
       : never;
   };
-  handlers: {
+  actionProps: {
     [Key in keyof T["streams"]]?: T["streams"][Key] extends Stream<infer Event>
       ? Action<Event>
       : never;
