@@ -1,12 +1,187 @@
 import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
-import { Binding, Listener, Publisher, Store, ValueOf } from "./base";
+
+export interface Listener<T = unknown> {
+  take(value: T): void;
+}
+
+export abstract class Publisher<T = unknown> {
+  private readonly listeners: Array<Listener<T>> = [];
+
+  protected publish(value: T) {
+    this.listeners.forEach((listener) => {
+      listener.take(value);
+    });
+  }
+
+  listen(listener: Listener<T>) {
+    this.listeners.push(listener);
+  }
+}
+
+export abstract class Binding<T = unknown>
+  extends Publisher<T>
+  implements Listener<T>
+{
+  take(value: T) {
+    this.publish(value);
+  }
+}
+
+export type ValueOf<ModelName extends string> = Abstract.Value<
+  Abstract.Model<ModelName>
+>;
+
+export class Store<ModelName extends string> extends Binding<
+  ValueOf<ModelName>
+> {
+  private readonly firstValue: ValueOf<ModelName>;
+  private lastValue: ValueOf<ModelName>;
+
+  constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
+    super();
+
+    this.firstValue = store.value;
+    this.lastValue = store.value;
+    super.take(store.value);
+  }
+
+  listen(listener: Listener<ValueOf<ModelName>>) {
+    listener.take(this.lastValue);
+    super.listen(listener);
+  }
+
+  read() {
+    return this.lastValue;
+  }
+
+  reset() {
+    this.take(this.firstValue);
+  }
+
+  take(value: ValueOf<ModelName>) {
+    this.lastValue = value;
+    super.take(value);
+  }
+}
 
 export type Feature = Stream | Field | Method | Action;
 export type Terrain = Record<string, Feature>;
 
 export class ViewScriptError extends Error {}
+
+export const models: Record<string, Abstract.Model> = {
+  Browser: {
+    kind: "model",
+    name: "Browser",
+    members: {
+      console: {
+        kind: "field",
+        modelName: "Console",
+      },
+    },
+  },
+  Console: {
+    kind: "model",
+    name: "Console",
+    members: {
+      log: {
+        kind: "action",
+        delegate: window.console.log,
+      },
+    },
+  },
+};
+
+export const boolean = (
+  store: Store<"Boolean">
+): Abstract.Model<"Boolean"> => ({
+  kind: "model",
+  name: "Boolean",
+  members: {
+    and: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: (arg) => store.read() && (arg as boolean),
+    },
+    not: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: () => !store.read(),
+    },
+    disable: {
+      kind: "action",
+      delegate: () => store.take(false),
+    },
+    enable: {
+      kind: "action",
+      delegate: () => store.take(true),
+    },
+    toggle: {
+      kind: "action",
+      delegate: () => store.take(!store.read()),
+    },
+  },
+});
+
+export const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
+  kind: "model",
+  name: "Number",
+  members: {
+    equals: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: (arg) => store.read() == (arg as number),
+    },
+    isAtLeast: {
+      kind: "method",
+      modelName: "Boolean",
+      delegate: (arg) => store.read() >= (arg as number),
+    },
+    add: {
+      kind: "action",
+      delegate: (arg) => store.take(store.read() + (arg as number)),
+    },
+    multiplyBy: {
+      kind: "action",
+      delegate: (arg) => store.take(store.read() * (arg as number)),
+    },
+  },
+});
+
+export const string = (): Abstract.Model<"String"> => ({
+  kind: "model",
+  name: "String",
+  members: {},
+});
+
+export const renderable = (): Abstract.Model<"Renderable"> => ({
+  kind: "model",
+  name: "Renderable",
+  members: {},
+});
+
+export const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
+  kind: "model",
+  name: "Array",
+  members: {
+    push: {
+      kind: "action",
+      delegate: (arg) =>
+        store.take(
+          store.read().concat({
+            kind: "field",
+            modelName: "Renderable",
+            publisher: {
+              kind: "store",
+              value: arg,
+            },
+          })
+        ),
+    },
+  },
+});
 
 export class RunningApp {
   private static readonly browser = new Browser();
@@ -39,6 +214,7 @@ class Field<ModelName extends string = string> extends Binding<
 
   constructor(
     field: Abstract.Field<Abstract.Model<ModelName>>,
+    members: Record<string, Abstract.Model | Abstract.View>,
     terrain: Terrain
   ) {
     super();
@@ -622,7 +798,7 @@ class Organism extends Binding<HTMLElement> {
 
   constructor(
     root: Abstract.View,
-    branches: Record<string, Abstract.View | Abstract.Model>,
+    members: Record<string, Abstract.Model | Abstract.View>,
     terrain: Terrain,
     properties: Abstract.Renderable["properties"]
   ) {
