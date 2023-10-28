@@ -59,5 +59,4 @@ const propertyNames = [
   "width",
 ];
 
-export const supports = (propertyName: string) =>
-  propertyNames.includes(propertyName);
+export const supports = (propertyName: string) => propertyNames.includes(propertyName);
