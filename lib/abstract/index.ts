@@ -17,11 +17,11 @@ export type Modeled<T extends Model | null> = {
 
 export type Field<T extends Model | null = Model | null> = ImmutableField<T> | MutableField<T>;
 
-export type ImmutableField<T extends Model | null = Model | null> = BaseField<T> & {
+export type ImmutableField<T extends Model | null> = BaseField<T> & {
   source: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
 };
 
-export type MutableField<T extends Model | null = Model | null> = BaseField<T> & {
+export type MutableField<T extends Model | null> = BaseField<T> & {
   source: MutableSlot<T> | Store<T>;
 };
 
