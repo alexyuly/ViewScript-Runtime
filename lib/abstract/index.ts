@@ -51,7 +51,7 @@ export type Value<T extends Model | null = Model | null> = T extends Model
     : Structure<Model>
   : boolean | number | string | Component | Array<Field> | Structure;
 
-export type Structure<T extends Model | null = Model | null> = Node<"structure"> &
+export type Structure<T extends Model = Model> = Node<"structure"> &
   Modeled<T> & {
     data: T extends Model
       ? {
@@ -75,7 +75,7 @@ export type FieldPointer<T extends Model | null> = Node<"fieldPointer"> &
 
 export type MethodPointer<
   T extends Model | null = Model | null,
-  Parameter extends Model | null = Model | null,
+  Parameter extends Model = Model,
 > = Node<"methodPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
@@ -109,7 +109,7 @@ export type Action<Parameter extends Model | null = Model | null> = Node<"action
       }
   );
 
-export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
+export type ActionPointer<Parameter extends Model = Model> = Node<"actionPointer"> & {
   actionPath: Array<string>;
   argument: Parameter extends Model ? Field<Parameter> : never;
 };

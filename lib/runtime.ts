@@ -20,22 +20,15 @@ export abstract class Publisher<T = unknown> {
   }
 }
 
-export abstract class Binding<T = unknown>
-  extends Publisher<T>
-  implements Listener<T>
-{
+export abstract class Binding<T = unknown> extends Publisher<T> implements Listener<T> {
   take(value: T) {
     this.publish(value);
   }
 }
 
-export type ValueOf<ModelName extends string> = Abstract.Value<
-  Abstract.Model<ModelName>
->;
+export type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
 
-export class Store<ModelName extends string> extends Binding<
-  ValueOf<ModelName>
-> {
+export class Store<ModelName extends string> extends Binding<ValueOf<ModelName>> {
   private readonly firstValue: ValueOf<ModelName>;
   private lastValue: ValueOf<ModelName>;
 
@@ -88,39 +81,37 @@ export const models: Record<string, Abstract.Model> = {
     members: {
       log: {
         kind: "action",
-        delegate: window.console.log,
+        handler: window.console.log,
       },
     },
   },
 };
 
-export const boolean = (
-  store: Store<"Boolean">
-): Abstract.Model<"Boolean"> => ({
+export const boolean = (store: Store<"Boolean">): Abstract.Model<"Boolean"> => ({
   kind: "model",
   name: "Boolean",
   members: {
     and: {
       kind: "method",
       modelName: "Boolean",
-      delegate: (arg) => store.read() && (arg as boolean),
+      handler: (arg) => store.read() && (arg as boolean),
     },
     not: {
       kind: "method",
       modelName: "Boolean",
-      delegate: () => !store.read(),
+      handler: () => !store.read(),
     },
     disable: {
       kind: "action",
-      delegate: () => store.take(false),
+      handler: () => store.take(false),
     },
     enable: {
       kind: "action",
-      delegate: () => store.take(true),
+      handler: () => store.take(true),
     },
     toggle: {
       kind: "action",
-      delegate: () => store.take(!store.read()),
+      handler: () => store.take(!store.read()),
     },
   },
 });
@@ -132,20 +123,20 @@ export const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
     equals: {
       kind: "method",
       modelName: "Boolean",
-      delegate: (arg) => store.read() == (arg as number),
+      handler: (arg) => store.read() == (arg as number),
     },
     isAtLeast: {
       kind: "method",
       modelName: "Boolean",
-      delegate: (arg) => store.read() >= (arg as number),
+      handler: (arg) => store.read() >= (arg as number),
     },
     add: {
       kind: "action",
-      delegate: (arg) => store.take(store.read() + (arg as number)),
+      handler: (arg) => store.take(store.read() + (arg as number)),
     },
     multiplyBy: {
       kind: "action",
-      delegate: (arg) => store.take(store.read() * (arg as number)),
+      handler: (arg) => store.take(store.read() * (arg as number)),
     },
   },
 });
@@ -168,7 +159,7 @@ export const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
   members: {
     push: {
       kind: "action",
-      delegate: (arg) =>
+      handler: (arg) =>
         store.take(
           store.read().concat({
             kind: "field",
@@ -177,7 +168,7 @@ export const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
               kind: "store",
               value: arg,
             },
-          })
+          }),
         ),
     },
   },
@@ -201,12 +192,11 @@ export class RunningApp {
   }
 }
 
-class Field<ModelName extends string = string> extends Binding<
-  ValueOf<ModelName>
-> {
+class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
   private readonly members: Record<string, Field | Method | Action>;
 
-  private readonly publisher?:
+  private readonly publisher:
+    | Slot<ModelName>
     | Store<ModelName>
     | Option<ModelName>
     | FieldPointer<ModelName>
@@ -215,7 +205,7 @@ class Field<ModelName extends string = string> extends Binding<
   constructor(
     field: Abstract.Field<Abstract.Model<ModelName>>,
     members: Record<string, Abstract.Model | Abstract.View>,
-    terrain: Terrain
+    terrain: Terrain,
   ) {
     super();
 
@@ -234,7 +224,7 @@ class Field<ModelName extends string = string> extends Binding<
         throw new ViewScriptError(
           `Cannot construct a field with publisher of unknown kind "${
             (field.publisher as { kind: unknown }).kind
-          }"`
+          }"`,
         );
       }
 
@@ -266,9 +256,7 @@ class Field<ModelName extends string = string> extends Binding<
 
   getMember(name: string) {
     if (!(name in this.members)) {
-      throw new ViewScriptError(
-        `Cannot get unknown member "${name}" of field "${this.key}"`
-      );
+      throw new ViewScriptError(`Cannot get unknown member "${name}" of field "${this.key}"`);
     }
 
     return this.members[name];
@@ -283,10 +271,7 @@ class Option<ModelName extends string = string>
   private readonly result: Field;
   private readonly opposite?: Field;
 
-  constructor(
-    option: Abstract.Option<Abstract.Model<ModelName>>,
-    terrain: Terrain
-  ) {
+  constructor(option: Abstract.Option<Abstract.Model<ModelName>>, terrain: Terrain) {
     super();
 
     this.result = new Field(option.result, terrain);
@@ -302,16 +287,11 @@ class Option<ModelName extends string = string>
   }
 }
 
-class FieldPointer<ModelName extends string = string> extends Binding<
-  ValueOf<ModelName>
-> {
+class FieldPointer<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
   private readonly field: Field<ModelName>;
   private readonly fieldPath: Array<string>;
 
-  constructor(
-    fieldPointer: Abstract.FieldPointer<Abstract.Model<ModelName>>,
-    terrain: Terrain
-  ) {
+  constructor(fieldPointer: Abstract.FieldPointer<Abstract.Model<ModelName>>, terrain: Terrain) {
     super();
 
     this.fieldPath = fieldPointer.fieldPath;
@@ -323,7 +303,7 @@ class FieldPointer<ModelName extends string = string> extends Binding<
 
       if (!key) {
         throw new ViewScriptError(
-          `Cannot construct a pointer to unknown field at path: ${fieldPointer.fieldPath}`
+          `Cannot construct a pointer to unknown field at path: ${fieldPointer.fieldPath}`,
         );
       }
 
@@ -342,7 +322,7 @@ class FieldPointer<ModelName extends string = string> extends Binding<
 
     if (!(nextFeature instanceof Field)) {
       throw new ViewScriptError(
-        `Cannot construct a pointer to unknown field at path: ${fieldPointer.fieldPath}`
+        `Cannot construct a pointer to unknown field at path: ${fieldPointer.fieldPath}`,
       );
     }
 
@@ -373,7 +353,7 @@ class MethodPointer<ModelName extends string = string>
 
       if (!key) {
         throw new ViewScriptError(
-          `Cannot construct a pointer to method at unknown path: "${methodPointer.methodPath}"`
+          `Cannot construct a pointer to method at unknown path: "${methodPointer.methodPath}"`,
         );
       }
 
@@ -392,7 +372,7 @@ class MethodPointer<ModelName extends string = string>
 
     if (!(nextFeature instanceof Method)) {
       throw new ViewScriptError(
-        `Cannot construct a method reference of unknown path to method key "${methodPointer.methodPath}"`
+        `Cannot construct a method reference of unknown path to method key "${methodPointer.methodPath}"`,
       );
     }
 
@@ -406,7 +386,7 @@ class MethodPointer<ModelName extends string = string>
       this,
       terrain,
       this.argument,
-      methodPointer.continuation
+      methodPointer.continuation,
     );
   }
 
@@ -419,9 +399,7 @@ class MethodPointer<ModelName extends string = string>
   }
 }
 
-class Method<ModelName extends string = string> extends Binding<
-  ValueOf<ModelName>
-> {
+class Method<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
   private readonly method: BasicMethod | Abstract.Method;
   private readonly terrain: Terrain;
 
@@ -446,7 +424,7 @@ class Method<ModelName extends string = string> extends Binding<
     methodPointer: MethodPointer,
     terrain: Terrain,
     argument?: Field,
-    abstractContinuation?: Abstract.MethodPointer["continuation"]
+    abstractContinuation?: Abstract.MethodPointer["continuation"],
   ): FieldPointer | MethodPointer | undefined {
     if (typeof this.method === "function") {
       this.listen(methodPointer);
@@ -478,9 +456,7 @@ class Method<ModelName extends string = string> extends Binding<
   }
 }
 
-class Action<ModelName extends string = string> extends Binding<
-  ValueOf<ModelName>
-> {
+class Action<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
   private readonly action: BasicAction | Abstract.Action;
   private readonly terrain: Terrain;
 
@@ -505,19 +481,17 @@ class Action<ModelName extends string = string> extends Binding<
       stepTerrain[parameter.key] = parameter;
     }
 
-    const steps: Array<ActionPointer | StreamPointer> = this.action.steps.map(
-      (step) => {
-        if (Abstract.isActionReference(step)) {
-          return new ActionPointer(step, stepTerrain);
-        }
-
-        if (Abstract.isStreamReference(step)) {
-          return new StreamPointer(step, stepTerrain);
-        }
-
-        throw new ViewScriptError("Sorry, exceptions are not yet implemented."); // TODO implement
+    const steps: Array<ActionPointer | StreamPointer> = this.action.steps.map((step) => {
+      if (Abstract.isActionReference(step)) {
+        return new ActionPointer(step, stepTerrain);
       }
-    );
+
+      if (Abstract.isStreamReference(step)) {
+        return new StreamPointer(step, stepTerrain);
+      }
+
+      throw new ViewScriptError("Sorry, exceptions are not yet implemented."); // TODO implement
+    });
 
     actionPointer.listen({
       take: () => {
@@ -561,7 +535,7 @@ class ActionPointer<ModelName extends string = string>
 
       if (!key) {
         throw new ViewScriptError(
-          `Cannot construct an action reference of unknown path to action key "${actionPointer.actionPath}"`
+          `Cannot construct an action reference of unknown path to action key "${actionPointer.actionPath}"`,
         );
       }
 
@@ -580,7 +554,7 @@ class ActionPointer<ModelName extends string = string>
 
     if (!(nextFeature instanceof Action)) {
       throw new ViewScriptError(
-        `Cannot construct an action reference of unknown path to action key "${actionPointer.actionPath}"`
+        `Cannot construct an action reference of unknown path to action key "${actionPointer.actionPath}"`,
       );
     }
 
@@ -619,7 +593,7 @@ class StreamPointer<ModelName extends string = string>
 
     if (!(nextFeature instanceof Stream)) {
       throw new ViewScriptError(
-        `Cannot construct a pointer to unknown stream "${streamPointer.streamName}"`
+        `Cannot construct a pointer to unknown stream "${streamPointer.streamName}"`,
       );
     }
 
@@ -649,7 +623,7 @@ class Renderable extends Binding<HTMLElement> {
   constructor(
     renderable: Abstract.Renderable,
     appMembers: Record<string, Abstract.Model | Abstract.View>,
-    terrain: Terrain
+    terrain: Terrain,
   ) {
     super();
 
@@ -658,24 +632,17 @@ class Renderable extends Binding<HTMLElement> {
         renderable.body.tagName,
         appMembers,
         terrain,
-        renderable.body.properties
+        renderable.body.properties,
       );
       this.body.listen(this);
     } else {
       const member = appMembers[renderable.body.viewName];
 
       if (member.kind !== "view") {
-        throw new ViewScriptError(
-          `Cannot construct unknown view "${renderable.body.viewName}"`
-        );
+        throw new ViewScriptError(`Cannot construct unknown view "${renderable.body.viewName}"`);
       }
 
-      this.body = new Organism(
-        member,
-        appMembers,
-        { ...terrain },
-        renderable.body.properties
-      );
+      this.body = new Organism(member, appMembers, { ...terrain }, renderable.body.properties);
       this.body.listen(this);
     }
   }
@@ -691,7 +658,7 @@ class Atom extends Publisher<HTMLElement> {
     tagName: string,
     branches: Record<string, Abstract.View | Abstract.Model>,
     terrain: Terrain,
-    properties: Abstract.Renderable["properties"]
+    properties: Abstract.Renderable["properties"],
   ) {
     super();
 
@@ -717,11 +684,7 @@ class Atom extends Publisher<HTMLElement> {
               if (child instanceof Array) {
                 child.forEach(populate);
               } else if (Abstract.isElement(child)) {
-                const elementChild = new Renderable(
-                  child,
-                  branches,
-                  this.terrain
-                );
+                const elementChild = new Renderable(child, branches, this.terrain);
                 this.children.push(elementChild);
                 elementChild.listen({
                   take: (htmlElementChild) => {
@@ -780,7 +743,7 @@ class Atom extends Publisher<HTMLElement> {
         throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
             (property as { kind: unknown }).kind
-          } for atom of tagName ${this.tagName}"`
+          } for atom of tagName ${this.tagName}"`,
         );
       }
     });
@@ -800,7 +763,7 @@ class Organism extends Binding<HTMLElement> {
     root: Abstract.View,
     members: Record<string, Abstract.Model | Abstract.View>,
     terrain: Terrain,
-    properties: Abstract.Renderable["properties"]
+    properties: Abstract.Renderable["properties"],
   ) {
     super();
 
@@ -818,20 +781,19 @@ class Organism extends Binding<HTMLElement> {
     Object.entries(properties).forEach(([propertyKey, property]) => {
       const feature = Object.values(this.terrain).find(
         (feature) =>
-          (feature instanceof Stream || feature instanceof Field) &&
-          feature.key === propertyKey
+          (feature instanceof Stream || feature instanceof Field) && feature.key === propertyKey,
       );
 
       if (feature === undefined) {
         throw new ViewScriptError(
-          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``
+          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``,
         );
       }
 
       if (Abstract.isDataSource(property)) {
         if (feature instanceof Stream) {
           throw new ViewScriptError(
-            `Cannot construct a data source for stream name \`${propertyKey}\``
+            `Cannot construct a data source for stream name \`${propertyKey}\``,
           );
         }
 
@@ -841,7 +803,7 @@ class Organism extends Binding<HTMLElement> {
       } else if (Abstract.isSideEffect(property)) {
         if (feature instanceof Field) {
           throw new ViewScriptError(
-            `Cannot construct a side effect for field name \`${propertyKey}\``
+            `Cannot construct a side effect for field name \`${propertyKey}\``,
           );
         }
 
@@ -852,7 +814,7 @@ class Organism extends Binding<HTMLElement> {
         throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
             (property as { kind: unknown }).kind
-          } for view of key \`${this.key}\`"`
+          } for view of key \`${this.key}\`"`,
         );
       }
     });
