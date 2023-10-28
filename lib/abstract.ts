@@ -120,7 +120,7 @@ export type Store<T extends Model | null> = Node<"store"> & {
 };
 
 export type Component = Node<"component"> & {
-  renders: Element | Landscape;
+  renders: Feature | Landscape;
 };
 
 export type Structure<T extends Model = Model> = Node<"structure"> &
@@ -132,7 +132,7 @@ export type Structure<T extends Model = Model> = Node<"structure"> &
       : Record<string, Field>;
   };
 
-export type Element = Node<"element"> & {
+export type Feature = Node<"feature"> & {
   tagName: string;
   fieldProps: Record<string, Field>;
   actionProps: Record<`on${string}`, Action>;
