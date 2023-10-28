@@ -17,12 +17,7 @@ export type Modeled<T extends Model | null> = {
 
 export type Field<T extends Model | null = Model | null> = Node<"field"> &
   Modeled<T> & {
-    publisher:
-      | Slot<T>
-      | Store<T>
-      | Option<T>
-      | FieldPointer<T>
-      | MethodPointer<T>;
+    source: Slot<T> | Store<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
   };
 
 export type Slot<T extends Model | null> = Node<"slot"> &
@@ -133,9 +128,9 @@ export type Stream<Event extends Model = Model> = Node<"stream"> &
 
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
-    renders: Landscape;
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
+    renders: Landscape;
   };
 
 export type Landscape = Node<"landscape"> & {
@@ -151,7 +146,7 @@ export type Element = Node<"element"> & {
 export type Component<T extends View = View> = Node<"component"> & {
   viewName: Name<T>;
   fieldProps: {
-    [Key in keyof T["fields"]]?: T["fields"][Key]["publisher"] extends Slot<
+    [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<
       infer State
     >
       ? Field<State>
