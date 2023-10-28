@@ -43,17 +43,14 @@ export type Value<T extends Model | null = Model | null> = T extends Model
     : Structure<Model>
   : boolean | number | string | Landscape | Array<Field> | Structure;
 
-export type Structure<T extends Model | null = Model | null> =
-  Node<"structure"> &
-    Modeled<T> & {
-      data: T extends Model
-        ? {
-            [Key in keyof T["members"]]?: T["members"][Key] extends Field
-              ? T["members"][Key]
-              : never;
-          }
-        : Record<string, Field>;
-    };
+export type Structure<T extends Model | null = Model | null> = Node<"structure"> &
+  Modeled<T> & {
+    data: T extends Model
+      ? {
+          [Key in keyof T["members"]]?: T["members"][Key] extends Field ? T["members"][Key] : never;
+        }
+      : Record<string, Field>;
+  };
 
 export type Option<T extends Model | null> = Node<"option"> &
   Modeled<T> & {
@@ -93,25 +90,21 @@ export type Method<
       }
   );
 
-export type Action<Parameter extends Model | null = Model | null> =
-  Node<"action"> &
-    (
-      | {
-          handler: (argument: Value<Parameter>) => void;
-        }
-      | {
-          parameter: Parameter extends Model
-            ? Called & Field<Parameter>
-            : never;
-          steps: Array<ActionPointer | Exception | StreamPointer>;
-        }
-    );
+export type Action<Parameter extends Model | null = Model | null> = Node<"action"> &
+  (
+    | {
+        handler: (argument: Value<Parameter>) => void;
+      }
+    | {
+        parameter: Parameter extends Model ? Called & Field<Parameter> : never;
+        steps: Array<ActionPointer | Exception | StreamPointer>;
+      }
+  );
 
-export type ActionPointer<Parameter extends Model | null = Model | null> =
-  Node<"actionPointer"> & {
-    actionPath: Array<string>;
-    argument: Parameter extends Model ? Field<Parameter> : never;
-  };
+export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
+  actionPath: Array<string>;
+  argument: Parameter extends Model ? Field<Parameter> : never;
+};
 
 export type Exception = Node<"exception"> & {
   condition: Field<Model<"Boolean">>;
@@ -123,8 +116,7 @@ export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
     streamName: string;
   };
 
-export type Stream<Event extends Model = Model> = Node<"stream"> &
-  Modeled<Event>;
+export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
 
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
@@ -146,9 +138,7 @@ export type Element = Node<"element"> & {
 export type Component<T extends View = View> = Node<"component"> & {
   viewName: Name<T>;
   fieldProps: {
-    [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<
-      infer State
-    >
+    [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<infer State>
       ? Field<State>
       : never;
   };
