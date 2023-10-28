@@ -125,34 +125,36 @@ export type Component = Node<"component"> & {
 
 export type Structure<T extends Model = Model> = Node<"structure"> &
   Modeled<T> & {
-    data: T extends Model
-      ? {
-          [Key in keyof T["members"]]?: T["members"][Key] extends Field ? T["members"][Key] : never;
-        }
-      : Record<string, Field>;
+    properties: {
+      [Key in keyof T["members"]]?: T["members"][Key] extends Field
+        ? Properties<T["members"][Key]>
+        : never;
+    };
   };
 
 export type Feature = Node<"feature"> & {
   tagName: string;
-  fieldProps: Record<string, Field>;
-  actionProps: Record<`on${string}`, Action>;
+  properties: Record<string, Field>;
+  reactions: Record<`on${string}`, Action>;
 };
 
 export type Landscape<T extends View = View> = Node<"landscape"> & {
   viewName: Name<T>;
-  fieldProps: {
-    [Key in keyof T["fields"]]?: T["fields"][Key]["source"] extends Slot<infer State>
-      ? ImmutableField<State>
-      : T["fields"][Key]["source"] extends MutableSlot<infer State>
-      ? MutableField<State>
-      : never;
+  properties: {
+    [Key in keyof T["fields"]]?: Properties<T["fields"][Key]>;
   };
-  actionProps: {
+  reactions: {
     [Key in keyof T["streams"]]?: T["streams"][Key] extends Stream<infer Event>
       ? Action<Event>
       : never;
   };
 };
+
+export type Properties<T extends Field> = T["source"] extends Slot<infer State>
+  ? ImmutableField<State>
+  : T["source"] extends MutableSlot<infer State>
+  ? MutableField<State>
+  : never;
 
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
