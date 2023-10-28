@@ -17,7 +17,17 @@ export type Modeled<T extends Model | null> = {
 
 export type Field<T extends Model | null = Model | null> = Node<"field"> &
   Modeled<T> & {
-    publisher?: Store<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
+    publisher:
+      | Slot<T>
+      | Store<T>
+      | Option<T>
+      | FieldPointer<T>
+      | MethodPointer<T>;
+  };
+
+export type Slot<T extends Model | null> = Node<"slot"> &
+  Modeled<T> & {
+    mutable?: true;
   };
 
 export type Store<T extends Model | null> = Node<"store"> & {
@@ -141,8 +151,10 @@ export type Element = Node<"element"> & {
 export type Component<T extends View = View> = Node<"component"> & {
   viewName: Name<T>;
   fieldProps: {
-    [Key in keyof T["fields"]]: T["fields"][Key]["publisher"] extends undefined
-      ? T["fields"][Key]
+    [Key in keyof T["fields"]]?: T["fields"][Key]["publisher"] extends Slot<
+      infer State
+    >
+      ? Field<State>
       : never;
   };
   actionProps: {
