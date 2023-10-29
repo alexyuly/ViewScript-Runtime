@@ -2,6 +2,10 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
+type Member = Stream | Field | Method | Action;
+type Scope = Record<string, Member>;
+type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
+
 interface Listener<T = unknown> {
   take(value: T): void;
 }
@@ -26,22 +30,14 @@ abstract class Binding<T = unknown> extends Publisher<T> implements Listener<T> 
   }
 }
 
-type Member = Stream | Field | Method | Action;
-type Scope = Record<string, Member>;
-type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
-
 class ViewScriptError extends Error {}
 
-class Stream extends Binding<Abstract.Value> {
-  constructor() {
-    super();
-  }
-}
+class Stream extends Binding<Abstract.Value> {}
 
 class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
   private readonly members: Record<string, Field | Method | Action>;
 
-  private readonly publisher:
+  private readonly source:
     | Slot<ModelName>
     | Store<ModelName>
     | Option<ModelName>
@@ -57,25 +53,23 @@ class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName
 
     this.members = {};
 
-    if (field.publisher) {
-      if (field.publisher.kind === "store") {
-        this.publisher = new Store(field.publisher);
-      } else if (field.publisher.kind === "option") {
-        this.publisher = new Option(field.publisher, scope);
-      } else if (field.publisher.kind === "fieldPointer") {
-        this.publisher = new FieldPointer(field.publisher, scope);
-      } else if (field.publisher.kind === "methodPointer") {
-        this.publisher = new MethodPointer(field.publisher, scope);
-      } else {
-        throw new ViewScriptError(
-          `Cannot construct a field with publisher of unknown kind "${
-            (field.publisher as { kind: unknown }).kind
-          }"`,
-        );
-      }
-
-      this.publisher.listen(this);
+    if (field.source.kind === "store") {
+      this.source = new Store(field.source);
+    } else if (field.source.kind === "option") {
+      this.source = new Option(field.source, scope);
+    } else if (field.source.kind === "fieldPointer") {
+      this.source = new FieldPointer(field.source, scope);
+    } else if (field.source.kind === "methodPointer") {
+      this.source = new MethodPointer(field.source, scope);
+    } else {
+      throw new ViewScriptError(
+        `Cannot construct a field with source of unknown kind "${
+          (field.source as { kind: unknown }).kind
+        }"`,
+      );
     }
+
+    this.source.listen(this);
 
     // TODO Implement the consumption of abstract models.
 
@@ -317,35 +311,14 @@ class StreamPointer<ModelName extends string = string>
   }
 }
 
-class Store<ModelName extends string> extends Binding<ValueOf<ModelName>> {
-  private readonly firstValue: ValueOf<ModelName>;
-  private lastValue: ValueOf<ModelName>;
-
-  constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
-    super();
-
-    this.firstValue = store.value;
-    this.lastValue = store.value;
-    super.take(store.value);
-  }
-
-  listen(listener: Listener<ValueOf<ModelName>>) {
-    listener.take(this.lastValue);
-    super.listen(listener);
-  }
-
-  read() {
-    return this.lastValue;
-  }
-
-  reset() {
-    this.take(this.firstValue);
-  }
-
-  take(value: ValueOf<ModelName>) {
-    this.lastValue = value;
-    super.take(value);
-  }
+class Slot<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
+  // TODO -- copilot wrote this lol
+  // private readonly field: Field<ModelName>;
+  // constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>, scope: Scope) {
+  //   super();
+  //   this.field = new Field(slot.field, scope);
+  //   this.field.listen(this);
+  // }
 }
 
 class Option<ModelName extends string = string>
@@ -476,6 +449,37 @@ class MethodPointer<ModelName extends string = string>
     if (nextValue !== undefined) {
       this.publish(nextValue);
     }
+  }
+}
+
+class Store<ModelName extends string> extends Binding<ValueOf<ModelName>> {
+  private readonly firstValue: ValueOf<ModelName>;
+  private lastValue: ValueOf<ModelName>;
+
+  constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
+    super();
+
+    this.firstValue = store.value;
+    this.lastValue = store.value;
+    super.take(store.value);
+  }
+
+  listen(listener: Listener<ValueOf<ModelName>>) {
+    listener.take(this.lastValue);
+    super.listen(listener);
+  }
+
+  read() {
+    return this.lastValue;
+  }
+
+  reset() {
+    this.take(this.firstValue);
+  }
+
+  take(value: ValueOf<ModelName>) {
+    this.lastValue = value;
+    super.take(value);
   }
 }
 
@@ -617,19 +621,19 @@ class Landscape extends Binding<HTMLElement> {
   private readonly scope: Scope;
 
   constructor(
-    root: Abstract.View,
+    renders: Abstract.View,
     members: Record<string, Abstract.Model | Abstract.View>,
     scope: Scope,
     properties: Abstract.Component["properties"],
   ) {
     super();
 
-    this.key = root.key;
+    this.key = renders.key;
 
     this.properties = {};
     this.scope = scope;
 
-    Object.entries(root.scope).forEach(([featureKey, feature]) => {
+    Object.entries(renders.scope).forEach(([featureKey, feature]) => {
       this.scope[featureKey] = Abstract.isField(feature)
         ? Field.create(feature)
         : new Stream(feature);
@@ -676,7 +680,7 @@ class Landscape extends Binding<HTMLElement> {
       }
     });
 
-    this.element = new Component(root.element, branches, this.scope);
+    this.element = new Component(renders.element, branches, this.scope);
     this.element.listen(this);
   }
 }
@@ -684,11 +688,11 @@ class Landscape extends Binding<HTMLElement> {
 export class RunningApp {
   private static readonly browser = new Browser();
   private readonly fields = { browser: RunningApp.browser };
-  private readonly root: Atom | Organism;
+  private readonly renders: Element | Landscape;
 
   constructor(app: Abstract.App) {
-    this.root = new Organism(app.root, app.members, { ...this.fields }, {});
-    this.root.listen({
+    this.renders = new Landscape(app.renders, app.members, { ...this.fields }, {});
+    this.renders.listen({
       take: (htmlElement) => {
         Dom.render(htmlElement);
       },
@@ -782,9 +786,9 @@ const string = (): Abstract.Model<"String"> => ({
   members: {},
 });
 
-const renderable = (): Abstract.Model<"Renderable"> => ({
+const component = (): Abstract.Model<"Component"> => ({
   kind: "model",
-  name: "Renderable",
+  name: "Component",
   members: {},
 });
 
@@ -798,8 +802,8 @@ const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
         store.take(
           store.read().concat({
             kind: "field",
-            modelName: "Renderable",
-            publisher: {
+            modelName: "Component",
+            source: {
               kind: "store",
               value: arg,
             },
