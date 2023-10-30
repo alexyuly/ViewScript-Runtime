@@ -24,7 +24,7 @@ export type Method<
   Modeled<T> &
   (
     | {
-        handler: (argument: Value<Parameter>) => Value<T>;
+        handle: (argument: Value<Parameter>) => Value<T>;
       }
     | {
         parameter: Parameter extends Model ? Called & Field<Parameter> : never;
@@ -35,7 +35,7 @@ export type Method<
 export type Action<Parameter extends Model | null = Model | null> = Node<"action"> &
   (
     | {
-        handler: (argument: Value<Parameter>) => void;
+        handle: (argument: Value<Parameter>) => void;
       }
     | {
         parameter: Parameter extends Model ? Called & Field<Parameter> : never;
@@ -111,13 +111,12 @@ export type MethodPointer<
     argument: Parameter extends Model ? Field<Parameter> : never;
   };
 
-export type MutableSlot<T extends Model | null> = Slot<T> & {
-  mutable: true;
-};
+export type MutableSlot<T extends Model | null> = Node<"mutableSlot"> & Modeled<T>;
 
-export type Store<T extends Model | null> = Node<"store"> & {
-  value: Value<T>;
-};
+export type Store<T extends Model | null> = Node<"store"> &
+  Modeled<T> & {
+    value: Value<T>;
+  };
 
 export type Component = Node<"component"> & {
   renders: Feature | Landscape;

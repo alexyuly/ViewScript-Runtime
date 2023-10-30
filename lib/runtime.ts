@@ -2,12 +2,21 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
-type Member = Stream | Field | Method | Action;
-type Scope = Record<string, Member>;
+type Scope = Record<string, ScopeMember>;
+type ScopeMember = Stream | Field | Method | Action;
 type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
+
+interface Modeled<ModelName extends string = string> {
+  modelName: ModelName;
+}
 
 interface Listener<T = unknown> {
   take(value: T): void;
+}
+
+interface Mutable<ModelName extends string = string>
+  extends Listener<Abstract.Value<Abstract.Model<ModelName>>> {
+  reset(): void;
 }
 
 abstract class Publisher<T = unknown> {
@@ -32,12 +41,23 @@ abstract class Binding<T = unknown> extends Publisher<T> implements Listener<T> 
 
 class ViewScriptError extends Error {}
 
-class Stream extends Binding<Abstract.Value> {}
+class Stream extends Binding<Abstract.Value> implements Modeled {
+  readonly modelName: string;
 
-class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
-  private readonly members: Record<string, Field | Method | Action>;
+  constructor(stream: Abstract.Stream) {
+    super();
 
-  private readonly source:
+    this.modelName = stream.modelName;
+  }
+}
+
+class Field<ModelName extends string = string>
+  extends Binding<ValueOf<ModelName>>
+  implements Modeled<ModelName>
+{
+  readonly members: Record<string, Field | Method | Action>;
+  readonly modelName: ModelName;
+  readonly source:
     | Slot<ModelName>
     | Store<ModelName>
     | Option<ModelName>
@@ -46,14 +66,19 @@ class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName
 
   constructor(
     field: Abstract.Field<Abstract.Model<ModelName>>,
-    members: Record<string, Abstract.Model | Abstract.View>,
+    appMembers: Record<string, Abstract.Model | Abstract.View>,
     scope: Scope,
   ) {
     super();
 
     this.members = {};
+    this.modelName = field.modelName;
 
-    if (field.source.kind === "store") {
+    if (field.source.kind === "slot") {
+      this.source = new Slot(field.source);
+    } else if (field.source.kind === "mutableSlot") {
+      this.source = new MutableSlot(field.source);
+    } else if (field.source.kind === "store") {
       this.source = new Store(field.source);
     } else if (field.source.kind === "option") {
       this.source = new Option(field.source, scope);
@@ -69,45 +94,77 @@ class Field<ModelName extends string = string> extends Binding<ValueOf<ModelName
       );
     }
 
-    this.source.listen(this);
+    const model = appMembers[field.modelName];
+
+    if (model.kind !== "model") {
+      throw new ViewScriptError(
+        `Cannot construct a field with unknown model name "${field.modelName}"`,
+      );
+    }
+
+    const isMutable = this.source instanceof MutableSlot || this.source instanceof Store;
 
     // TODO Implement the consumption of abstract models.
+    // TODO Use model to define fields, methods, and actions
+    Object.entries(model.members).forEach(([memberKey, member]) => {
+      if (member.kind === "field") {
+        this.members[memberKey] = new Field(member, appMembers, scope);
+      } else if (member.kind === "method") {
+        this.members[memberKey] = new Method(member, this.members); // TODO merge this.members and scope (?)
+      } else if (member.kind === "action") {
+        if (isMutable) {
+          this.members[memberKey] = new Action(member, this.members); // TODO see above
+        }
+      } else {
+        throw new ViewScriptError(
+          `Cannot construct a field with member of unknown kind "${
+            (member as { kind: unknown }).kind
+          }"`,
+        );
+      }
+    });
 
-    // TODO Define base actions:
-    // this.defineAction("reset", () => this.initialValue);
-    // this.defineAction("setTo", (value) => value);
-  }
+    if (isMutable) {
+      const source = this.source;
+      this.members.reset = new Action(
+        {
+          kind: "action",
+          handle: () => source.reset(),
+        },
+        this.members,
+      );
+      this.members.setTo = new Action<ModelName>(
+        {
+          kind: "action",
+          handle: (value) => source.take(value),
+        },
+        this.members,
+      );
+    }
 
-  protected defineField(name: string, field: Field) {
-    this.members[name] = field;
-  }
-
-  protected defineMethod(name: string, method: BasicMethod) {
-    const methodMember = new Method(method, this.members);
-    this.listen(methodMember);
-    this.members[name] = methodMember;
-  }
-
-  protected defineAction(name: string, action: BasicAction) {
-    const actionMember = new Action(action, this.members);
-    actionMember.listen(this);
-    this.members[name] = actionMember;
+    this.source.listen(this);
   }
 
   getMember(name: string) {
     if (!(name in this.members)) {
-      throw new ViewScriptError(`Cannot get unknown member "${name}" of field "${this.key}"`);
+      throw new ViewScriptError(`Cannot get unknown member "${name}" of field`); // TODO should fields still have keys?
     }
 
     return this.members[name];
   }
+
+  // TODO Should I define an interface which has a read method?
+  read() {
+    // TODO
+    // return this.lastValue;
+  }
 }
 
 class Method<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
-  private readonly method: BasicMethod | Abstract.Method;
+  private readonly method: Abstract.Method;
   private readonly scope: Scope;
 
-  constructor(method: BasicMethod | Abstract.Method, scope: Scope) {
+  constructor(method: Abstract.Method, scope: Scope) {
     super();
 
     this.method = method;
@@ -115,11 +172,11 @@ class Method<ModelName extends string = string> extends Binding<ValueOf<ModelNam
   }
 
   call(argument: Abstract.Value) {
-    if (typeof this.method !== "function") {
-      throw new ViewScriptError(`An abstract method cannot be called.`);
+    if (!("handle" in this.method)) {
+      throw new ViewScriptError(`A method without a handle cannot be called.`);
     }
 
-    const nextValue = this.method(argument);
+    const nextValue = this.method.handle(argument);
 
     return nextValue;
   }
@@ -128,9 +185,9 @@ class Method<ModelName extends string = string> extends Binding<ValueOf<ModelNam
     methodPointer: MethodPointer,
     scope: Scope,
     argument?: Field,
-    abstractContinuation?: Abstract.MethodPointer["continuation"],
+    abstractContinuation?: Abstract.MethodPointer["continuation"], // TODO replace with leader
   ): FieldPointer | MethodPointer | undefined {
-    if (typeof this.method === "function") {
+    if ("handle" in this.method) {
       this.listen(methodPointer);
       return;
     }
@@ -138,17 +195,18 @@ class Method<ModelName extends string = string> extends Binding<ValueOf<ModelNam
     const stepTerrain = { ...this.scope, ...scope };
 
     if (this.method.parameter !== undefined && argument !== undefined) {
-      const parameter = Field.create(this.method.parameter);
+      const parameter = new Field(this.method.parameter);
       argument.listen(parameter);
-      stepTerrain[parameter.key] = parameter;
+      stepTerrain[this.method.parameter.name] = parameter;
     }
 
     const result = new Field(this.method.result, stepTerrain);
 
     if (abstractContinuation) {
-      const continuation = Abstract.isFieldReference(abstractContinuation)
-        ? new FieldPointer(abstractContinuation, scope) // TODO Replace scope with method result's members
-        : new MethodPointer(abstractContinuation, scope); // TODO Replace scope with method result's members
+      const continuation =
+        abstractContinuation.kind === "fieldPointer"
+          ? new FieldPointer(abstractContinuation, scope) // TODO Replace scope with method result's members
+          : new MethodPointer(abstractContinuation, scope); // TODO Replace scope with method result's members
 
       continuation.listen(result);
       result.listen(continuation);
@@ -161,10 +219,10 @@ class Method<ModelName extends string = string> extends Binding<ValueOf<ModelNam
 }
 
 class Action<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
-  private readonly action: BasicAction | Abstract.Action;
+  private readonly action: Abstract.Action;
   private readonly scope: Scope;
 
-  constructor(action: BasicAction | Abstract.Action, scope: Scope) {
+  constructor(action: Abstract.Action, scope: Scope) {
     super();
 
     this.action = action;
@@ -172,7 +230,7 @@ class Action<ModelName extends string = string> extends Binding<ValueOf<ModelNam
   }
 
   connect(actionPointer: ActionPointer, scope: Scope, argument?: Field) {
-    if (typeof this.action === "function") {
+    if ("handle" in this.action) {
       actionPointer.listen(this);
       return;
     }
@@ -180,17 +238,17 @@ class Action<ModelName extends string = string> extends Binding<ValueOf<ModelNam
     const stepTerrain = { ...this.scope, ...scope };
 
     if (this.action.parameter !== undefined && argument !== undefined) {
-      const parameter = Field.create(this.action.parameter);
+      const parameter = new Field(this.action.parameter);
       argument.listen(parameter);
-      stepTerrain[parameter.key] = parameter;
+      stepTerrain[this.action.parameter.name] = parameter;
     }
 
     const steps: Array<ActionPointer | StreamPointer> = this.action.steps.map((step) => {
-      if (Abstract.isActionReference(step)) {
+      if (step.kind === "actionPointer") {
         return new ActionPointer(step, stepTerrain);
       }
 
-      if (Abstract.isStreamReference(step)) {
+      if (step.kind === "streamPointer") {
         return new StreamPointer(step, stepTerrain);
       }
 
@@ -207,11 +265,11 @@ class Action<ModelName extends string = string> extends Binding<ValueOf<ModelNam
   }
 
   take(value: Abstract.Value) {
-    if (typeof this.action !== "function") {
-      throw new ViewScriptError(`An abstract action cannot take values.`);
+    if (!("handle" in this.action)) {
+      throw new ViewScriptError(`An action without a handle cannot take values.`);
     }
 
-    const nextValue = this.action(value);
+    const nextValue = this.action.handle(value);
 
     if (nextValue !== undefined) {
       this.publish(nextValue);
@@ -246,7 +304,7 @@ class ActionPointer<ModelName extends string = string>
       return key;
     };
 
-    let nextMember: Member = scope[getNextKey()];
+    let nextMember: ScopeMember = scope[getNextKey()];
 
     while (actionPath.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -262,16 +320,14 @@ class ActionPointer<ModelName extends string = string>
       );
     }
 
-    this.argument = Abstract.isDataSource(actionPointer.argument)
-      ? new Field(actionPointer.argument, scope)
-      : undefined;
+    this.argument = actionPointer.argument && new Field(actionPointer.argument, scope);
 
     this.action = nextMember;
     this.action.connect(this, scope, this.argument);
   }
 
   take() {
-    const nextValue = this.argument?.getValue();
+    const nextValue = this.argument?.read();
     this.publish(nextValue ?? null);
   }
 }
@@ -306,19 +362,22 @@ class StreamPointer<ModelName extends string = string>
   }
 
   take() {
-    const nextValue = this.argument?.getValue();
+    const nextValue = this.argument?.read();
     this.publish(nextValue ?? null);
   }
 }
 
-class Slot<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
-  // TODO -- copilot wrote this lol
-  // private readonly field: Field<ModelName>;
-  // constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>, scope: Scope) {
-  //   super();
-  //   this.field = new Field(slot.field, scope);
-  //   this.field.listen(this);
-  // }
+class Slot<ModelName extends string = string>
+  extends Binding<ValueOf<ModelName>>
+  implements Modeled<ModelName>
+{
+  readonly modelName: ModelName;
+
+  constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>) {
+    super();
+
+    this.modelName = slot.modelName;
+  }
 }
 
 class Option<ModelName extends string = string>
@@ -340,7 +399,7 @@ class Option<ModelName extends string = string>
   }
 
   take(value: ValueOf<"Boolean">) {
-    const nextValue = (value ? this.result : this.opposite)?.getValue();
+    const nextValue = (value ? this.result : this.opposite)?.read();
     this.publish(nextValue ?? undefined);
   }
 }
@@ -368,7 +427,7 @@ class FieldPointer<ModelName extends string = string> extends Binding<ValueOf<Mo
       return key;
     };
 
-    let nextMember: Member = scope[getNextKey()];
+    let nextMember: ScopeMember = scope[getNextKey()];
 
     while (fieldPath.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -418,7 +477,7 @@ class MethodPointer<ModelName extends string = string>
       return key;
     };
 
-    let nextMember: Member = scope[getNextKey()];
+    let nextMember: ScopeMember = scope[getNextKey()];
 
     while (methodPath.length > 0) {
       if (!(nextMember instanceof Field)) {
@@ -434,7 +493,7 @@ class MethodPointer<ModelName extends string = string>
       );
     }
 
-    this.argument = Abstract.isDataSource(methodPointer.argument)
+    this.argument = Abstract.isField(methodPointer.argument)
       ? new Field(methodPointer.argument, scope)
       : undefined;
 
@@ -444,7 +503,7 @@ class MethodPointer<ModelName extends string = string>
   }
 
   take() {
-    const nextValue = this.method.call(this.argument?.getValue() ?? null);
+    const nextValue = this.method.call(this.argument?.read() ?? null);
 
     if (nextValue !== undefined) {
       this.publish(nextValue);
@@ -452,15 +511,38 @@ class MethodPointer<ModelName extends string = string>
   }
 }
 
-class Store<ModelName extends string> extends Binding<ValueOf<ModelName>> {
-  private readonly firstValue: ValueOf<ModelName>;
-  private lastValue: ValueOf<ModelName>;
+class MutableSlot<ModelName extends string = string>
+  extends Binding<ValueOf<ModelName>>
+  implements Modeled<ModelName>
+{
+  readonly modelName: ModelName;
+
+  constructor(slot: Abstract.MutableSlot<Abstract.Model<ModelName>>) {
+    super();
+
+    this.modelName = slot.modelName;
+  }
+
+  reset() {
+    // TODO
+  }
+}
+
+class Store<ModelName extends string>
+  extends Binding<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Mutable<ModelName>
+{
+  readonly firstValue: ValueOf<ModelName>;
+  lastValue: ValueOf<ModelName>;
+  readonly modelName: ModelName;
 
   constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
     super();
 
     this.firstValue = store.value;
     this.lastValue = store.value;
+    this.modelName = store.modelName;
+
     super.take(store.value);
   }
 
@@ -531,8 +613,8 @@ class Feature extends Publisher<HTMLElement> {
     const htmlElement = Dom.create(tagName);
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
-      if (Abstract.isDataSource(property)) {
-        const dataSource = new Field(property, this.scope);
+      if (Abstract.isField(property)) {
+        const field = new Field(property, this.scope);
 
         let take: (value: Abstract.Value) => void;
 
@@ -556,17 +638,17 @@ class Feature extends Publisher<HTMLElement> {
                 const textContent = String(child); // TODO properly handle structures
                 this.children.push(textContent);
                 htmlElementChildren.push(textContent);
-              } else if (Abstract.isFieldReference(child)) {
+              } else if (Abstract.isFieldPointer(child)) {
                 const fieldPointer = new FieldPointer(child, this.scope);
                 fieldPointer.listen({
                   take: populate,
                 });
-              } else if (Abstract.isMethodReference(child)) {
+              } else if (Abstract.isMethodPointer(child)) {
                 const methodPointer = new MethodPointer(child, this.scope);
                 methodPointer.listen({
                   take: populate,
                 });
-              } else if (Abstract.isConditionalData(child)) {
+              } else if (Abstract.isOption(child)) {
                 const option = new Option(child, this.scope);
                 option.listen({
                   take: populate,
@@ -589,17 +671,17 @@ class Feature extends Publisher<HTMLElement> {
           };
         }
 
-        dataSource.listen({ take });
-        this.properties[propertyKey] = dataSource;
-      } else if (Abstract.isSideEffect(property)) {
-        const sideEffect = new Action(property, scope);
+        field.listen({ take });
+        this.properties[propertyKey] = field;
+      } else if (Abstract.isAction(property)) {
+        const action = new Action(property, scope);
 
         Dom.listen(htmlElement, propertyKey, () => {
-          // TODO Transform Events into Abstract.Values, and pass them to sideEffect.take:
-          sideEffect.take(null);
+          // TODO Transform Events into Abstract.Values, and pass them to action.take:
+          action.take(null);
         });
 
-        this.properties[propertyKey] = sideEffect;
+        this.properties[propertyKey] = action;
       } else {
         throw new ViewScriptError(
           `Cannot construct a property of unknown kind "${
@@ -634,9 +716,7 @@ class Landscape extends Binding<HTMLElement> {
     this.scope = scope;
 
     Object.entries(renders.scope).forEach(([featureKey, feature]) => {
-      this.scope[featureKey] = Abstract.isField(feature)
-        ? Field.create(feature)
-        : new Stream(feature);
+      this.scope[featureKey] = Abstract.isField(feature) ? new Field(feature) : new Stream(feature);
     });
 
     Object.entries(properties).forEach(([propertyKey, property]) => {
@@ -651,21 +731,17 @@ class Landscape extends Binding<HTMLElement> {
         );
       }
 
-      if (Abstract.isDataSource(property)) {
+      if (Abstract.isField(property)) {
         if (feature instanceof Stream) {
-          throw new ViewScriptError(
-            `Cannot construct a data source for stream name \`${propertyKey}\``,
-          );
+          throw new ViewScriptError(`Cannot construct a field for stream name \`${propertyKey}\``);
         }
 
-        const dataSource = new Field(property, this.scope);
-        dataSource.listen(feature);
-        this.properties[propertyKey] = dataSource;
-      } else if (Abstract.isSideEffect(property)) {
+        const field = new Field(property, this.scope);
+        field.listen(feature);
+        this.properties[propertyKey] = field;
+      } else if (Abstract.isAction(property)) {
         if (feature instanceof Field) {
-          throw new ViewScriptError(
-            `Cannot construct a side effect for field name \`${propertyKey}\``,
-          );
+          throw new ViewScriptError(`Cannot construct an action for field name \`${propertyKey}\``);
         }
 
         const sideEffect = new Action(property, this.scope);
@@ -720,7 +796,7 @@ const models: Record<string, Abstract.Model> = {
     members: {
       log: {
         kind: "action",
-        handler: window.console.log,
+        handle: window.console.log,
       },
     },
   },
@@ -733,24 +809,24 @@ const boolean = (store: Store<"Boolean">): Abstract.Model<"Boolean"> => ({
     and: {
       kind: "method",
       modelName: "Boolean",
-      handler: (arg) => store.read() && (arg as boolean),
+      handle: (arg) => store.read() && (arg as boolean),
     },
     not: {
       kind: "method",
       modelName: "Boolean",
-      handler: () => !store.read(),
+      handle: () => !store.read(),
     },
     disable: {
       kind: "action",
-      handler: () => store.take(false),
+      handle: () => store.take(false),
     },
     enable: {
       kind: "action",
-      handler: () => store.take(true),
+      handle: () => store.take(true),
     },
     toggle: {
       kind: "action",
-      handler: () => store.take(!store.read()),
+      handle: () => store.take(!store.read()),
     },
   },
 });
@@ -762,20 +838,20 @@ const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
     equals: {
       kind: "method",
       modelName: "Boolean",
-      handler: (arg) => store.read() == (arg as number),
+      handle: (arg) => store.read() == (arg as number),
     },
     isAtLeast: {
       kind: "method",
       modelName: "Boolean",
-      handler: (arg) => store.read() >= (arg as number),
+      handle: (arg) => store.read() >= (arg as number),
     },
     add: {
       kind: "action",
-      handler: (arg) => store.take(store.read() + (arg as number)),
+      handle: (arg) => store.take(store.read() + (arg as number)),
     },
     multiplyBy: {
       kind: "action",
-      handler: (arg) => store.take(store.read() * (arg as number)),
+      handle: (arg) => store.take(store.read() * (arg as number)),
     },
   },
 });
@@ -798,7 +874,7 @@ const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
   members: {
     push: {
       kind: "action",
-      handler: (arg) =>
+      handle: (arg) =>
         store.take(
           store.read().concat({
             kind: "field",
