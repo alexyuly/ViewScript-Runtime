@@ -10,13 +10,17 @@ interface Modeled<ModelName extends string = string> {
   modelName: ModelName;
 }
 
-interface Listener<T = unknown> {
-  take(value: T): void;
+interface Readable<T> {
+  read(): T;
 }
 
-interface Mutable<ModelName extends string = string>
-  extends Listener<Abstract.Value<Abstract.Model<ModelName>>> {
+interface Writable<T> extends Readable<T> {
   reset(): void;
+  write(value: T): void;
+}
+
+interface Listener<T = unknown> {
+  take(value: T): void;
 }
 
 abstract class Publisher<T = unknown> {
@@ -33,7 +37,7 @@ abstract class Publisher<T = unknown> {
   }
 }
 
-abstract class Binding<T = unknown> extends Publisher<T> implements Listener<T> {
+abstract class Pipe<T = unknown> extends Publisher<T> implements Listener<T> {
   take(value: T) {
     this.publish(value);
   }
@@ -41,7 +45,7 @@ abstract class Binding<T = unknown> extends Publisher<T> implements Listener<T> 
 
 class ViewScriptError extends Error {}
 
-class Stream extends Binding<Abstract.Value> implements Modeled {
+class Stream extends Pipe<Abstract.Value> implements Modeled {
   readonly modelName: string;
 
   constructor(stream: Abstract.Stream) {
@@ -52,13 +56,14 @@ class Stream extends Binding<Abstract.Value> implements Modeled {
 }
 
 class Field<ModelName extends string = string>
-  extends Binding<ValueOf<ModelName>>
-  implements Modeled<ModelName>
+  extends Pipe<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
 {
   readonly members: Record<string, Field | Method | Action>;
   readonly modelName: ModelName;
   readonly source:
     | Slot<ModelName>
+    | MutableSlot<ModelName>
     | Store<ModelName>
     | Option<ModelName>
     | FieldPointer<ModelName>
@@ -133,7 +138,7 @@ class Field<ModelName extends string = string>
         },
         this.members,
       );
-      this.members.setTo = new Action<ModelName>(
+      this.members.write = new Action<ModelName>(
         {
           kind: "action",
           handle: (value) => source.take(value),
@@ -153,14 +158,12 @@ class Field<ModelName extends string = string>
     return this.members[name];
   }
 
-  // TODO Should I define an interface which has a read method?
   read() {
-    // TODO
-    // return this.lastValue;
+    return this.source.read();
   }
 }
 
-class Method<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
+class Method<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
   private readonly method: Abstract.Method;
   private readonly scope: Scope;
 
@@ -218,7 +221,7 @@ class Method<ModelName extends string = string> extends Binding<ValueOf<ModelNam
   }
 }
 
-class Action<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
+class Action<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
   private readonly action: Abstract.Action;
   private readonly scope: Scope;
 
@@ -368,15 +371,25 @@ class StreamPointer<ModelName extends string = string>
 }
 
 class Slot<ModelName extends string = string>
-  extends Binding<ValueOf<ModelName>>
-  implements Modeled<ModelName>
+  extends Pipe<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Readable<ValueOf<ModelName>>
 {
   readonly modelName: ModelName;
+  readonly proxy: Readable<ValueOf<ModelName>>;
 
-  constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>) {
+  constructor(
+    slot: Abstract.Slot<Abstract.Model<ModelName>>,
+    proxy: Publisher<ValueOf<ModelName>> & Readable<ValueOf<ModelName>>,
+  ) {
     super();
 
     this.modelName = slot.modelName;
+    this.proxy = proxy;
+    proxy.listen(this);
+  }
+
+  read(): ValueOf<ModelName> {
+    return this.proxy.read();
   }
 }
 
@@ -404,7 +417,7 @@ class Option<ModelName extends string = string>
   }
 }
 
-class FieldPointer<ModelName extends string = string> extends Binding<ValueOf<ModelName>> {
+class FieldPointer<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
   private readonly field: Field<ModelName>;
   private readonly fieldPath: Array<string>;
 
@@ -450,7 +463,7 @@ class FieldPointer<ModelName extends string = string> extends Binding<ValueOf<Mo
 
 // TODO Should I handle higher-order methods?
 class MethodPointer<ModelName extends string = string>
-  extends Binding<ValueOf<ModelName>>
+  extends Pipe<ValueOf<ModelName>>
   implements Listener<void>
 {
   private readonly argument?: Field;
@@ -512,28 +525,42 @@ class MethodPointer<ModelName extends string = string>
 }
 
 class MutableSlot<ModelName extends string = string>
-  extends Binding<ValueOf<ModelName>>
-  implements Modeled<ModelName>
+  extends Pipe<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
 {
   readonly modelName: ModelName;
+  readonly proxy: Writable<ValueOf<ModelName>>;
 
-  constructor(slot: Abstract.MutableSlot<Abstract.Model<ModelName>>) {
+  constructor(
+    slot: Abstract.Slot<Abstract.Model<ModelName>>,
+    proxy: Publisher<ValueOf<ModelName>> & Writable<ValueOf<ModelName>>,
+  ) {
     super();
 
     this.modelName = slot.modelName;
+    this.proxy = proxy;
+    proxy.listen(this);
   }
 
-  reset() {
-    // TODO
+  read(): ValueOf<ModelName> {
+    return this.proxy.read();
+  }
+
+  reset(): void {
+    return this.proxy.reset();
+  }
+
+  write(value: Abstract.Value<Abstract.Model<ModelName>>): void {
+    this.proxy.write(value);
   }
 }
 
 class Store<ModelName extends string>
-  extends Binding<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Mutable<ModelName>
+  extends Pipe<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
 {
   readonly firstValue: ValueOf<ModelName>;
-  lastValue: ValueOf<ModelName>;
+  private lastValue: ValueOf<ModelName>;
   readonly modelName: ModelName;
 
   constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
@@ -556,16 +583,16 @@ class Store<ModelName extends string>
   }
 
   reset() {
-    this.take(this.firstValue);
+    this.write(this.firstValue);
   }
 
-  take(value: ValueOf<ModelName>) {
+  write(value: ValueOf<ModelName>) {
     this.lastValue = value;
-    super.take(value);
+    this.take(value);
   }
 }
 
-class Component extends Binding<HTMLElement> {
+class Component extends Pipe<HTMLElement> {
   private readonly body: Feature | Landscape;
 
   constructor(
@@ -695,7 +722,7 @@ class Feature extends Publisher<HTMLElement> {
   }
 }
 
-class Landscape extends Binding<HTMLElement> {
+class Landscape extends Pipe<HTMLElement> {
   private readonly key: string;
 
   private readonly element: Component;
