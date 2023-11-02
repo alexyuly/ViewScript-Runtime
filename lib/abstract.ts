@@ -45,12 +45,12 @@ export type Action<Parameter extends Model | null = Model | null> = Node<"action
 
 export type ImmutableField<T extends Model | null> = Node<"field"> &
   Modeled<T> & {
-    source: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
+    channel: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
   };
 
 export type MutableField<T extends Model | null> = Node<"field"> &
   Modeled<T> & {
-    source: MutableSlot<T> | Store<T>;
+    channel: MutableSlot<T> | Store<T>;
   };
 
 export type Modeled<T extends Model | null> = {
@@ -149,9 +149,9 @@ export type Landscape<T extends View = View> = Node<"landscape"> & {
   };
 };
 
-export type Properties<T extends Field> = T["source"] extends Slot<infer State>
+export type Properties<T extends Field> = T["channel"] extends Slot<infer State>
   ? ImmutableField<State>
-  : T["source"] extends MutableSlot<infer State>
+  : T["channel"] extends MutableSlot<infer State>
   ? MutableField<State>
   : never;
 

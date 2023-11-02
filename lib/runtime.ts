@@ -10,17 +10,12 @@ interface Modeled<ModelName extends string = string> {
   modelName: ModelName;
 }
 
-interface Readable<T> {
-  read(): T;
-}
-
-interface Writable<T> extends Readable<T> {
-  reset(): void;
-  write(value: T): void;
-}
-
 interface Listener<T = unknown> {
   take(value: T): void;
+}
+
+interface Readable<T> {
+  read(): T;
 }
 
 abstract class Publisher<T = unknown> {
@@ -37,7 +32,7 @@ abstract class Publisher<T = unknown> {
   }
 }
 
-abstract class Pipe<T = unknown> extends Publisher<T> implements Listener<T> {
+abstract class Channel<T = unknown> extends Publisher<T> implements Listener<T> {
   take(value: T) {
     this.publish(value);
   }
@@ -45,7 +40,7 @@ abstract class Pipe<T = unknown> extends Publisher<T> implements Listener<T> {
 
 class ViewScriptError extends Error {}
 
-class Stream extends Pipe<Abstract.Value> implements Modeled {
+class Stream extends Channel<Abstract.Value> implements Modeled {
   readonly modelName: string;
 
   constructor(stream: Abstract.Stream) {
@@ -56,12 +51,10 @@ class Stream extends Pipe<Abstract.Value> implements Modeled {
 }
 
 class Field<ModelName extends string = string>
-  extends Pipe<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
+  extends Channel<ValueOf<ModelName>>
+  implements Modeled<ModelName>, Readable<ValueOf<ModelName>>
 {
-  readonly members: Record<string, Field | Method | Action>;
-  readonly modelName: ModelName;
-  readonly source:
+  readonly channel:
     | Slot<ModelName>
     | MutableSlot<ModelName>
     | Store<ModelName>
@@ -69,32 +62,35 @@ class Field<ModelName extends string = string>
     | FieldPointer<ModelName>
     | MethodPointer<ModelName>;
 
+  readonly members: Record<string, Field | Method | Action>;
+  readonly modelName: ModelName;
+
   constructor(
     field: Abstract.Field<Abstract.Model<ModelName>>,
-    appMembers: Record<string, Abstract.Model | Abstract.View>,
     scope: Scope,
+    appMembers: Record<string, Abstract.Model | Abstract.View>,
   ) {
     super();
 
     this.members = {};
     this.modelName = field.modelName;
 
-    if (field.source.kind === "slot") {
-      this.source = new Slot(field.source);
-    } else if (field.source.kind === "mutableSlot") {
-      this.source = new MutableSlot(field.source);
-    } else if (field.source.kind === "store") {
-      this.source = new Store(field.source);
-    } else if (field.source.kind === "option") {
-      this.source = new Option(field.source, scope);
-    } else if (field.source.kind === "fieldPointer") {
-      this.source = new FieldPointer(field.source, scope);
-    } else if (field.source.kind === "methodPointer") {
-      this.source = new MethodPointer(field.source, scope);
+    if (field.channel.kind === "slot") {
+      this.channel = new Slot(field.channel);
+    } else if (field.channel.kind === "mutableSlot") {
+      this.channel = new MutableSlot(field.channel);
+    } else if (field.channel.kind === "store") {
+      this.channel = new Store(field.channel);
+    } else if (field.channel.kind === "option") {
+      this.channel = new Option(field.channel, scope);
+    } else if (field.channel.kind === "fieldPointer") {
+      this.channel = new FieldPointer(field.channel, scope);
+    } else if (field.channel.kind === "methodPointer") {
+      this.channel = new MethodPointer(field.channel, scope);
     } else {
       throw new ViewScriptError(
-        `Cannot construct a field with source of unknown kind "${
-          (field.source as { kind: unknown }).kind
+        `Cannot construct a field with channel of unknown kind "${
+          (field.channel as { kind: unknown }).kind
         }"`,
       );
     }
@@ -107,13 +103,13 @@ class Field<ModelName extends string = string>
       );
     }
 
-    const isMutable = this.source instanceof MutableSlot || this.source instanceof Store;
+    const isMutable = this.channel instanceof MutableSlot || this.channel instanceof Store;
 
     // TODO Implement the consumption of abstract models.
     // TODO Use model to define fields, methods, and actions
     Object.entries(model.members).forEach(([memberKey, member]) => {
       if (member.kind === "field") {
-        this.members[memberKey] = new Field(member, appMembers, scope);
+        this.members[memberKey] = new Field(member, scope, appMembers);
       } else if (member.kind === "method") {
         this.members[memberKey] = new Method(member, this.members); // TODO merge this.members and scope (?)
       } else if (member.kind === "action") {
@@ -130,24 +126,24 @@ class Field<ModelName extends string = string>
     });
 
     if (isMutable) {
-      const source = this.source;
+      const channel = this.channel;
       this.members.reset = new Action(
         {
           kind: "action",
-          handle: () => source.reset(),
+          handle: () => channel.reset(),
         },
         this.members,
       );
       this.members.write = new Action<ModelName>(
         {
           kind: "action",
-          handle: (value) => source.take(value),
+          handle: (value) => channel.take(value),
         },
         this.members,
       );
     }
 
-    this.source.listen(this);
+    this.channel.listen(this);
   }
 
   getMember(name: string) {
@@ -159,11 +155,11 @@ class Field<ModelName extends string = string>
   }
 
   read() {
-    return this.source.read();
+    return this.channel.read();
   }
 }
 
-class Method<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
+class Method<ModelName extends string = string> extends Channel<ValueOf<ModelName>> {
   private readonly method: Abstract.Method;
   private readonly scope: Scope;
 
@@ -221,11 +217,11 @@ class Method<ModelName extends string = string> extends Pipe<ValueOf<ModelName>>
   }
 }
 
-class Action<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
-  private readonly action: Abstract.Action;
+class Action<ModelName extends string = string> extends Channel<ValueOf<ModelName>> {
+  private readonly action: Abstract.Action<Abstract.Model<ModelName>>;
   private readonly scope: Scope;
 
-  constructor(action: Abstract.Action, scope: Scope) {
+  constructor(action: Abstract.Action<Abstract.Model<ModelName>>, scope: Scope) {
     super();
 
     this.action = action;
@@ -371,25 +367,25 @@ class StreamPointer<ModelName extends string = string>
 }
 
 class Slot<ModelName extends string = string>
-  extends Pipe<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Readable<ValueOf<ModelName>>
+  extends Channel<ValueOf<ModelName>>
+  implements Modeled<ModelName>
 {
   readonly modelName: ModelName;
-  readonly proxy: Readable<ValueOf<ModelName>>;
+  private channel?: Channel<ValueOf<ModelName>>;
 
-  constructor(
-    slot: Abstract.Slot<Abstract.Model<ModelName>>,
-    proxy: Publisher<ValueOf<ModelName>> & Readable<ValueOf<ModelName>>,
-  ) {
+  constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>) {
     super();
 
     this.modelName = slot.modelName;
-    this.proxy = proxy;
-    proxy.listen(this);
+  }
+
+  fill(channel: Publisher<ValueOf<ModelName>> & Channel<ValueOf<ModelName>>) {
+    this.channel = channel;
+    channel.listen(this);
   }
 
   read(): ValueOf<ModelName> {
-    return this.proxy.read();
+    return this.channel.read();
   }
 }
 
@@ -400,6 +396,7 @@ class Option<ModelName extends string = string>
   private readonly condition: Field<"Boolean">;
   private readonly result: Field;
   private readonly opposite?: Field;
+  private lastValue: ValueOf<ModelName>;
 
   constructor(option: Abstract.Option<Abstract.Model<ModelName>>, scope: Scope) {
     super();
@@ -409,15 +406,21 @@ class Option<ModelName extends string = string>
 
     this.condition = new Field<"Boolean">(option.condition, scope);
     this.condition.listen(this);
+
+    this.lastValue = (this.condition.read() ? this.result : this.opposite)?.read();
+  }
+
+  read() {
+    return this.lastValue;
   }
 
   take(value: ValueOf<"Boolean">) {
-    const nextValue = (value ? this.result : this.opposite)?.read();
-    this.publish(nextValue ?? undefined);
+    this.lastValue = (value ? this.result : this.opposite)?.read();
+    this.publish(this.lastValue ?? undefined);
   }
 }
 
-class FieldPointer<ModelName extends string = string> extends Pipe<ValueOf<ModelName>> {
+class FieldPointer<ModelName extends string = string> extends Channel<ValueOf<ModelName>> {
   private readonly field: Field<ModelName>;
   private readonly fieldPath: Array<string>;
 
@@ -456,20 +459,25 @@ class FieldPointer<ModelName extends string = string> extends Pipe<ValueOf<Model
       );
     }
 
-    this.field = nextMember;
+    this.field = nextMember as Field<ModelName>;
     this.field.listen(this);
+  }
+
+  read() {
+    return this.field.read();
   }
 }
 
 // TODO Should I handle higher-order methods?
 class MethodPointer<ModelName extends string = string>
-  extends Pipe<ValueOf<ModelName>>
+  extends Channel<ValueOf<ModelName>>
   implements Listener<void>
 {
   private readonly argument?: Field;
   private readonly continuation?: FieldPointer | MethodPointer;
-  private readonly method: Method;
+  private readonly method: Method<ModelName>;
   private readonly methodPath: Array<string>;
+  private lastValue: ValueOf<ModelName>;
 
   constructor(methodPointer: Abstract.MethodPointer, scope: Scope) {
     super();
@@ -516,48 +524,48 @@ class MethodPointer<ModelName extends string = string>
   }
 
   take() {
-    const nextValue = this.method.call(this.argument?.read() ?? null);
+    this.lastValue = this.method.call(this.argument?.read() ?? null);
 
-    if (nextValue !== undefined) {
-      this.publish(nextValue);
+    if (this.lastValue !== undefined) {
+      this.publish(this.lastValue);
     }
   }
 }
 
 class MutableSlot<ModelName extends string = string>
-  extends Pipe<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
+  extends Channel<ValueOf<ModelName>>
+  implements Modeled<ModelName>
 {
   readonly modelName: ModelName;
-  readonly proxy: Writable<ValueOf<ModelName>>;
+  private channel?: Channel<ValueOf<ModelName>>;
 
-  constructor(
-    slot: Abstract.Slot<Abstract.Model<ModelName>>,
-    proxy: Publisher<ValueOf<ModelName>> & Writable<ValueOf<ModelName>>,
-  ) {
+  constructor(slot: Abstract.MutableSlot<Abstract.Model<ModelName>>) {
     super();
 
     this.modelName = slot.modelName;
-    this.proxy = proxy;
-    proxy.listen(this);
+  }
+
+  fill(channel: Publisher<ValueOf<ModelName>> & Channel<ValueOf<ModelName>>) {
+    this.channel = channel;
+    channel.listen(this);
   }
 
   read(): ValueOf<ModelName> {
-    return this.proxy.read();
+    return this.channel.read();
   }
 
   reset(): void {
-    return this.proxy.reset();
+    return this.channel.reset();
   }
 
   write(value: Abstract.Value<Abstract.Model<ModelName>>): void {
-    this.proxy.write(value);
+    this.channel.write(value);
   }
 }
 
 class Store<ModelName extends string>
-  extends Pipe<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Writable<ValueOf<ModelName>>
+  extends Channel<ValueOf<ModelName>>
+  implements Modeled<ModelName>
 {
   readonly firstValue: ValueOf<ModelName>;
   private lastValue: ValueOf<ModelName>;
@@ -592,7 +600,7 @@ class Store<ModelName extends string>
   }
 }
 
-class Component extends Pipe<HTMLElement> {
+class Component extends Channel<HTMLElement> {
   private readonly body: Feature | Landscape;
 
   constructor(
@@ -722,7 +730,7 @@ class Feature extends Publisher<HTMLElement> {
   }
 }
 
-class Landscape extends Pipe<HTMLElement> {
+class Landscape extends Channel<HTMLElement> {
   private readonly key: string;
 
   private readonly element: Component;
@@ -906,7 +914,7 @@ const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
           store.read().concat({
             kind: "field",
             modelName: "Component",
-            source: {
+            channel: {
               kind: "store",
               value: arg,
             },
