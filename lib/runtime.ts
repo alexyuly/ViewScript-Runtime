@@ -2,6 +2,24 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
+// TODO Update semantics and ordering to reflect the types in abstract.ts...
+
+export class RunningApp {
+  private readonly renders: Component;
+
+  constructor(app: Abstract.App) {
+    this.renders = new Component(app.renders, {}, { ...globals, ...app.members });
+    this.renders.listen({
+      take: (htmlElement) => {
+        Dom.render(htmlElement);
+      },
+    });
+
+    window.console.log(`[VSR] 🟢 Start app:`);
+    window.console.log(this);
+  }
+}
+
 type AppMembers = Record<string, Abstract.Model | Abstract.View>;
 type Scope = Record<string, ScopeMember>;
 type ScopeMember = Stream | Field | Method | Action | ((argument: any) => unknown);
@@ -746,22 +764,6 @@ class Landscape extends Channel<HTMLElement> {
   }
 }
 
-export class RunningApp {
-  private readonly renders: Component;
-
-  constructor(app: Abstract.App) {
-    this.renders = new Component(app.renders, {}, { ...globals, ...app.members });
-    this.renders.listen({
-      take: (htmlElement) => {
-        Dom.render(htmlElement);
-      },
-    });
-
-    window.console.log(`[VSR] 🟢 Start app:`);
-    window.console.log(this);
-  }
-}
-
 // TODO Auto-populate the browser model with the window object's properties:
 const globals: Record<string, Abstract.Model> = {
   browser: {
@@ -822,5 +824,3 @@ const factories = {
     actions: () => ({}),
   },
 };
-
-// TODO Update semantics to reflect the latest names in abstract.ts
