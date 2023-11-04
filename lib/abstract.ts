@@ -55,7 +55,7 @@ export type Value<T extends Model | null = Model | null> = T extends Model
     : Name<T> extends "Component"
     ? Component
     : Name<T> extends "Array"
-    ? Array<Field>
+    ? Array<Field<null>>
     : Structure<Model>
   : boolean | number | string | Component | Array<Field> | Structure;
 

@@ -13,15 +13,19 @@ interface Modeled<ModelName extends string = string> {
 }
 
 interface Writer<T = unknown> {
-  write(value: T): void;
   reset(): void;
+  write(value: T): void;
+}
+
+interface Reader<T = unknown> {
+  read(): T | undefined;
 }
 
 interface Listener<T = unknown> {
   take(value: T): void;
 }
 
-abstract class Publisher<T = unknown> {
+abstract class Publisher<T = unknown> implements Reader<T> {
   private lastValue?: T;
 
   private readonly listeners: Array<Listener<T>> = [];
@@ -184,7 +188,6 @@ class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelN
     methodPointer: MethodPointer,
     scope: Scope,
     argument?: Field,
-    abstractContinuation?: Abstract.MethodPointer["continuation"], // TODO replace with leader
   ): FieldPointer | MethodPointer | undefined {
     if ("handle" in this.method) {
       this.listen(methodPointer);
@@ -201,17 +204,17 @@ class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelN
 
     const result = new Field(this.method.result, stepTerrain);
 
-    if (abstractContinuation) {
-      const continuation =
-        abstractContinuation.kind === "fieldPointer"
-          ? new FieldPointer(abstractContinuation, scope) // TODO Replace scope with method result's members
-          : new MethodPointer(abstractContinuation, scope); // TODO Replace scope with method result's members
+    // if (abstractContinuation) {
+    //   const continuation =
+    //     abstractContinuation.kind === "fieldPointer"
+    //       ? new FieldPointer(abstractContinuation, scope) // TODO Replace scope with method result's members
+    //       : new MethodPointer(abstractContinuation, scope); // TODO Replace scope with method result's members
 
-      continuation.listen(result);
-      result.listen(continuation);
+    //   continuation.listen(result);
+    //   result.listen(continuation);
 
-      return continuation;
-    }
+    //   return continuation;
+    // }
 
     result.listen(methodPointer);
   }
@@ -455,7 +458,6 @@ class MethodPointer<ModelName extends string = string>
   implements Listener<void>
 {
   private readonly argument?: Field;
-  private readonly continuation?: FieldPointer | MethodPointer;
   private readonly method: Method<ModelName>;
   private readonly methodPath: Array<string>;
 
@@ -500,7 +502,7 @@ class MethodPointer<ModelName extends string = string>
 
     this.method = nextMember;
 
-    this.continuation = this.method.connect(this, scope, this.argument, methodPointer.continuation);
+    // this.continuation = this.method.connect(this, scope, this.argument, methodPointer.continuation);
   }
 }
 
@@ -509,8 +511,8 @@ class MutableSlot<ModelName extends string = string>
   implements Modeled<ModelName>, Writer<ValueOf<ModelName>>
 {
   readonly modelName: ModelName;
-  onWrite?: (value: ValueOf<ModelName>) => void;
   onReset?: () => void;
+  onWrite?: (value: ValueOf<ModelName>) => void;
 
   constructor(slot: Abstract.MutableSlot<Abstract.Model<ModelName>>) {
     super();
@@ -518,12 +520,12 @@ class MutableSlot<ModelName extends string = string>
     this.modelName = slot.modelName;
   }
 
-  write(value: Abstract.Value<Abstract.Model<ModelName>>) {
-    this.onWrite?.(value);
-  }
-
   reset() {
     this.onReset?.();
+  }
+
+  write(value: Abstract.Value<Abstract.Model<ModelName>>) {
+    this.onWrite?.(value);
   }
 }
 
@@ -543,12 +545,12 @@ class Store<ModelName extends string>
     super.take(store.value);
   }
 
-  write(value: ValueOf<ModelName>) {
-    this.take(value);
-  }
-
   reset() {
     this.write(this.firstValue);
+  }
+
+  write(value: ValueOf<ModelName>) {
+    this.take(value);
   }
 }
 
@@ -745,12 +747,10 @@ class Landscape extends Channel<HTMLElement> {
 }
 
 export class RunningApp {
-  private static readonly browser = new Browser();
-  private readonly fields = { browser: RunningApp.browser };
-  private readonly renders: Element | Landscape;
+  private readonly renders: Component;
 
   constructor(app: Abstract.App) {
-    this.renders = new Landscape(app.renders, { ...this.fields }, app.members, {});
+    this.renders = new Component(app.renders, {}, { ...globals, ...app.members });
     this.renders.listen({
       take: (htmlElement) => {
         Dom.render(htmlElement);
@@ -762,69 +762,65 @@ export class RunningApp {
   }
 }
 
-// Built-in models:
-
-const boolean = (store: Store<"Boolean">): Abstract.Model<"Boolean"> => ({
-  kind: "model",
-  name: "Boolean",
-  members: {
-    and: (argument: boolean) => store.read() && argument,
-    not: () => !store.read(),
-    disable: () => store.take(false),
-    enable: () => store.take(true),
-    toggle: () => store.take(!store.read()),
-  },
-});
-
-const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
-  kind: "model",
-  name: "Number",
-  members: {
-    equals: (argument: number) => store.read() == argument,
-    isAtLeast: (argument: number) => (store.read() ?? NaN) >= argument,
-    add: (argument: number) => store.take((store.read() ?? NaN) + argument),
-    multiplyBy: (argument: number) => store.take((store.read() ?? NaN) * argument),
-  },
-});
-
-const string = (): Abstract.Model<"String"> => ({
-  kind: "model",
-  name: "String",
-  members: {},
-});
-
-const component = (): Abstract.Model<"Component"> => ({
-  kind: "model",
-  name: "Component",
-  members: {},
-});
-
-const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
-  kind: "model",
-  name: "Array",
-  members: {
-    push: (argument) => {
-      const lastValue = store.read() ?? [];
-      lastValue.push(argument);
-      store.take(lastValue);
+const globals: Record<string, Abstract.Model> = {
+  browser: {
+    kind: "model",
+    name: "Browser",
+    members: {
+      console: {
+        kind: "model",
+        name: "Console",
+        members: {
+          log: window.console.log,
+        },
+      },
     },
-  },
-});
-
-// Static models:
-
-const console: Abstract.Model<"Console"> = {
-  kind: "model",
-  name: "Console",
-  members: {
-    log: window.console.log,
   },
 };
 
-const browser: Abstract.Model<"Browser"> = {
-  kind: "model",
-  name: "Browser",
-  members: {
-    console,
+const factories = {
+  Boolean: {
+    methods: (reader: Reader<ValueOf<"Boolean">>) => ({
+      and: (argument: Field<"Boolean">) => reader.read() && argument.read(),
+      not: () => !reader.read(),
+    }),
+    actions: (writer: Writer<ValueOf<"Boolean">>, reader: Reader<ValueOf<"Boolean">>) => ({
+      disable: () => writer.write(false),
+      enable: () => writer.write(true),
+      toggle: () => writer.write(!reader.read()),
+    }),
+  },
+  Number: {
+    methods: (reader: Reader<ValueOf<"Number">>) => ({
+      equals: (argument: Field<"Number">) => reader.read() == argument.read(),
+      isAtLeast: (argument: Field<"Number">) => (reader.read() ?? NaN) >= (argument.read() ?? NaN),
+    }),
+    actions: (writer: Writer<ValueOf<"Number">>, reader: Reader<ValueOf<"Number">>) => ({
+      add: (argument: Field<"Number">) =>
+        writer.write((reader.read() ?? NaN) + (argument.read() ?? NaN)),
+      multiplyBy: (argument: Field<"Number">) =>
+        writer.write((reader.read() ?? NaN) * (argument.read() ?? NaN)),
+    }),
+  },
+  String: {
+    methods: () => ({}),
+    actions: () => ({}),
+  },
+  Component: {
+    methods: () => ({}),
+    actions: () => ({}),
+  },
+  Array: {
+    methods: () => ({}),
+    actions: (writer: Writer<ValueOf<"Array">>, reader: Reader<ValueOf<"Array">>) => ({
+      push: (argument: Field) => {
+        const argumentValue = argument.read();
+        if (argumentValue !== undefined) {
+          const lastValue = reader.read() ?? [];
+          lastValue.push(argumentValue);
+          writer.write(lastValue);
+        }
+      },
+    }),
   },
 };
