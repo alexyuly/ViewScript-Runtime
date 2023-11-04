@@ -1,19 +1,21 @@
+export type App = Node<"app"> & {
+  version: "ViewScript v0.4.0";
+  members: Record<string, Model | View>;
+  renders: Component;
+};
+
 export type Node<Kind extends string> = {
   kind: Kind;
 };
-
-export type Called<Name extends string = string> = {
-  name: Name;
-};
-
-export type Name<T extends Called> = T["name"];
 
 export type Model<Name extends string = string> = Node<"model"> &
   Called<Name> & {
     members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
-export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
+export type Called<Name extends string = string> = {
+  name: Name;
+};
 
 export type Field<T extends Model = Model> = Node<"field"> &
   Modeled<T> & {
@@ -35,35 +37,8 @@ export type Action<Parameter extends Model | null = Model | null> = Node<"action
 };
 
 export type Modeled<T extends Model> = {
-  modelName: Name<T>;
+  modelName: T["name"];
 };
-
-export type Value<T extends Model = Model> = Name<T> extends "Array"
-  ? Array<Field>
-  : Name<T> extends "Boolean"
-  ? boolean
-  : Name<T> extends "Number"
-  ? number
-  : Name<T> extends "String"
-  ? string
-  : Name<T> extends "Component"
-  ? Component
-  : boolean | number | string | Component | Array<Field> | Structure<T>;
-
-export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
-  actionPath: Array<string>;
-  argument: Parameter extends Model ? Field<Parameter> : never;
-};
-
-export type Exception = Node<"exception"> & {
-  condition: Field<Model<"Boolean">>;
-  steps?: Array<ActionPointer | Exception | StreamPointer>;
-};
-
-export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
-  Modeled<Event> & {
-    streamName: string;
-  };
 
 export type Slot<T extends Model> = Node<"slot"> & Modeled<T>;
 
@@ -90,18 +65,31 @@ export type MethodPointer<
     argument: Parameter extends Model ? Field<Parameter> : never;
   };
 
+export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
+  actionPath: Array<string>;
+  argument: Parameter extends Model ? Field<Parameter> : never;
+};
+
+export type Exception = Node<"exception"> & {
+  condition: Field<Model<"Boolean">>;
+  steps?: Array<ActionPointer | Exception | StreamPointer>;
+};
+
+export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
+  Modeled<Event> & {
+    streamName: string;
+  };
+
+export type View<Name extends string = string> = Node<"view"> &
+  Called<Name> & {
+    fields: Record<string, Field>;
+    streams: Record<`on${string}`, Stream>;
+    renders: Component;
+  };
+
 export type Component = Node<"component"> & {
   renders: Feature | Landscape;
 };
-
-export type Structure<T extends Model = Model> = Node<"structure"> &
-  Modeled<T> & {
-    properties: {
-      [Key in keyof T["members"]]?: T["members"][Key] extends Field
-        ? Properties<T["members"][Key]>
-        : never;
-    };
-  };
 
 export type Feature = Node<"feature"> & {
   tagName: string;
@@ -110,7 +98,7 @@ export type Feature = Node<"feature"> & {
 };
 
 export type Landscape<T extends View = View> = Node<"landscape"> & {
-  viewName: Name<T>;
+  viewName: T["name"];
   properties: {
     [Key in keyof T["fields"]]?: Properties<T["fields"][Key]>;
   };
@@ -121,18 +109,13 @@ export type Landscape<T extends View = View> = Node<"landscape"> & {
   };
 };
 
-export type View<Name extends string = string> = Node<"view"> &
-  Called<Name> & {
-    fields: Record<string, Field>;
-    streams: Record<`on${string}`, Stream>;
-    renders: Component;
-  };
-
 export type Properties<T extends Field> = T["channel"] extends Binding<infer State>
   ? WritableField<State>
   : T["channel"] extends Slot<infer State>
   ? Field<State>
   : never;
+
+export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
 
 export type Binding<T extends Model> = Node<"binding"> & Modeled<T>;
 
@@ -146,8 +129,23 @@ export type Store<T extends Model> = Node<"store"> &
     value: Value<T>;
   };
 
-export type App = Node<"app"> & {
-  version: "ViewScript v0.4.0";
-  members: Record<string, Model | View>;
-  renders: Component;
-};
+export type Value<T extends Model = Model> = T["name"] extends "Array"
+  ? Array<Field>
+  : T["name"] extends "Boolean"
+  ? boolean
+  : T["name"] extends "Number"
+  ? number
+  : T["name"] extends "String"
+  ? string
+  : T["name"] extends "Component"
+  ? Component
+  : Array<Field> | boolean | number | string | Component | Structure<T>;
+
+export type Structure<T extends Model = Model> = Node<"structure"> &
+  Modeled<T> & {
+    properties: {
+      [Key in keyof T["members"]]?: T["members"][Key] extends Field
+        ? Properties<T["members"][Key]>
+        : never;
+    };
+  };
