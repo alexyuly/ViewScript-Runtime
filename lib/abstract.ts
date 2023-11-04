@@ -10,7 +10,7 @@ export type Name<T extends Called> = T["name"];
 
 export type Model<Name extends string = string> = Node<"model"> &
   Called<Name> & {
-    members: Record<string, Field | Method | Action>;
+    members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
@@ -21,27 +21,15 @@ export type Method<
   T extends Model | null = Model | null,
   Parameter extends Model | null = Model | null,
 > = Node<"method"> &
-  Modeled<T> &
-  (
-    | {
-        handle: (argument: Value<Parameter>) => Value<T>;
-      }
-    | {
-        parameter: Parameter extends Model ? Called & Field<Parameter> : never;
-        result: Field<T>;
-      }
-  );
+  Modeled<T> & {
+    parameter: Parameter extends Model ? Called & Field<Parameter> : never;
+    result: Field<T>;
+  };
 
-export type Action<Parameter extends Model | null = Model | null> = Node<"action"> &
-  (
-    | {
-        handle: (argument: Value<Parameter>) => void;
-      }
-    | {
-        parameter: Parameter extends Model ? Called & Field<Parameter> : never;
-        steps: Array<ActionPointer | Exception | StreamPointer>;
-      }
-  );
+export type Action<Parameter extends Model | null = Model | null> = Node<"action"> & {
+  parameter: Parameter extends Model ? Called & Field<Parameter> : never;
+  steps: Array<ActionPointer | Exception | StreamPointer>;
+};
 
 export type ImmutableField<T extends Model | null> = Node<"field"> &
   Modeled<T> & {

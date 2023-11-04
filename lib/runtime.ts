@@ -2,37 +2,52 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
+type AppMembers = Record<string, Abstract.Model | Abstract.View>;
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = Stream | Field | Method | Action;
+type ScopeMember = Stream | Field | Method | Action | ((argument: any) => unknown);
 type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
 
+// TODO Do we really need this interface?
 interface Modeled<ModelName extends string = string> {
   modelName: ModelName;
+}
+
+interface Writer<T = unknown> {
+  write(value: T): void;
+  reset(): void;
 }
 
 interface Listener<T = unknown> {
   take(value: T): void;
 }
 
-interface Readable<T> {
-  read(): T;
-}
-
 abstract class Publisher<T = unknown> {
+  private lastValue?: T;
+
   private readonly listeners: Array<Listener<T>> = [];
 
+  listen(listener: Listener<T>) {
+    if (this.lastValue !== undefined) {
+      listener.take(this.lastValue);
+    }
+
+    this.listeners.push(listener);
+  }
+
   protected publish(value: T) {
+    this.lastValue = value;
+
     this.listeners.forEach((listener) => {
       listener.take(value);
     });
   }
 
-  listen(listener: Listener<T>) {
-    this.listeners.push(listener);
+  read() {
+    return this.lastValue;
   }
 }
 
-abstract class Channel<T = unknown> extends Publisher<T> implements Listener<T> {
+class Channel<T = unknown> extends Publisher<T> implements Listener<T> {
   take(value: T) {
     this.publish(value);
   }
@@ -52,7 +67,7 @@ class Stream extends Channel<Abstract.Value> implements Modeled {
 
 class Field<ModelName extends string = string>
   extends Channel<ValueOf<ModelName>>
-  implements Modeled<ModelName>, Readable<ValueOf<ModelName>>
+  implements Modeled<ModelName>
 {
   readonly channel:
     | Slot<ModelName>
@@ -62,13 +77,13 @@ class Field<ModelName extends string = string>
     | FieldPointer<ModelName>
     | MethodPointer<ModelName>;
 
-  readonly members: Record<string, Field | Method | Action>;
+  readonly members: Record<string, Field | Method | Action | ((argument: any) => unknown)>;
   readonly modelName: ModelName;
 
   constructor(
     field: Abstract.Field<Abstract.Model<ModelName>>,
     scope: Scope,
-    appMembers: Record<string, Abstract.Model | Abstract.View>,
+    appMembers: AppMembers,
   ) {
     super();
 
@@ -103,18 +118,20 @@ class Field<ModelName extends string = string>
       );
     }
 
-    const isMutable = this.channel instanceof MutableSlot || this.channel instanceof Store;
+    const isChannelMutable = this.channel instanceof MutableSlot || this.channel instanceof Store;
 
     // TODO Implement the consumption of abstract models.
     // TODO Use model to define fields, methods, and actions
     Object.entries(model.members).forEach(([memberKey, member]) => {
-      if (member.kind === "field") {
-        this.members[memberKey] = new Field(member, scope, appMembers);
+      if (typeof member === "function") {
+        this.members[memberKey] = member;
+      } else if (member.kind === "field") {
+        this.members[memberKey] = new Field(member, this.members, appMembers);
       } else if (member.kind === "method") {
-        this.members[memberKey] = new Method(member, this.members); // TODO merge this.members and scope (?)
+        this.members[memberKey] = new Method(member, this.members, appMembers);
       } else if (member.kind === "action") {
-        if (isMutable) {
-          this.members[memberKey] = new Action(member, this.members); // TODO see above
+        if (isChannelMutable) {
+          this.members[memberKey] = new Action(member, this.members, appMembers);
         }
       } else {
         throw new ViewScriptError(
@@ -125,22 +142,10 @@ class Field<ModelName extends string = string>
       }
     });
 
-    if (isMutable) {
+    if (isChannelMutable) {
       const channel = this.channel;
-      this.members.reset = new Action(
-        {
-          kind: "action",
-          handle: () => channel.reset(),
-        },
-        this.members,
-      );
-      this.members.write = new Action<ModelName>(
-        {
-          kind: "action",
-          handle: (value) => channel.take(value),
-        },
-        this.members,
-      );
+      this.members.reset = () => channel.reset();
+      this.members.write = (value: ValueOf<ModelName>) => channel.take(value);
     }
 
     this.channel.listen(this);
@@ -154,32 +159,27 @@ class Field<ModelName extends string = string>
     return this.members[name];
   }
 
-  read() {
+  read(): ValueOf<ModelName> | undefined {
     return this.channel.read();
   }
 }
 
-class Method<ModelName extends string = string> extends Channel<ValueOf<ModelName>> {
-  private readonly method: Abstract.Method;
+class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelName>> {
+  private readonly method: Abstract.Method<Abstract.Model<ModelName>>;
   private readonly scope: Scope;
 
-  constructor(method: Abstract.Method, scope: Scope) {
+  constructor(
+    method: Abstract.Method<Abstract.Model<ModelName>>,
+    scope: Scope,
+    appMembers: AppMembers,
+  ) {
     super();
 
     this.method = method;
     this.scope = scope;
   }
 
-  call(argument: Abstract.Value) {
-    if (!("handle" in this.method)) {
-      throw new ViewScriptError(`A method without a handle cannot be called.`);
-    }
-
-    const nextValue = this.method.handle(argument);
-
-    return nextValue;
-  }
-
+  // TODO wire up pub/sub in constructor, and remove this method:
   connect(
     methodPointer: MethodPointer,
     scope: Scope,
@@ -217,17 +217,20 @@ class Method<ModelName extends string = string> extends Channel<ValueOf<ModelNam
   }
 }
 
-class Action<ModelName extends string = string> extends Channel<ValueOf<ModelName>> {
+class Action<ModelName extends string = string> implements Listener<ValueOf<ModelName>> {
   private readonly action: Abstract.Action<Abstract.Model<ModelName>>;
   private readonly scope: Scope;
 
-  constructor(action: Abstract.Action<Abstract.Model<ModelName>>, scope: Scope) {
-    super();
-
+  constructor(
+    action: Abstract.Action<Abstract.Model<ModelName>>,
+    scope: Scope,
+    appMembers: AppMembers,
+  ) {
     this.action = action;
     this.scope = scope;
   }
 
+  // TODO wire up pub/sub in constructor, and remove this method:
   connect(actionPointer: ActionPointer, scope: Scope, argument?: Field) {
     if ("handle" in this.action) {
       actionPointer.listen(this);
@@ -263,16 +266,8 @@ class Action<ModelName extends string = string> extends Channel<ValueOf<ModelNam
     });
   }
 
-  take(value: Abstract.Value) {
-    if (!("handle" in this.action)) {
-      throw new ViewScriptError(`An action without a handle cannot take values.`);
-    }
-
-    const nextValue = this.action.handle(value);
-
-    if (nextValue !== undefined) {
-      this.publish(nextValue);
-    }
+  take(value: ValueOf<ModelName>) {
+    // TODO
   }
 }
 
@@ -327,7 +322,7 @@ class ActionPointer<ModelName extends string = string>
 
   take() {
     const nextValue = this.argument?.read();
-    this.publish(nextValue ?? null);
+    this.publish(nextValue ?? null); // TODO allow publishing null (or undefined?) when ModelName is null
   }
 }
 
@@ -371,21 +366,11 @@ class Slot<ModelName extends string = string>
   implements Modeled<ModelName>
 {
   readonly modelName: ModelName;
-  private channel?: Channel<ValueOf<ModelName>>;
 
   constructor(slot: Abstract.Slot<Abstract.Model<ModelName>>) {
     super();
 
     this.modelName = slot.modelName;
-  }
-
-  fill(channel: Publisher<ValueOf<ModelName>> & Channel<ValueOf<ModelName>>) {
-    this.channel = channel;
-    channel.listen(this);
-  }
-
-  read(): ValueOf<ModelName> {
-    return this.channel.read();
   }
 }
 
@@ -394,9 +379,8 @@ class Option<ModelName extends string = string>
   implements Listener<ValueOf<"Boolean">>
 {
   private readonly condition: Field<"Boolean">;
-  private readonly result: Field;
-  private readonly opposite?: Field;
-  private lastValue: ValueOf<ModelName>;
+  private readonly result: Field<ModelName>;
+  private readonly opposite: Field<ModelName>;
 
   constructor(option: Abstract.Option<Abstract.Model<ModelName>>, scope: Scope) {
     super();
@@ -406,17 +390,14 @@ class Option<ModelName extends string = string>
 
     this.condition = new Field<"Boolean">(option.condition, scope);
     this.condition.listen(this);
-
-    this.lastValue = (this.condition.read() ? this.result : this.opposite)?.read();
   }
 
-  read() {
-    return this.lastValue;
-  }
+  take(conditionalValue: ValueOf<"Boolean">) {
+    const nextValue = (conditionalValue ? this.result : this.opposite)?.read();
 
-  take(value: ValueOf<"Boolean">) {
-    this.lastValue = (value ? this.result : this.opposite)?.read();
-    this.publish(this.lastValue ?? undefined);
+    if (nextValue !== undefined) {
+      this.publish(nextValue);
+    }
   }
 }
 
@@ -477,7 +458,6 @@ class MethodPointer<ModelName extends string = string>
   private readonly continuation?: FieldPointer | MethodPointer;
   private readonly method: Method<ModelName>;
   private readonly methodPath: Array<string>;
-  private lastValue: ValueOf<ModelName>;
 
   constructor(methodPointer: Abstract.MethodPointer, scope: Scope) {
     super();
@@ -522,22 +502,15 @@ class MethodPointer<ModelName extends string = string>
 
     this.continuation = this.method.connect(this, scope, this.argument, methodPointer.continuation);
   }
-
-  take() {
-    this.lastValue = this.method.call(this.argument?.read() ?? null);
-
-    if (this.lastValue !== undefined) {
-      this.publish(this.lastValue);
-    }
-  }
 }
 
 class MutableSlot<ModelName extends string = string>
   extends Channel<ValueOf<ModelName>>
-  implements Modeled<ModelName>
+  implements Modeled<ModelName>, Writer<ValueOf<ModelName>>
 {
   readonly modelName: ModelName;
-  private channel?: Channel<ValueOf<ModelName>>;
+  onWrite?: (value: ValueOf<ModelName>) => void;
+  onReset?: () => void;
 
   constructor(slot: Abstract.MutableSlot<Abstract.Model<ModelName>>) {
     super();
@@ -545,69 +518,44 @@ class MutableSlot<ModelName extends string = string>
     this.modelName = slot.modelName;
   }
 
-  fill(channel: Publisher<ValueOf<ModelName>> & Channel<ValueOf<ModelName>>) {
-    this.channel = channel;
-    channel.listen(this);
+  write(value: Abstract.Value<Abstract.Model<ModelName>>) {
+    this.onWrite?.(value);
   }
 
-  read(): ValueOf<ModelName> {
-    return this.channel.read();
-  }
-
-  reset(): void {
-    return this.channel.reset();
-  }
-
-  write(value: Abstract.Value<Abstract.Model<ModelName>>): void {
-    this.channel.write(value);
+  reset() {
+    this.onReset?.();
   }
 }
 
 class Store<ModelName extends string>
   extends Channel<ValueOf<ModelName>>
-  implements Modeled<ModelName>
+  implements Modeled<ModelName>, Writer<ValueOf<ModelName>>
 {
-  readonly firstValue: ValueOf<ModelName>;
-  private lastValue: ValueOf<ModelName>;
+  private readonly firstValue: ValueOf<ModelName>;
   readonly modelName: ModelName;
 
   constructor(store: Abstract.Store<Abstract.Model<ModelName>>) {
     super();
 
     this.firstValue = store.value;
-    this.lastValue = store.value;
     this.modelName = store.modelName;
 
     super.take(store.value);
   }
 
-  listen(listener: Listener<ValueOf<ModelName>>) {
-    listener.take(this.lastValue);
-    super.listen(listener);
-  }
-
-  read() {
-    return this.lastValue;
+  write(value: ValueOf<ModelName>) {
+    this.take(value);
   }
 
   reset() {
     this.write(this.firstValue);
-  }
-
-  write(value: ValueOf<ModelName>) {
-    this.lastValue = value;
-    this.take(value);
   }
 }
 
 class Component extends Channel<HTMLElement> {
   private readonly body: Feature | Landscape;
 
-  constructor(
-    component: Abstract.Component,
-    appMembers: Record<string, Abstract.Model | Abstract.View>,
-    scope: Scope,
-  ) {
+  constructor(component: Abstract.Component, scope: Scope, appMembers: AppMembers) {
     super();
 
     if ("tagName" in component.body) {
@@ -636,7 +584,7 @@ class Feature extends Publisher<HTMLElement> {
     tagName: string,
     branches: Record<string, Abstract.View | Abstract.Model>,
     scope: Scope,
-    properties: Abstract.Component["properties"],
+    properties: Abstract.Feature["properties"],
   ) {
     super();
 
@@ -739,9 +687,9 @@ class Landscape extends Channel<HTMLElement> {
 
   constructor(
     renders: Abstract.View,
-    members: Record<string, Abstract.Model | Abstract.View>,
     scope: Scope,
-    properties: Abstract.Component["properties"],
+    appMembers: AppMembers,
+    properties: Abstract.Landscape["properties"],
   ) {
     super();
 
@@ -802,7 +750,7 @@ export class RunningApp {
   private readonly renders: Element | Landscape;
 
   constructor(app: Abstract.App) {
-    this.renders = new Landscape(app.renders, app.members, { ...this.fields }, {});
+    this.renders = new Landscape(app.renders, { ...this.fields }, app.members, {});
     this.renders.listen({
       take: (htmlElement) => {
         Dom.render(htmlElement);
@@ -814,55 +762,17 @@ export class RunningApp {
   }
 }
 
-const models: Record<string, Abstract.Model> = {
-  Browser: {
-    kind: "model",
-    name: "Browser",
-    members: {
-      console: {
-        kind: "field",
-        modelName: "Console",
-      },
-    },
-  },
-  Console: {
-    kind: "model",
-    name: "Console",
-    members: {
-      log: {
-        kind: "action",
-        handle: window.console.log,
-      },
-    },
-  },
-};
+// Built-in models:
 
 const boolean = (store: Store<"Boolean">): Abstract.Model<"Boolean"> => ({
   kind: "model",
   name: "Boolean",
   members: {
-    and: {
-      kind: "method",
-      modelName: "Boolean",
-      handle: (arg) => store.read() && (arg as boolean),
-    },
-    not: {
-      kind: "method",
-      modelName: "Boolean",
-      handle: () => !store.read(),
-    },
-    disable: {
-      kind: "action",
-      handle: () => store.take(false),
-    },
-    enable: {
-      kind: "action",
-      handle: () => store.take(true),
-    },
-    toggle: {
-      kind: "action",
-      handle: () => store.take(!store.read()),
-    },
+    and: (argument: boolean) => store.read() && argument,
+    not: () => !store.read(),
+    disable: () => store.take(false),
+    enable: () => store.take(true),
+    toggle: () => store.take(!store.read()),
   },
 });
 
@@ -870,24 +780,10 @@ const number = (store: Store<"Number">): Abstract.Model<"Number"> => ({
   kind: "model",
   name: "Number",
   members: {
-    equals: {
-      kind: "method",
-      modelName: "Boolean",
-      handle: (arg) => store.read() == (arg as number),
-    },
-    isAtLeast: {
-      kind: "method",
-      modelName: "Boolean",
-      handle: (arg) => store.read() >= (arg as number),
-    },
-    add: {
-      kind: "action",
-      handle: (arg) => store.take(store.read() + (arg as number)),
-    },
-    multiplyBy: {
-      kind: "action",
-      handle: (arg) => store.take(store.read() * (arg as number)),
-    },
+    equals: (argument: number) => store.read() == argument,
+    isAtLeast: (argument: number) => (store.read() ?? NaN) >= argument,
+    add: (argument: number) => store.take((store.read() ?? NaN) + argument),
+    multiplyBy: (argument: number) => store.take((store.read() ?? NaN) * argument),
   },
 });
 
@@ -907,19 +803,28 @@ const array = (store: Store<"Array">): Abstract.Model<"Array"> => ({
   kind: "model",
   name: "Array",
   members: {
-    push: {
-      kind: "action",
-      handle: (arg) =>
-        store.take(
-          store.read().concat({
-            kind: "field",
-            modelName: "Component",
-            channel: {
-              kind: "store",
-              value: arg,
-            },
-          }),
-        ),
+    push: (argument) => {
+      const lastValue = store.read() ?? [];
+      lastValue.push(argument);
+      store.take(lastValue);
     },
   },
 });
+
+// Static models:
+
+const console: Abstract.Model<"Console"> = {
+  kind: "model",
+  name: "Console",
+  members: {
+    log: window.console.log,
+  },
+};
+
+const browser: Abstract.Model<"Browser"> = {
+  kind: "model",
+  name: "Browser",
+  members: {
+    console,
+  },
+};
