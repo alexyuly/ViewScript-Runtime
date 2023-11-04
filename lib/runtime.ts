@@ -762,6 +762,7 @@ export class RunningApp {
   }
 }
 
+// TODO Auto-populate the browser model with the window object's properties:
 const globals: Record<string, Abstract.Model> = {
   browser: {
     kind: "model",
@@ -779,6 +780,16 @@ const globals: Record<string, Abstract.Model> = {
 };
 
 const factories = {
+  Array: {
+    methods: () => ({}),
+    actions: (writer: Writer<ValueOf<"Array">>, reader: Reader<ValueOf<"Array">>) => ({
+      push: (argument: Field) => {
+        const lastValue = reader.read() ?? [];
+        lastValue.push(argument);
+        writer.write(lastValue);
+      },
+    }),
+  },
   Boolean: {
     methods: (reader: Reader<ValueOf<"Boolean">>) => ({
       and: (argument: Field<"Boolean">) => reader.read() && argument.read(),
@@ -810,17 +821,6 @@ const factories = {
     methods: () => ({}),
     actions: () => ({}),
   },
-  Array: {
-    methods: () => ({}),
-    actions: (writer: Writer<ValueOf<"Array">>, reader: Reader<ValueOf<"Array">>) => ({
-      push: (argument: Field) => {
-        const argumentValue = argument.read();
-        if (argumentValue !== undefined) {
-          const lastValue = reader.read() ?? [];
-          lastValue.push(argumentValue);
-          writer.write(lastValue);
-        }
-      },
-    }),
-  },
 };
+
+// TODO Update semantics to reflect the latest names in abstract.ts

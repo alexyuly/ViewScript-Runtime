@@ -15,10 +15,13 @@ export type Model<Name extends string = string> = Node<"model"> &
 
 export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
 
-export type Field<T extends Model | null = Model | null> = ImmutableField<T> | MutableField<T>;
+export type Field<T extends Model = Model> = Node<"field"> &
+  Modeled<T> & {
+    channel: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
+  };
 
 export type Method<
-  T extends Model | null = Model | null,
+  T extends Model = Model,
   Parameter extends Model | null = Model | null,
 > = Node<"method"> &
   Modeled<T> & {
@@ -31,35 +34,23 @@ export type Action<Parameter extends Model | null = Model | null> = Node<"action
   steps: Array<ActionPointer | Exception | StreamPointer>;
 };
 
-export type ImmutableField<T extends Model | null> = Node<"field"> &
-  Modeled<T> & {
-    channel: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
-  };
-
-export type MutableField<T extends Model | null> = Node<"field"> &
-  Modeled<T> & {
-    channel: MutableSlot<T> | Store<T>;
-  };
-
-export type Modeled<T extends Model | null> = {
-  modelName: T extends Model ? Name<T> : never;
+export type Modeled<T extends Model> = {
+  modelName: Name<T>;
 };
 
-export type Value<T extends Model | null = Model | null> = T extends Model
-  ? Name<T> extends "Boolean"
-    ? boolean
-    : Name<T> extends "Number"
-    ? number
-    : Name<T> extends "String"
-    ? string
-    : Name<T> extends "Component"
-    ? Component
-    : Name<T> extends "Array"
-    ? Array<Field<null>>
-    : Structure<Model>
-  : boolean | number | string | Component | Array<Field> | Structure;
+export type Value<T extends Model = Model> = Name<T> extends "Array"
+  ? Array<Field>
+  : Name<T> extends "Boolean"
+  ? boolean
+  : Name<T> extends "Number"
+  ? number
+  : Name<T> extends "String"
+  ? string
+  : Name<T> extends "Component"
+  ? Component
+  : boolean | number | string | Component | Array<Field> | Structure<T>;
 
-export type ActionPointer<Parameter extends Model = Model> = Node<"actionPointer"> & {
+export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
   actionPath: Array<string>;
   argument: Parameter extends Model ? Field<Parameter> : never;
 };
@@ -74,36 +65,29 @@ export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
     streamName: string;
   };
 
-export type Slot<T extends Model | null> = Node<"slot"> & Modeled<T>;
+export type Slot<T extends Model> = Node<"slot"> & Modeled<T>;
 
-export type Option<T extends Model | null> = Node<"option"> &
+export type Option<T extends Model> = Node<"option"> &
   Modeled<T> & {
     condition: Field<Model<"Boolean">>;
     result: Field<T>;
     opposite: Field<T>;
   };
 
-export type FieldPointer<T extends Model | null> = Node<"fieldPointer"> &
+export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
     fieldPath: Array<string>;
   };
 
 export type MethodPointer<
-  T extends Model | null = Model | null,
-  Parameter extends Model = Model,
+  T extends Model = Model,
+  Parameter extends Model | null = Model | null,
 > = Node<"methodPointer"> &
   Modeled<T> & {
     leader?: MethodPointer;
     methodPath: Array<string>;
     argument: Parameter extends Model ? Field<Parameter> : never;
-  };
-
-export type MutableSlot<T extends Model | null> = Node<"mutableSlot"> & Modeled<T>;
-
-export type Store<T extends Model | null> = Node<"store"> &
-  Modeled<T> & {
-    value: Value<T>;
   };
 
 export type Component = Node<"component"> & {
@@ -137,17 +121,29 @@ export type Landscape<T extends View = View> = Node<"landscape"> & {
   };
 };
 
-export type Properties<T extends Field> = T["channel"] extends Slot<infer State>
-  ? ImmutableField<State>
-  : T["channel"] extends MutableSlot<infer State>
-  ? MutableField<State>
-  : never;
-
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
     renders: Component;
+  };
+
+export type Properties<T extends Field> = T["channel"] extends Binding<infer State>
+  ? WritableField<State>
+  : T["channel"] extends Slot<infer State>
+  ? Field<State>
+  : never;
+
+export type Binding<T extends Model> = Node<"binding"> & Modeled<T>;
+
+export type WritableField<T extends Model> = Node<"field"> &
+  Modeled<T> & {
+    channel: Field<T>["channel"] | Binding<T> | Store<T>;
+  };
+
+export type Store<T extends Model> = Node<"store"> &
+  Modeled<T> & {
+    value: Value<T>;
   };
 
 export type App = Node<"app"> & {
