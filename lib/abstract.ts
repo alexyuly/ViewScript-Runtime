@@ -17,57 +17,62 @@ export type Called<Name extends string = string> = {
   name: Name;
 };
 
-export type Field<T extends Model = Model> = Node<"field"> &
-  Modeled<T> & {
-    channel: Slot<T> | Option<T> | FieldPointer<T> | MethodPointer<T>;
-  };
+export type Field<M extends Model = Model> = Node<"field"> & {
+  channel: Store<M> | Binding<M> | Slot<M> | Option<M> | FieldPointer<M> | MethodPointer<M>;
+};
 
 export type Method<
-  T extends Model = Model,
-  Parameter extends Model | null = Model | null,
-> = Node<"method"> &
-  Modeled<T> & {
-    parameter: Parameter extends Model ? Called & Field<Parameter> : never;
-    result: Field<T>;
-  };
+  M extends Model = Model,
+  P extends Model | null = Model | null,
+> = Node<"method"> & {
+  parameter: P extends Model ? Called & ReadOnlyField<P> : never;
+  result: ReadOnlyField<M>;
+};
 
-export type Action<Parameter extends Model | null = Model | null> = Node<"action"> & {
-  parameter: Parameter extends Model ? Called & Field<Parameter> : never;
+export type Action<M extends Model | null = Model | null> = Node<"action"> & {
+  parameter: M extends Model ? Called & ReadOnlyField<M> : never;
   steps: Array<ActionPointer | Exception | StreamPointer>;
 };
 
-export type Modeled<T extends Model> = {
-  modelName: T["name"];
-};
-
-export type Slot<T extends Model> = Node<"slot"> & Modeled<T>;
-
-export type Option<T extends Model> = Node<"option"> &
-  Modeled<T> & {
-    condition: Field<Model<"Boolean">>;
-    result: Field<T>;
-    opposite: Field<T>;
+export type Store<M extends Model> = Node<"store"> &
+  Modeled<M> & {
+    value: Value<M>;
   };
 
-export type FieldPointer<T extends Model> = Node<"fieldPointer"> &
-  Modeled<T> & {
+export type Binding<M extends Model> = Node<"binding"> & Modeled<M>;
+
+export type Slot<M extends Model> = Node<"slot"> & Modeled<M>;
+
+export type Option<M extends Model> = Node<"option"> &
+  Modeled<M> & {
+    condition: Field<Model<"Boolean">>;
+    result: Field<M>;
+    opposite: Field<M>;
+  };
+
+export type FieldPointer<M extends Model> = Node<"fieldPointer"> &
+  Modeled<M> & {
     leader?: MethodPointer;
     fieldPath: Array<string>;
   };
 
 export type MethodPointer<
-  T extends Model = Model,
-  Parameter extends Model | null = Model | null,
+  M extends Model = Model,
+  P extends Model | null = Model | null,
 > = Node<"methodPointer"> &
-  Modeled<T> & {
+  Modeled<M> & {
     leader?: MethodPointer;
     methodPath: Array<string>;
-    argument: Parameter extends Model ? Field<Parameter> : never;
+    argument: P extends Model ? Field<P> : never;
   };
 
-export type ActionPointer<Parameter extends Model | null = Model | null> = Node<"actionPointer"> & {
+export type ReadOnlyField<M extends Model> = Node<"field"> & {
+  channel: Slot<M> | Option<M> | FieldPointer<M> | MethodPointer<M>;
+};
+
+export type ActionPointer<M extends Model | null = Model | null> = Node<"actionPointer"> & {
   actionPath: Array<string>;
-  argument: Parameter extends Model ? Field<Parameter> : never;
+  argument: M extends Model ? Field<M> : never;
 };
 
 export type Exception = Node<"exception"> & {
@@ -75,10 +80,41 @@ export type Exception = Node<"exception"> & {
   steps?: Array<ActionPointer | Exception | StreamPointer>;
 };
 
-export type StreamPointer<Event extends Model = Model> = Node<"streamPointer"> &
-  Modeled<Event> & {
+export type StreamPointer<M extends Model | null = Model | null> = Node<"streamPointer"> &
+  Modeled<M> & {
     streamName: string;
   };
+
+export type Modeled<M extends Model | null> = {
+  modelName: M extends Model ? M["name"] : never;
+};
+
+export type Value<M extends Model = Model> = M["name"] extends "Array"
+  ? Array<Field>
+  : M["name"] extends "Boolean"
+  ? boolean
+  : M["name"] extends "Number"
+  ? number
+  : M["name"] extends "String"
+  ? string
+  : M["name"] extends "Component"
+  ? Component
+  : Array<Field> | boolean | number | string | Component | Structure<M>;
+
+export type Structure<M extends Model = Model> = Node<"structure"> &
+  Modeled<M> & {
+    properties: {
+      [Key in keyof M["members"]]?: M["members"][Key] extends Field
+        ? Property<M["members"][Key]>
+        : never;
+    };
+  };
+
+export type Property<M extends Field> = M["channel"] extends Binding<infer Class>
+  ? Field<Class>
+  : M["channel"] extends Slot<infer Class>
+  ? ReadOnlyField<Class>
+  : never;
 
 export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
@@ -86,6 +122,8 @@ export type View<Name extends string = string> = Node<"view"> &
     streams: Record<`on${string}`, Stream>;
     renders: Component;
   };
+
+export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Modeled<M>;
 
 export type Component = Node<"component"> & {
   renders: Feature | Landscape;
@@ -97,55 +135,14 @@ export type Feature = Node<"feature"> & {
   reactions: Record<`on${string}`, Action>;
 };
 
-export type Landscape<T extends View = View> = Node<"landscape"> & {
-  viewName: T["name"];
+export type Landscape<M extends View = View> = Node<"landscape"> & {
+  viewName: M["name"];
   properties: {
-    [Key in keyof T["fields"]]?: Properties<T["fields"][Key]>;
+    [Key in keyof M["fields"]]?: Property<M["fields"][Key]>;
   };
   reactions: {
-    [Key in keyof T["streams"]]?: T["streams"][Key] extends Stream<infer Event>
-      ? Action<Event>
+    [Key in keyof M["streams"]]?: M["streams"][Key] extends Stream<infer Parameter>
+      ? Action<Parameter>
       : never;
   };
 };
-
-export type Properties<T extends Field> = T["channel"] extends Binding<infer State>
-  ? WritableField<State>
-  : T["channel"] extends Slot<infer State>
-  ? Field<State>
-  : never;
-
-export type Stream<Event extends Model = Model> = Node<"stream"> & Modeled<Event>;
-
-export type Binding<T extends Model> = Node<"binding"> & Modeled<T>;
-
-export type WritableField<T extends Model> = Node<"field"> &
-  Modeled<T> & {
-    channel: Field<T>["channel"] | Binding<T> | Store<T>;
-  };
-
-export type Store<T extends Model> = Node<"store"> &
-  Modeled<T> & {
-    value: Value<T>;
-  };
-
-export type Value<T extends Model = Model> = T["name"] extends "Array"
-  ? Array<Field>
-  : T["name"] extends "Boolean"
-  ? boolean
-  : T["name"] extends "Number"
-  ? number
-  : T["name"] extends "String"
-  ? string
-  : T["name"] extends "Component"
-  ? Component
-  : Array<Field> | boolean | number | string | Component | Structure<T>;
-
-export type Structure<T extends Model = Model> = Node<"structure"> &
-  Modeled<T> & {
-    properties: {
-      [Key in keyof T["members"]]?: T["members"][Key] extends Field
-        ? Properties<T["members"][Key]>
-        : never;
-    };
-  };
