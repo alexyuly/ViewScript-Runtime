@@ -71,7 +71,7 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
     [Key in keyof V["fields"]]?: Property<V["fields"][Key]>;
   };
   reactions: {
-    [Key in keyof V["streams"]]?: V["streams"][Key] extends Stream<infer P> ? Action<P> : never;
+    [Key in keyof V["streams"]]?: V["streams"][Key] extends Stream<infer M> ? Action<M> : never;
   };
 };
 

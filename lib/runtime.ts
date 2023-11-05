@@ -51,7 +51,7 @@ abstract class Channel<T> extends Publisher<T> implements Subscriber<T> {
   }
 }
 
-const globals: Record<string, Abstract.Model> = {
+const globalDomain: Record<string, Abstract.Model> = {
   browser: {
     kind: "model",
     name: "Browser",
@@ -75,7 +75,7 @@ export class App implements ConcreteNode<"app"> {
     this.abstractNode = app;
 
     const scope = {};
-    const domain = { ...globals, ...app.domain };
+    const domain = { ...globalDomain, ...app.domain };
 
     this.renderable = new Renderable(app.renderable, scope, domain);
     this.renderable.sendTo(Dom.render);
@@ -123,7 +123,7 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
     Object.entries(feature.properties).forEach(([propertyKey, property]) => {
       const field = new Field(property, this.scope, domain);
 
-      let take: (value: Abstract.Value) => void;
+      let take: (value: any) => void;
 
       if (propertyKey === "content") {
         take = (value) => {
@@ -133,7 +133,7 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
           const populate = (child: Abstract.Field) => {
             if (child instanceof Array) {
               child.forEach(populate);
-            } else if (Abstract.isElement(child)) {
+            } else if (child.kind === "renderable") {
               const elementChild = new Renderable(child, branches, this.scope);
               this.children.push(elementChild);
               elementChild.sendTo({
@@ -178,14 +178,14 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
         };
       }
 
-      field.sendTo({ take });
+      field.sendTo(take);
       this.properties[propertyKey] = field;
 
       if (Abstract.isField()) {
       } else if (Abstract.isAction(property)) {
         const action = new Action(property, scope);
 
-        Dom.sendTo(htmlElement, propertyKey, () => {
+        Dom.listen(htmlElement, propertyKey, () => {
           // TODO Transform Events into Abstract.Values, and pass them to action.take:
           action.take(null);
         });
