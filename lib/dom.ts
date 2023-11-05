@@ -1,5 +1,3 @@
-import type { Value } from "./abstract";
-
 export const create = (tagName: string) => {
   const htmlElement = window.document.createElement(tagName.toLowerCase());
   window.console.log(`[DOM] 🌱 Create <${tagName.toLowerCase()}>`, htmlElement);
@@ -11,8 +9,8 @@ export const populate = (element: HTMLElement, children: Array<HTMLElement | str
   window.console.log(`[DOM] 🌿 Populate <${element.tagName.toLowerCase()}>`, children);
 };
 
-export const styleProp = (element: HTMLElement, name: string, value?: Value) => {
-  if (value === undefined) {
+export const styleProp = (element: HTMLElement, name: string, value?: unknown) => {
+  if (value == null || value === false) {
     element.style.removeProperty(name);
   } else {
     element.style.setProperty(name, String(value));
@@ -20,11 +18,11 @@ export const styleProp = (element: HTMLElement, name: string, value?: Value) => 
   window.console.log(`[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`, value);
 };
 
-export const attribute = (element: HTMLElement, name: string, value?: Value) => {
-  if (value === undefined || (typeof value === "boolean" && !value)) {
+export const attribute = (element: HTMLElement, name: string, value?: unknown) => {
+  if (value == null || value === false) {
     element.removeAttribute(name);
   } else {
-    element.setAttribute(name, typeof value === "boolean" ? name : String(value));
+    element.setAttribute(name, value === true ? name : String(value));
   }
   window.console.log(`[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`, value);
 };

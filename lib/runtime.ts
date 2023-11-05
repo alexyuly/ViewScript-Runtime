@@ -2,27 +2,273 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
-// TODO Update semantics and ordering to reflect the types in abstract.ts...
+type Domain = Abstract.App["domain"];
+type Scope = Record<string, ScopeMember>;
+type ScopeMember = Stream | Field | Method | Action | ((argument: any) => unknown);
 
-export class RunningApp {
-  private readonly renders: Component;
+interface ConcreteNode<Kind extends string> {
+  abstractNode: Abstract.Node<Kind>;
+}
+
+interface Readable<T> {
+  getValue(): T | undefined;
+}
+
+interface Subscriber<T> {
+  take(value: T): void;
+}
+
+abstract class Publisher<T> implements Readable<T> {
+  private readonly takes: Array<Subscriber<T>["take"]> = [];
+  private value?: T;
+
+  getValue() {
+    return this.value;
+  }
+
+  protected publish(value: T) {
+    this.value = value;
+
+    this.takes.forEach((take) => {
+      take(value);
+    });
+  }
+
+  sendTo(target: Subscriber<T> | Subscriber<T>["take"]) {
+    const take = typeof target === "function" ? target : target.take;
+
+    if (this.value !== undefined) {
+      take(this.value);
+    }
+
+    this.takes.push(take);
+  }
+}
+
+abstract class Channel<T> extends Publisher<T> implements Subscriber<T> {
+  take(value: T) {
+    this.publish(value);
+  }
+}
+
+const globals: Record<string, Abstract.Model> = {
+  browser: {
+    kind: "model",
+    name: "Browser",
+    members: {
+      console: {
+        kind: "model",
+        name: "Console",
+        members: {
+          log: window.console.log,
+        },
+      },
+    },
+  },
+};
+
+export class App implements ConcreteNode<"app"> {
+  readonly abstractNode: Abstract.App;
+  private readonly renderable: Renderable;
 
   constructor(app: Abstract.App) {
-    this.renders = new Component(app.renders, {}, { ...globals, ...app.members });
-    this.renders.listen({
-      take: (htmlElement) => {
-        Dom.render(htmlElement);
-      },
-    });
+    this.abstractNode = app;
+
+    const scope = {};
+    const domain = { ...globals, ...app.domain };
+
+    this.renderable = new Renderable(app.renderable, scope, domain);
+    this.renderable.sendTo(Dom.render);
 
     window.console.log(`[VSR] 🟢 Start app:`);
     window.console.log(this);
   }
 }
 
-type AppMembers = Record<string, Abstract.Model | Abstract.View>;
-type Scope = Record<string, ScopeMember>;
-type ScopeMember = Stream | Field | Method | Action | ((argument: any) => unknown);
+class Renderable extends Channel<HTMLElement> implements ConcreteNode<"renderable"> {
+  readonly abstractNode: Abstract.Renderable;
+  private readonly element: Feature | Landscape;
+
+  constructor(renderable: Abstract.Renderable, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = renderable;
+
+    this.element =
+      renderable.element.kind === "feature"
+        ? new Feature(renderable.element, scope, domain)
+        : new Landscape(renderable.element, scope, domain);
+
+    this.element.sendTo(this);
+  }
+}
+
+class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> {
+  readonly abstractNode: Abstract.Feature;
+
+  private readonly properties: Record<string, Field> = {};
+  private readonly reactions: Record<string, Action> = {};
+
+  private children: Array<Renderable | string> = [];
+  private readonly scope: Scope;
+
+  constructor(feature: Abstract.Feature, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = feature;
+    this.scope = scope;
+
+    const htmlElement = Dom.create(feature.tagName);
+
+    Object.entries(feature.properties).forEach(([propertyKey, property]) => {
+      const field = new Field(property, this.scope, domain);
+
+      let take: (value: Abstract.Value) => void;
+
+      if (propertyKey === "content") {
+        take = (value) => {
+          this.children = [];
+
+          const htmlElementChildren: Array<HTMLElement | string> = [];
+          const populate = (child: Abstract.Field) => {
+            if (child instanceof Array) {
+              child.forEach(populate);
+            } else if (Abstract.isElement(child)) {
+              const elementChild = new Renderable(child, branches, this.scope);
+              this.children.push(elementChild);
+              elementChild.sendTo({
+                take: (htmlElementChild) => {
+                  htmlElementChildren.push(htmlElementChild);
+                },
+              });
+            } else if (Abstract.isValue(child)) {
+              const textContent = String(child); // TODO properly handle structures
+              this.children.push(textContent);
+              htmlElementChildren.push(textContent);
+            } else if (Abstract.isFieldPointer(child)) {
+              const fieldPointer = new FieldPointer(child, this.scope);
+              fieldPointer.sendTo({
+                take: populate,
+              });
+            } else if (Abstract.isMethodPointer(child)) {
+              const methodPointer = new MethodPointer(child, this.scope);
+              methodPointer.sendTo({
+                take: populate,
+              });
+            } else if (Abstract.isOption(child)) {
+              const option = new Option(child, this.scope);
+              option.sendTo({
+                take: populate,
+              });
+            } else {
+              throw new ViewScriptError(); // TODO should never happen, but be defensive
+            }
+          };
+
+          populate(value);
+          Dom.populate(htmlElement, htmlElementChildren);
+        };
+      } else if (Style.supports(propertyKey)) {
+        take = (value) => {
+          Dom.styleProp(htmlElement, propertyKey, value);
+        };
+      } else {
+        take = (value) => {
+          Dom.attribute(htmlElement, propertyKey, value);
+        };
+      }
+
+      field.sendTo({ take });
+      this.properties[propertyKey] = field;
+
+      if (Abstract.isField()) {
+      } else if (Abstract.isAction(property)) {
+        const action = new Action(property, scope);
+
+        Dom.sendTo(htmlElement, propertyKey, () => {
+          // TODO Transform Events into Abstract.Values, and pass them to action.take:
+          action.take(null);
+        });
+
+        this.properties[propertyKey] = action;
+      } else {
+        throw new ViewScriptError(
+          `Cannot construct a property of unknown kind "${
+            (property as { kind: unknown }).kind
+          } for element of tagName ${this.tagName}"`,
+        );
+      }
+    });
+
+    this.publish(htmlElement);
+  }
+
+  // TODO iterate over reactions
+}
+
+class Landscape extends Channel<HTMLElement> {
+  private readonly element: Renderable;
+  private readonly properties: Record<string, Action | Field>;
+  private readonly scope: Scope;
+
+  constructor(landscape: Abstract.Landscape, scope: Scope, domain: Domain) {
+    super();
+
+    const member = domain[landscape.viewName];
+
+    if (member.kind !== "view") {
+      throw new ViewScriptError(`Cannot construct unknown view "${landscape.viewName}"`);
+    }
+
+    this.properties = {};
+    this.scope = scope;
+
+    Object.entries(renders.scope).forEach(([featureKey, feature]) => {
+      this.scope[featureKey] = Abstract.isField(feature) ? new Field(feature) : new Stream(feature);
+    });
+
+    Object.entries(landscape.properties).forEach(([propertyKey, property]) => {
+      const feature = Object.values(this.scope).find(
+        (feature) =>
+          (feature instanceof Stream || feature instanceof Field) && feature.key === propertyKey,
+      );
+
+      if (feature === undefined) {
+        throw new ViewScriptError(
+          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``,
+        );
+      }
+
+      if (Abstract.isField(property)) {
+        if (feature instanceof Stream) {
+          throw new ViewScriptError(`Cannot construct a field for stream name \`${propertyKey}\``);
+        }
+
+        const field = new Field(property, this.scope);
+        field.sendTo(feature);
+        this.properties[propertyKey] = field;
+      } else if (Abstract.isAction(property)) {
+        if (feature instanceof Field) {
+          throw new ViewScriptError(`Cannot construct an action for field name \`${propertyKey}\``);
+        }
+
+        const sideEffect = new Action(property, this.scope);
+        feature.sendTo(sideEffect);
+        this.properties[propertyKey] = sideEffect;
+      } else {
+        throw new ViewScriptError(
+          `Cannot construct a property of unknown kind "${
+            (property as { kind: unknown }).kind
+          } for view of key \`${this.key}\`"`,
+        );
+      }
+    });
+
+    this.element = new Renderable(renders.element, branches, this.scope);
+    this.element.sendTo(this);
+  }
+}
+
 type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
 
 // TODO Do we really need this interface?
@@ -33,46 +279,6 @@ interface Modeled<ModelName extends string = string> {
 interface Writer<T = unknown> {
   reset(): void;
   write(value: T): void;
-}
-
-interface Reader<T = unknown> {
-  read(): T | undefined;
-}
-
-interface Listener<T = unknown> {
-  take(value: T): void;
-}
-
-abstract class Publisher<T = unknown> implements Reader<T> {
-  private lastValue?: T;
-
-  private readonly listeners: Array<Listener<T>> = [];
-
-  listen(listener: Listener<T>) {
-    if (this.lastValue !== undefined) {
-      listener.take(this.lastValue);
-    }
-
-    this.listeners.push(listener);
-  }
-
-  protected publish(value: T) {
-    this.lastValue = value;
-
-    this.listeners.forEach((listener) => {
-      listener.take(value);
-    });
-  }
-
-  read() {
-    return this.lastValue;
-  }
-}
-
-class Channel<T = unknown> extends Publisher<T> implements Listener<T> {
-  take(value: T) {
-    this.publish(value);
-  }
 }
 
 class ViewScriptError extends Error {}
@@ -102,11 +308,7 @@ class Field<ModelName extends string = string>
   readonly members: Record<string, Field | Method | Action | ((argument: any) => unknown)>;
   readonly modelName: ModelName;
 
-  constructor(
-    field: Abstract.Field<Abstract.Model<ModelName>>,
-    scope: Scope,
-    appMembers: AppMembers,
-  ) {
+  constructor(field: Abstract.Field<Abstract.Model<ModelName>>, scope: Scope, domain: Domain) {
     super();
 
     this.members = {};
@@ -170,7 +372,7 @@ class Field<ModelName extends string = string>
       this.members.write = (value: ValueOf<ModelName>) => channel.take(value);
     }
 
-    this.channel.listen(this);
+    this.channel.sendTo(this);
   }
 
   getMember(name: string) {
@@ -181,8 +383,8 @@ class Field<ModelName extends string = string>
     return this.members[name];
   }
 
-  read(): ValueOf<ModelName> | undefined {
-    return this.channel.read();
+  getValue(): ValueOf<ModelName> | undefined {
+    return this.channel.getValue();
   }
 }
 
@@ -208,7 +410,7 @@ class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelN
     argument?: Field,
   ): FieldPointer | MethodPointer | undefined {
     if ("handle" in this.method) {
-      this.listen(methodPointer);
+      this.sendTo(methodPointer);
       return;
     }
 
@@ -216,7 +418,7 @@ class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelN
 
     if (this.method.parameter !== undefined && argument !== undefined) {
       const parameter = new Field(this.method.parameter);
-      argument.listen(parameter);
+      argument.sendTo(parameter);
       stepTerrain[this.method.parameter.name] = parameter;
     }
 
@@ -228,17 +430,17 @@ class Method<ModelName extends string = string> extends Publisher<ValueOf<ModelN
     //       ? new FieldPointer(abstractContinuation, scope) // TODO Replace scope with method result's members
     //       : new MethodPointer(abstractContinuation, scope); // TODO Replace scope with method result's members
 
-    //   continuation.listen(result);
-    //   result.listen(continuation);
+    //   continuation.sendTo(result);
+    //   result.sendTo(continuation);
 
     //   return continuation;
     // }
 
-    result.listen(methodPointer);
+    result.sendTo(methodPointer);
   }
 }
 
-class Action<ModelName extends string = string> implements Listener<ValueOf<ModelName>> {
+class Action<ModelName extends string = string> implements Subscriber<ValueOf<ModelName>> {
   private readonly action: Abstract.Action<Abstract.Model<ModelName>>;
   private readonly scope: Scope;
 
@@ -254,7 +456,7 @@ class Action<ModelName extends string = string> implements Listener<ValueOf<Mode
   // TODO wire up pub/sub in constructor, and remove this method:
   connect(actionPointer: ActionPointer, scope: Scope, argument?: Field) {
     if ("handle" in this.action) {
-      actionPointer.listen(this);
+      actionPointer.sendTo(this);
       return;
     }
 
@@ -262,7 +464,7 @@ class Action<ModelName extends string = string> implements Listener<ValueOf<Mode
 
     if (this.action.parameter !== undefined && argument !== undefined) {
       const parameter = new Field(this.action.parameter);
-      argument.listen(parameter);
+      argument.sendTo(parameter);
       stepTerrain[this.action.parameter.name] = parameter;
     }
 
@@ -278,7 +480,7 @@ class Action<ModelName extends string = string> implements Listener<ValueOf<Mode
       throw new ViewScriptError("Sorry, exceptions are not yet implemented."); // TODO implement
     });
 
-    actionPointer.listen({
+    actionPointer.sendTo({
       take: () => {
         steps.forEach((step) => {
           step.take();
@@ -294,7 +496,7 @@ class Action<ModelName extends string = string> implements Listener<ValueOf<Mode
 
 class ActionPointer<ModelName extends string = string>
   extends Publisher<ValueOf<ModelName>>
-  implements Listener<void>
+  implements Subscriber<void>
 {
   private readonly action: Action;
   private readonly actionPath: Array<string>;
@@ -342,14 +544,14 @@ class ActionPointer<ModelName extends string = string>
   }
 
   take() {
-    const nextValue = this.argument?.read();
+    const nextValue = this.argument?.getValue();
     this.publish(nextValue ?? null); // TODO allow publishing null (or undefined?) when ModelName is null
   }
 }
 
 class StreamPointer<ModelName extends string = string>
   extends Publisher<ValueOf<ModelName>>
-  implements Listener<void>
+  implements Subscriber<void>
 {
   private readonly argument?: Field;
   private readonly streamName: string;
@@ -373,11 +575,11 @@ class StreamPointer<ModelName extends string = string>
     }
 
     this.stream = nextMember;
-    this.listen(this.stream);
+    this.sendTo(this.stream);
   }
 
   take() {
-    const nextValue = this.argument?.read();
+    const nextValue = this.argument?.getValue();
     this.publish(nextValue ?? null);
   }
 }
@@ -397,7 +599,7 @@ class Slot<ModelName extends string = string>
 
 class Option<ModelName extends string = string>
   extends Publisher<ValueOf<ModelName>>
-  implements Listener<ValueOf<"Boolean">>
+  implements Subscriber<ValueOf<"Boolean">>
 {
   private readonly condition: Field<"Boolean">;
   private readonly result: Field<ModelName>;
@@ -410,11 +612,11 @@ class Option<ModelName extends string = string>
     this.opposite = new Field(option.opposite, scope);
 
     this.condition = new Field<"Boolean">(option.condition, scope);
-    this.condition.listen(this);
+    this.condition.sendTo(this);
   }
 
   take(conditionalValue: ValueOf<"Boolean">) {
-    const nextValue = (conditionalValue ? this.result : this.opposite)?.read();
+    const nextValue = (conditionalValue ? this.result : this.opposite)?.getValue();
 
     if (nextValue !== undefined) {
       this.publish(nextValue);
@@ -462,18 +664,18 @@ class FieldPointer<ModelName extends string = string> extends Channel<ValueOf<Mo
     }
 
     this.field = nextMember as Field<ModelName>;
-    this.field.listen(this);
+    this.field.sendTo(this);
   }
 
-  read() {
-    return this.field.read();
+  getValue() {
+    return this.field.getValue();
   }
 }
 
 // TODO Should I handle higher-order methods?
 class MethodPointer<ModelName extends string = string>
   extends Channel<ValueOf<ModelName>>
-  implements Listener<void>
+  implements Subscriber<void>
 {
   private readonly argument?: Field;
   private readonly method: Method<ModelName>;
@@ -572,254 +774,46 @@ class Store<ModelName extends string>
   }
 }
 
-class Component extends Channel<HTMLElement> {
-  private readonly body: Feature | Landscape;
-
-  constructor(component: Abstract.Component, scope: Scope, appMembers: AppMembers) {
-    super();
-
-    if ("tagName" in component.body) {
-      this.body = new Feature(component.body.tagName, appMembers, scope, component.body.properties);
-      this.body.listen(this);
-    } else {
-      const member = appMembers[component.body.viewName];
-
-      if (member.kind !== "view") {
-        throw new ViewScriptError(`Cannot construct unknown view "${component.body.viewName}"`);
-      }
-
-      this.body = new Landscape(member, appMembers, { ...scope }, component.body.properties);
-      this.body.listen(this);
-    }
-  }
-}
-
-class Feature extends Publisher<HTMLElement> {
-  private children: Array<Component | string>;
-  private readonly properties: Record<string, Action | Field>;
-  private readonly tagName: string;
-  private readonly scope: Scope;
-
-  constructor(
-    tagName: string,
-    branches: Record<string, Abstract.View | Abstract.Model>,
-    scope: Scope,
-    properties: Abstract.Feature["properties"],
-  ) {
-    super();
-
-    this.children = [];
-    this.properties = {};
-    this.tagName = tagName;
-    this.scope = scope;
-
-    const htmlElement = Dom.create(tagName);
-
-    Object.entries(properties).forEach(([propertyKey, property]) => {
-      if (Abstract.isField(property)) {
-        const field = new Field(property, this.scope);
-
-        let take: (value: Abstract.Value) => void;
-
-        if (propertyKey === "content") {
-          take = (value) => {
-            this.children = [];
-
-            const htmlElementChildren: Array<HTMLElement | string> = [];
-            const populate = (child: Abstract.Field) => {
-              if (child instanceof Array) {
-                child.forEach(populate);
-              } else if (Abstract.isElement(child)) {
-                const elementChild = new Component(child, branches, this.scope);
-                this.children.push(elementChild);
-                elementChild.listen({
-                  take: (htmlElementChild) => {
-                    htmlElementChildren.push(htmlElementChild);
-                  },
-                });
-              } else if (Abstract.isValue(child)) {
-                const textContent = String(child); // TODO properly handle structures
-                this.children.push(textContent);
-                htmlElementChildren.push(textContent);
-              } else if (Abstract.isFieldPointer(child)) {
-                const fieldPointer = new FieldPointer(child, this.scope);
-                fieldPointer.listen({
-                  take: populate,
-                });
-              } else if (Abstract.isMethodPointer(child)) {
-                const methodPointer = new MethodPointer(child, this.scope);
-                methodPointer.listen({
-                  take: populate,
-                });
-              } else if (Abstract.isOption(child)) {
-                const option = new Option(child, this.scope);
-                option.listen({
-                  take: populate,
-                });
-              } else {
-                throw new ViewScriptError(); // TODO should never happen, but be defensive
-              }
-            };
-
-            populate(value);
-            Dom.populate(htmlElement, htmlElementChildren);
-          };
-        } else if (Style.supports(propertyKey)) {
-          take = (value) => {
-            Dom.styleProp(htmlElement, propertyKey, value);
-          };
-        } else {
-          take = (value) => {
-            Dom.attribute(htmlElement, propertyKey, value);
-          };
-        }
-
-        field.listen({ take });
-        this.properties[propertyKey] = field;
-      } else if (Abstract.isAction(property)) {
-        const action = new Action(property, scope);
-
-        Dom.listen(htmlElement, propertyKey, () => {
-          // TODO Transform Events into Abstract.Values, and pass them to action.take:
-          action.take(null);
-        });
-
-        this.properties[propertyKey] = action;
-      } else {
-        throw new ViewScriptError(
-          `Cannot construct a property of unknown kind "${
-            (property as { kind: unknown }).kind
-          } for element of tagName ${this.tagName}"`,
-        );
-      }
-    });
-
-    this.publish(htmlElement);
-  }
-}
-
-class Landscape extends Channel<HTMLElement> {
-  private readonly key: string;
-
-  private readonly element: Component;
-  private readonly properties: Record<string, Action | Field>;
-  private readonly scope: Scope;
-
-  constructor(
-    renders: Abstract.View,
-    scope: Scope,
-    appMembers: AppMembers,
-    properties: Abstract.Landscape["properties"],
-  ) {
-    super();
-
-    this.key = renders.key;
-
-    this.properties = {};
-    this.scope = scope;
-
-    Object.entries(renders.scope).forEach(([featureKey, feature]) => {
-      this.scope[featureKey] = Abstract.isField(feature) ? new Field(feature) : new Stream(feature);
-    });
-
-    Object.entries(properties).forEach(([propertyKey, property]) => {
-      const feature = Object.values(this.scope).find(
-        (feature) =>
-          (feature instanceof Stream || feature instanceof Field) && feature.key === propertyKey,
-      );
-
-      if (feature === undefined) {
-        throw new ViewScriptError(
-          `Cannot construct a property for unknown feature name \`${propertyKey}\` for view of key \`${this.key}\``,
-        );
-      }
-
-      if (Abstract.isField(property)) {
-        if (feature instanceof Stream) {
-          throw new ViewScriptError(`Cannot construct a field for stream name \`${propertyKey}\``);
-        }
-
-        const field = new Field(property, this.scope);
-        field.listen(feature);
-        this.properties[propertyKey] = field;
-      } else if (Abstract.isAction(property)) {
-        if (feature instanceof Field) {
-          throw new ViewScriptError(`Cannot construct an action for field name \`${propertyKey}\``);
-        }
-
-        const sideEffect = new Action(property, this.scope);
-        feature.listen(sideEffect);
-        this.properties[propertyKey] = sideEffect;
-      } else {
-        throw new ViewScriptError(
-          `Cannot construct a property of unknown kind "${
-            (property as { kind: unknown }).kind
-          } for view of key \`${this.key}\`"`,
-        );
-      }
-    });
-
-    this.element = new Component(renders.element, branches, this.scope);
-    this.element.listen(this);
-  }
-}
-
-// TODO Auto-populate the browser model with the window object's properties:
-const globals: Record<string, Abstract.Model> = {
-  browser: {
-    kind: "model",
-    name: "Browser",
-    members: {
-      console: {
-        kind: "model",
-        name: "Console",
-        members: {
-          log: window.console.log,
-        },
-      },
-    },
-  },
-};
-
 const factories = {
   Array: {
     methods: () => ({}),
-    actions: (writer: Writer<ValueOf<"Array">>, reader: Reader<ValueOf<"Array">>) => ({
+    actions: (writer: Writer<ValueOf<"Array">>, reader: Readable<ValueOf<"Array">>) => ({
       push: (argument: Field) => {
-        const lastValue = reader.read() ?? [];
-        lastValue.push(argument);
-        writer.write(lastValue);
+        const value = reader.getValue() ?? [];
+        value.push(argument);
+        writer.write(value);
       },
     }),
   },
   Boolean: {
-    methods: (reader: Reader<ValueOf<"Boolean">>) => ({
-      and: (argument: Field<"Boolean">) => reader.read() && argument.read(),
-      not: () => !reader.read(),
+    methods: (reader: Readable<ValueOf<"Boolean">>) => ({
+      and: (argument: Field<"Boolean">) => reader.getValue() && argument.getValue(),
+      not: () => !reader.getValue(),
     }),
-    actions: (writer: Writer<ValueOf<"Boolean">>, reader: Reader<ValueOf<"Boolean">>) => ({
+    actions: (writer: Writer<ValueOf<"Boolean">>, reader: Readable<ValueOf<"Boolean">>) => ({
       disable: () => writer.write(false),
       enable: () => writer.write(true),
-      toggle: () => writer.write(!reader.read()),
+      toggle: () => writer.write(!reader.getValue()),
     }),
   },
   Number: {
-    methods: (reader: Reader<ValueOf<"Number">>) => ({
-      equals: (argument: Field<"Number">) => reader.read() == argument.read(),
-      isAtLeast: (argument: Field<"Number">) => (reader.read() ?? NaN) >= (argument.read() ?? NaN),
+    methods: (reader: Readable<ValueOf<"Number">>) => ({
+      equals: (argument: Field<"Number">) => reader.getValue() == argument.getValue(),
+      isAtLeast: (argument: Field<"Number">) =>
+        (reader.getValue() ?? NaN) >= (argument.getValue() ?? NaN),
     }),
-    actions: (writer: Writer<ValueOf<"Number">>, reader: Reader<ValueOf<"Number">>) => ({
+    actions: (writer: Writer<ValueOf<"Number">>, reader: Readable<ValueOf<"Number">>) => ({
       add: (argument: Field<"Number">) =>
-        writer.write((reader.read() ?? NaN) + (argument.read() ?? NaN)),
+        writer.write((reader.getValue() ?? NaN) + (argument.getValue() ?? NaN)),
       multiplyBy: (argument: Field<"Number">) =>
-        writer.write((reader.read() ?? NaN) * (argument.read() ?? NaN)),
+        writer.write((reader.getValue() ?? NaN) * (argument.getValue() ?? NaN)),
     }),
   },
   String: {
     methods: () => ({}),
     actions: () => ({}),
   },
-  Component: {
+  Renderable: {
     methods: () => ({}),
     actions: () => ({}),
   },

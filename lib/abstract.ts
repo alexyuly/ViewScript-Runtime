@@ -1,7 +1,7 @@
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
-  members: Record<string, Model | View>;
-  renders: Component;
+  domain: Record<string, Model | View>;
+  renderable: Renderable;
 };
 
 /* Tier 1 */
@@ -19,11 +19,11 @@ export type View<Name extends string = string> = Node<"view"> &
   Called<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
-    renders: Component;
+    renderable: Renderable;
   };
 
-export type Component = Node<"component"> & {
-  renders: Feature | Landscape;
+export type Renderable = Node<"renderable"> & {
+  element: Feature | Landscape;
 };
 
 /* Tier 2 */
@@ -85,9 +85,9 @@ export type Value<M extends Model> = M["name"] extends "Array"
   ? number
   : M["name"] extends "String"
   ? string
-  : M["name"] extends "Component"
-  ? Component
-  : Array<Field> | boolean | number | string | Component | Structure<M>;
+  : M["name"] extends "Renderable"
+  ? Renderable
+  : Array<Field> | boolean | number | string | Renderable | Structure<M>;
 
 export type FieldPlan<M extends Model> = Node<"fieldPlan"> & Modeled<M>;
 
@@ -116,7 +116,7 @@ export type Option<M extends Model> = Node<"option"> &
 
 export type Store<M extends Model> = Node<"store"> &
   Modeled<M> & {
-    value: Value<M>;
+    firstValue: Value<M>;
   };
 
 export type WritableFieldPlan<M extends Model> = Node<"writableFieldPlan"> & Modeled<M>;
