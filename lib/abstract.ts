@@ -77,7 +77,7 @@ export type Landscape<M extends View = View> = Node<"landscape"> & {
 
 /* Tier 3 */
 
-export type Value<M extends Model = Model> = M["name"] extends "Array"
+export type Value<M extends Model> = M["name"] extends "Array"
   ? Array<Field>
   : M["name"] extends "Boolean"
   ? boolean
@@ -153,7 +153,7 @@ export type Property<M extends Field> = M["channel"] extends WritableFieldPlan<i
 
 /* Tier 4 */
 
-export type Structure<M extends Model = Model> = Node<"structure"> &
+export type Structure<M extends Model> = Node<"structure"> &
   Modeled<M> & {
     properties: {
       [Key in keyof M["members"]]?: M["members"][Key] extends Field
