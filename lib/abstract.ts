@@ -65,13 +65,13 @@ export type Feature = Node<"feature"> & {
   reactions: Record<`on${string}`, Action>;
 };
 
-export type Landscape<M extends View = View> = Node<"landscape"> & {
-  viewName: M["name"];
+export type Landscape<V extends View = View> = Node<"landscape"> & {
+  viewName: V["name"];
   properties: {
-    [Key in keyof M["fields"]]?: Property<M["fields"][Key]>;
+    [Key in keyof V["fields"]]?: Property<V["fields"][Key]>;
   };
   reactions: {
-    [Key in keyof M["streams"]]?: M["streams"][Key] extends Stream<infer P> ? Action<P> : never;
+    [Key in keyof V["streams"]]?: V["streams"][Key] extends Stream<infer P> ? Action<P> : never;
   };
 };
 
@@ -145,10 +145,10 @@ export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
 };
 
-export type Property<M extends Field> = M["channel"] extends WritableFieldPlan<infer P>
-  ? WritableField<P>
-  : M["channel"] extends FieldPlan<infer P>
-  ? Field<P>
+export type Property<F extends Field> = F["channel"] extends WritableFieldPlan<infer M>
+  ? WritableField<M>
+  : F["channel"] extends FieldPlan<infer M>
+  ? Field<M>
   : never;
 
 /* Tier 4 */
