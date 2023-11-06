@@ -1,3 +1,9 @@
+/* Tier 0 */
+
+/**
+ * An app node is the root of a ViewScript application.
+ * It has a set of models and views, and it renders a live tree of HTML elements.
+ */
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   domain: Record<string, Model | View>;
@@ -32,6 +38,10 @@ export type Called<Name extends string = string> = {
   name: Name;
 };
 
+/**
+ * A field contains a channel which publishes values of a certain type.
+ * It inherits sub-fields and methods from its model.
+ */
 export type Field<M extends Model = Model> = Node<"field"> & {
   channel:
     | Value<M>
@@ -77,7 +87,7 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 /* Tier 3 */
 
-export type Value<M extends Model> = M["name"] extends "Array"
+export type Value<M extends Model = Model> = M["name"] extends "Array"
   ? Array<Field>
   : M["name"] extends "Boolean"
   ? boolean
@@ -162,6 +172,10 @@ export type Structure<M extends Model> = Node<"structure"> &
     };
   };
 
+/**
+ * A writable field contains a channel which publishes AND receives values of a certain type.
+ * It inherits sub-fields, methods, AND actions from its model.
+ */
 export type WritableField<M extends Model> = Node<"field"> & {
   channel: Store<M> | WritableFieldPlan<M> | WritableFieldPointer<M>;
 };

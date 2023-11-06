@@ -4,7 +4,7 @@ import * as Style from "./style";
 
 type Domain = Abstract.App["domain"];
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = Stream | Field | Method | Action | ((argument: any) => unknown);
+type ScopeMember = Abstract.Model | Field | Method | Action | Stream | ((argument: any) => unknown);
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -51,7 +51,7 @@ abstract class Channel<T> extends Publisher<T> implements Subscriber<T> {
   }
 }
 
-const globalDomain: Record<string, Abstract.Model> = {
+const globalScope: Record<string, Abstract.Model> = {
   browser: {
     kind: "model",
     name: "Browser",
@@ -74,8 +74,8 @@ export class App implements ConcreteNode<"app"> {
   constructor(app: Abstract.App) {
     this.abstractNode = app;
 
-    const scope = {};
-    const domain = { ...globalDomain, ...app.domain };
+    const scope = { ...globalScope };
+    const domain = { ...app.domain };
 
     this.renderable = new Renderable(app.renderable, scope, domain);
     this.renderable.sendTo(Dom.render);
@@ -120,90 +120,72 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
 
     const htmlElement = Dom.create(feature.tagName);
 
-    Object.entries(feature.properties).forEach(([propertyKey, property]) => {
-      const field = new Field(property, this.scope, domain);
+    Object.entries(feature.properties).forEach(([key, property]) => {
+      this.properties[key] = new Field(property, this.scope, domain);
 
-      let take: (value: any) => void;
+      this.properties[key].sendTo(
+        key === "content"
+          ? (value) => {
+              this.children = [];
 
-      if (propertyKey === "content") {
-        take = (value) => {
-          this.children = [];
+              const htmlElementChildren: Array<HTMLElement | string> = [];
 
-          const htmlElementChildren: Array<HTMLElement | string> = [];
-          const populate = (child: Abstract.Field) => {
-            if (child instanceof Array) {
-              child.forEach(populate);
-            } else if (child.kind === "renderable") {
-              const elementChild = new Renderable(child, branches, this.scope);
-              this.children.push(elementChild);
-              elementChild.sendTo({
-                take: (htmlElementChild) => {
-                  htmlElementChildren.push(htmlElementChild);
-                },
-              });
-            } else if (Abstract.isValue(child)) {
-              const textContent = String(child); // TODO properly handle structures
-              this.children.push(textContent);
-              htmlElementChildren.push(textContent);
-            } else if (Abstract.isFieldPointer(child)) {
-              const fieldPointer = new FieldPointer(child, this.scope);
-              fieldPointer.sendTo({
-                take: populate,
-              });
-            } else if (Abstract.isMethodPointer(child)) {
-              const methodPointer = new MethodPointer(child, this.scope);
-              methodPointer.sendTo({
-                take: populate,
-              });
-            } else if (Abstract.isOption(child)) {
-              const option = new Option(child, this.scope);
-              option.sendTo({
-                take: populate,
-              });
-            } else {
-              throw new ViewScriptError(); // TODO should never happen, but be defensive
+              const populate = (nextValue: Abstract.Value) => {
+                if (nextValue instanceof Array) {
+                  nextValue.forEach((field) => {
+                    populate(field);
+                  });
+                } else if ("kind" in nextValue && nextValue.kind === "renderable") {
+                  const elementChild = new Renderable(nextValue, this.scope, domain);
+
+                  this.children.push(elementChild);
+
+                  elementChild.sendTo((htmlElementChild) => {
+                    htmlElementChildren.push(htmlElementChild);
+                  });
+                } else if (Abstract.isValue(child)) {
+                  const textContent = String(child); // TODO properly handle structures
+                  this.children.push(textContent);
+                  htmlElementChildren.push(textContent);
+                } else if (Abstract.isFieldPointer(child)) {
+                  const fieldPointer = new FieldPointer(child, this.scope);
+                  fieldPointer.sendTo(populate);
+                } else if (Abstract.isMethodPointer(child)) {
+                  const methodPointer = new MethodPointer(child, this.scope);
+                  methodPointer.sendTo(populate);
+                } else if (Abstract.isOption(child)) {
+                  const option = new Option(child, this.scope);
+                  option.sendTo(populate);
+                } else {
+                  throw new ViewScriptError(); // TODO should never happen, but be defensive
+                }
+              };
+
+              populate(value);
+
+              Dom.populate(htmlElement, htmlElementChildren);
             }
-          };
+          : Style.supports(key)
+          ? (value) => {
+              Dom.styleProp(htmlElement, key, value);
+            }
+          : (value) => {
+              Dom.attribute(htmlElement, key, value);
+            },
+      );
+    });
 
-          populate(value);
-          Dom.populate(htmlElement, htmlElementChildren);
-        };
-      } else if (Style.supports(propertyKey)) {
-        take = (value) => {
-          Dom.styleProp(htmlElement, propertyKey, value);
-        };
-      } else {
-        take = (value) => {
-          Dom.attribute(htmlElement, propertyKey, value);
-        };
-      }
+    Object.entries(feature.reactions).forEach(([key, reaction]) => {
+      this.reactions[key] = new Action(reaction, scope, domain);
 
-      field.sendTo(take);
-      this.properties[propertyKey] = field;
-
-      if (Abstract.isField()) {
-      } else if (Abstract.isAction(property)) {
-        const action = new Action(property, scope);
-
-        Dom.listen(htmlElement, propertyKey, () => {
-          // TODO Transform Events into Abstract.Values, and pass them to action.take:
-          action.take(null);
-        });
-
-        this.properties[propertyKey] = action;
-      } else {
-        throw new ViewScriptError(
-          `Cannot construct a property of unknown kind "${
-            (property as { kind: unknown }).kind
-          } for element of tagName ${this.tagName}"`,
-        );
-      }
+      Dom.listen(htmlElement, key, (event) => {
+        // TODO Transform Events into Abstract.Values, and pass them to action.take:
+        this.reactions[key].take(event);
+      });
     });
 
     this.publish(htmlElement);
   }
-
-  // TODO iterate over reactions
 }
 
 class Landscape extends Channel<HTMLElement> {
