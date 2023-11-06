@@ -64,7 +64,7 @@ export type Method<
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
   parameter: M extends Model ? Pointable & Field<M> : never;
-  steps: Array<ActionPointer | Exception | StreamPointer>;
+  steps: Array<ActionPointer | StreamPointer | Exception>;
 };
 
 export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Modeled<M>;
@@ -141,15 +141,15 @@ export type ActionPointer<M extends Model | null = Model | null> = Node<"actionP
   argument: M extends Model ? Field<M> : never;
 };
 
-export type Exception = Node<"exception"> & {
-  condition: Field<Model<"Boolean">>;
-  steps?: Array<ActionPointer | Exception | StreamPointer>;
-};
-
 export type StreamPointer<M extends Model | null = Model | null> = Node<"streamPointer"> &
   Modeled<M> & {
     streamName: string;
   };
+
+export type Exception = Node<"exception"> & {
+  condition: Field<Model<"Boolean">>;
+  steps?: Array<ActionPointer | StreamPointer | Exception>;
+};
 
 export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
