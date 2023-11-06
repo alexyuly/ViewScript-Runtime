@@ -130,12 +130,15 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
 
               const htmlElementChildren: Array<HTMLElement | string> = [];
 
-              const populate = (nextValue: Abstract.Value) => {
+              const populate = (nextValue: Value) => {
                 if (nextValue instanceof Array) {
                   nextValue.forEach((field) => {
-                    populate(field);
+                    if (field instanceof Field) {
+                      field.sendTo(populate);
+                    }
+                    // else throw an Error ?
                   });
-                } else if ("kind" in nextValue && nextValue.kind === "renderable") {
+                } else if (typeof nextValue === "object" && nextValue.kind === "renderable") {
                   const elementChild = new Renderable(nextValue, this.scope, domain);
 
                   this.children.push(elementChild);
@@ -143,21 +146,12 @@ class Feature extends Publisher<HTMLElement> implements ConcreteNode<"feature"> 
                   elementChild.sendTo((htmlElementChild) => {
                     htmlElementChildren.push(htmlElementChild);
                   });
-                } else if (Abstract.isValue(child)) {
-                  const textContent = String(child); // TODO properly handle structures
-                  this.children.push(textContent);
-                  htmlElementChildren.push(textContent);
-                } else if (Abstract.isFieldPointer(child)) {
-                  const fieldPointer = new FieldPointer(child, this.scope);
-                  fieldPointer.sendTo(populate);
-                } else if (Abstract.isMethodPointer(child)) {
-                  const methodPointer = new MethodPointer(child, this.scope);
-                  methodPointer.sendTo(populate);
-                } else if (Abstract.isOption(child)) {
-                  const option = new Option(child, this.scope);
-                  option.sendTo(populate);
                 } else {
-                  throw new ViewScriptError(); // TODO should never happen, but be defensive
+                  const textContent = String(nextValue);
+
+                  this.children.push(textContent);
+
+                  htmlElementChildren.push(textContent);
                 }
               };
 
@@ -196,16 +190,16 @@ class Landscape extends Channel<HTMLElement> {
   constructor(landscape: Abstract.Landscape, scope: Scope, domain: Domain) {
     super();
 
-    const member = domain[landscape.viewName];
+    const view = domain[landscape.viewName];
 
-    if (member.kind !== "view") {
+    if (view.kind !== "view") {
       throw new ViewScriptError(`Cannot construct unknown view "${landscape.viewName}"`);
     }
 
     this.properties = {};
     this.scope = scope;
 
-    Object.entries(renders.scope).forEach(([featureKey, feature]) => {
+    Object.entries(view.scope).forEach(([featureKey, feature]) => {
       this.scope[featureKey] = Abstract.isField(feature) ? new Field(feature) : new Stream(feature);
     });
 
@@ -252,6 +246,18 @@ class Landscape extends Channel<HTMLElement> {
 }
 
 type ValueOf<ModelName extends string> = Abstract.Value<Abstract.Model<ModelName>>;
+
+type Value<M extends Abstract.Model = Abstract.Model> = M["name"] extends "Array"
+  ? Array<Field>
+  : M["name"] extends "Boolean"
+  ? boolean
+  : M["name"] extends "Number"
+  ? number
+  : M["name"] extends "String"
+  ? string
+  : M["name"] extends "Renderable"
+  ? Renderable
+  : Array<Field> | boolean | number | string | Renderable | Abstract.Structure<M>;
 
 // TODO Do we really need this interface?
 interface Modeled<ModelName extends string = string> {
