@@ -17,12 +17,12 @@ export type Node<Kind extends string> = {
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
-  Called<Name> & {
+  Pointable<Name> & {
     members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
-  Called<Name> & {
+  Pointable<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
     renderable: Renderable;
@@ -34,7 +34,7 @@ export type Renderable = Node<"renderable"> & {
 
 /* Tier 2 */
 
-export type Called<Name extends string = string> = {
+export type Pointable<Name extends string = string> = {
   name: Name;
 };
 
@@ -58,12 +58,12 @@ export type Method<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"method"> & {
-  parameter: P extends Model ? Called & Field<P> : never;
+  parameter: P extends Model ? Pointable & Field<P> : never;
   result: Field<M>;
 };
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
-  parameter: M extends Model ? Called & Field<M> : never;
+  parameter: M extends Model ? Pointable & Field<M> : never;
   steps: Array<ActionPointer | Exception | StreamPointer>;
 };
 
