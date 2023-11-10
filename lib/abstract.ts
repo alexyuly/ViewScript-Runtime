@@ -131,7 +131,7 @@ export type MethodCall<
 
 export type Store<M extends Model = Model> = Node<"store"> &
   Modeled<M> & {
-    seedData: Data<M>;
+    data: Data<M>;
   };
 
 export type WritableParameter<M extends Model = Model> = Node<"writableParameter"> & Modeled<M>;

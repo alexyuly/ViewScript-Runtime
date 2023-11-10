@@ -3,11 +3,12 @@ import * as Dom from "./dom";
 import * as Helpers from "./helpers";
 import * as Style from "./style";
 
+type Action = Abstract.Action | ((argument: any) => unknown);
 type Domain = Record<string, DomainMember>;
 type DomainMember = Abstract.Model | Abstract.View;
-type FieldMember = Field | Abstract.Method | Abstract.Action | ((argument: any) => unknown);
+type Method = Abstract.Method | ((argument: any) => unknown);
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = FieldMember | Abstract.Model | Abstract.Stream;
+type ScopeMember = Abstract.Model | Field | Method | Action | Abstract.Stream;
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -58,7 +59,6 @@ abstract class Channel<T> extends Publisher<T> implements Subscriber<T> {
 
 export class App implements ConcreteNode<"app"> {
   readonly abstractNode: Abstract.App;
-
   private readonly renderable: Renderable;
 
   constructor(app: Abstract.App) {
@@ -76,7 +76,6 @@ export class App implements ConcreteNode<"app"> {
 
 class Renderable extends Channel<HTMLElement> implements ConcreteNode<"renderable"> {
   readonly abstractNode: Abstract.Renderable;
-
   private readonly element: Feature | Landscape;
 
   constructor(abstractNode: Abstract.Renderable, scope: Scope, domain: Domain) {
@@ -137,13 +136,38 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
     this.publisher.sendTo(this);
   }
 
-  getMember(name: string): FieldMember {
-    const member =
+  getProperty(name: string): Field {
+    const field =
       this.publisher instanceof Data || this.publisher instanceof Store
-        ? this.publisher.getMember(name)
-        : this.publisher.getField().getMember(name);
+        ? this.publisher
+        : this.publisher.getField();
 
-    return member;
+    const property = field.getProperty(name);
+    return property;
+  }
+
+  getMethod(name: string): Method {
+    const field =
+      this.publisher instanceof Data || this.publisher instanceof Store
+        ? this.publisher
+        : this.publisher.getField();
+
+    const method = field.getMethod(name);
+    return method;
+  }
+
+  getAction(name: string): Action {
+    if (
+      this.publisher instanceof Store ||
+      this.publisher instanceof WritableParameter ||
+      this.publisher instanceof WritablePointer
+    ) {
+      const field = this.publisher instanceof Store ? this.publisher : this.publisher.getField();
+      const action = field.getAction(name);
+      return action;
+    }
+
+    throw new Error();
   }
 }
 
@@ -171,46 +195,56 @@ class Landscape extends Channel<HTMLElement> implements ConcreteNode<"landscape"
 
 /* Tier 3 */
 
-class Data extends Publisher<unknown> implements ConcreteNode<"data"> {
+class Data extends Channel<unknown> implements ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
-
-  private readonly members: Record<string, FieldMember> = {};
+  private readonly methods: Record<string, Method> = {};
 
   constructor(abstractNode: Abstract.Data, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
-    const value = Data.hydrate(abstractNode.value, scope, domain);
-
-    this.publish(value);
+    this.publish(Data.hydrate(abstractNode.value, scope, domain));
 
     if (abstractNode.modelName === "Boolean") {
-      this.members.and = (argument) => this.getValue() && argument;
-      this.members.not = () => !this.getValue();
+      this.methods.and = (argument) => this.getValue() && argument;
+      this.methods.not = () => !this.getValue();
     }
 
-    // TODO Add fields and methods for other models...
+    // TODO Add methods for all models...
   }
 
-  getMember(name: string): FieldMember {
-    if (!(name in this.members)) {
-      throw new Error();
+  getProperty(name: string): Field {
+    const value = this.getValue();
+
+    if (value instanceof Structure) {
+      const property = value.getProperty(name);
+      return property;
     }
 
-    return this.members[name];
+    throw new Error();
+  }
+
+  getMethod(name: string): Method {
+    if (name in this.methods) {
+      const method = this.methods[name];
+      return method;
+    }
+
+    throw new Error();
   }
 
   static hydrate(value: Abstract.Data["value"], scope: Scope, domain: Domain) {
-    return value instanceof Array
-      ? value.map((item) => new Field(item, scope, domain))
-      : typeof value === "boolean" || typeof value === "number" || typeof value === "string"
-      ? value
-      : typeof value === "object" && value && "kind" in value && value.kind === "renderable"
-      ? new Renderable(value as Abstract.Renderable, scope, domain)
-      : typeof value === "object" && value && "kind" in value && value.kind === "structure"
-      ? new Structure(value as Abstract.Structure, scope, domain)
-      : value;
+    const hydratedValue =
+      value instanceof Array
+        ? value.map((item) => new Field(item, scope, domain))
+        : Helpers.isRenderable(value)
+        ? new Renderable(value, scope, domain)
+        : Helpers.isStructure(value)
+        ? new Structure(value, scope, domain)
+        : value;
+
+    return hydratedValue;
   }
 }
 
@@ -278,36 +312,57 @@ class MethodCall extends Channel<unknown> implements ConcreteNode<"methodCall"> 
 
 class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
-
-  private readonly seedData: Data;
-  private readonly members: Record<string, FieldMember> = {};
+  private readonly data: Data;
+  private readonly initialValue: unknown;
+  private readonly actions: Record<string, Action> = {};
 
   constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
-    this.seedData = new Data(abstractNode.seedData, scope, domain);
+    this.data = new Data(abstractNode.data, scope, domain);
+    this.data.sendTo(this);
+
+    this.initialValue = this.getValue();
+
+    this.actions.reset = () => this.data.take(this.initialValue);
+    this.actions.setTo = (argument) => this.data.take(argument);
 
     if (abstractNode.modelName === "Array") {
-      this.members.push = (argument) => {
+      this.actions.push = (argument) => {
         const value = this.getValue() as Array<unknown>;
-        value.push(argument);
-        this.publish(value);
+        value.push(argument); // TODO Do we want to mutate the value?
+        this.data.take(value);
       };
     } else if (abstractNode.modelName === "Boolean") {
-      this.members.disable = () => this.publish(false);
-      this.members.enable = () => this.publish(true);
-      this.members.toggle = () => this.publish(!this.getValue());
+      this.actions.disable = () => this.data.take(false);
+      this.actions.enable = () => this.data.take(true);
+      this.actions.toggle = () => this.data.take(!this.getValue());
     } else if (abstractNode.modelName === "Number") {
-      this.members.add = (argument) => this.publish(this.getValue() + argument);
+      this.actions.add = (argument) => this.data.take(this.getValue() + argument);
     }
 
-    // TODO Add actions for other models...
+    // TODO Add actions for all models...
   }
 
-  getMember(name: string): FieldMember {
-    // TODO
+  getProperty(name: string): Field {
+    const property = this.data.getProperty(name);
+    return property;
+  }
+
+  getMethod(name: string): Method {
+    const method = this.data.getMethod(name);
+    return method;
+  }
+
+  getAction(name: string): Action {
+    if (name in this.actions) {
+      const action = this.actions[name];
+      return action;
+    }
+
+    throw new Error();
   }
 }
 
@@ -353,7 +408,7 @@ class Structure extends Publisher<unknown> implements ConcreteNode<"structure"> 
 
     this.abstractNode = abstractNode;
 
-    // TODO
+    // TODO Add fields from the model...
   }
 
   getProperty(name: string): Field {
