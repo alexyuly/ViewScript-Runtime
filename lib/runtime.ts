@@ -280,10 +280,8 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
 
     this.abstractNode = abstractNode;
 
-    const realScope =
-      abstractNode.leader === undefined ? scope : new MethodCall(abstractNode.leader).getField();
-
-    const route = [...abstractNode.propertyPath];
+    const realScope = abstractNode.scope ? new MethodCall(abstractNode.scope).getField() : scope;
+    const route = [...abstractNode.address];
 
     let terminal: Field | undefined;
     let nextStop = route.shift();

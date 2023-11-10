@@ -17,12 +17,12 @@ export type Node<Kind extends string> = {
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
-  Named<Name> & {
+  HasName<Name> & {
     members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
-  Named<Name> & {
+  HasName<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
     renderable: Renderable;
@@ -34,7 +34,7 @@ export type Renderable = Node<"renderable"> & {
 
 /* Tier 2 */
 
-export type Named<Name extends string = string> = {
+export type HasName<Name extends string = string> = {
   name: Name;
 };
 
@@ -58,12 +58,12 @@ export type Method<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"method"> & {
-  parameter: P extends Model ? Named & Parameter<P> : never;
+  parameter: P extends Model ? HasName & Parameter<P> : never;
   result: Field<M>;
 };
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
-  parameter: M extends Model ? Named & Parameter<M> : never;
+  parameter: M extends Model ? HasName & Parameter<M> : never;
   steps: Array<ActionCall | StreamCall | Exception>;
 };
 
@@ -107,9 +107,9 @@ export type Data<M extends Model | null = Model | null> = Node<"data"> &
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
-  Modeled<M> & {
-    leader?: MethodCall;
-    propertyPath: Array<string>;
+  Modeled<M> &
+  HasAddress & {
+    scope?: MethodCall;
   };
 
 export type Switch<M extends Model = Model> = Node<"switch"> &
@@ -123,10 +123,10 @@ export type MethodCall<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"methodCall"> &
-  Modeled<M> & {
-    leader?: MethodCall;
-    methodPath: Array<string>;
+  Modeled<M> &
+  HasAddress & {
     argument: P extends Model ? Field<P> : never;
+    scope?: MethodCall;
   };
 
 export type Store<M extends Model = Model> = Node<"store"> &
@@ -137,18 +137,17 @@ export type Store<M extends Model = Model> = Node<"store"> &
 export type WritableParameter<M extends Model = Model> = Node<"writableParameter"> & Modeled<M>;
 
 export type WritablePointer<M extends Model = Model> = Node<"writablePointer"> &
-  Modeled<M> & {
-    propertyPath: Array<string>;
+  Modeled<M> &
+  HasAddress;
+
+export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> &
+  HasAddress & {
+    argument: M extends Model ? Field<M> : never;
   };
 
-export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> & {
-  actionPath: Array<string>;
-  argument: M extends Model ? Field<M> : never;
-};
-
 export type StreamCall<M extends Model | null = Model | null> = Node<"streamCall"> &
-  Modeled<M> & {
-    streamName: string;
+  Modeled<M> &
+  HasName & {
     output: M extends Model ? Field<M> : never;
   };
 
@@ -177,6 +176,10 @@ export type Structure<M extends Model = Model> = Node<"structure"> &
         : never;
     };
   };
+
+export type HasAddress = {
+  address: Array<string>;
+};
 
 /**
  * A writable field contains a publisher which publishes AND subscribes to values of a certain type.
