@@ -7,7 +7,7 @@ type Action = Abstract.Action | ((argument: any) => unknown);
 type Domain = Record<string, DomainMember>;
 type DomainMember = Abstract.Model | Abstract.View;
 type Method = Abstract.Method | ((argument: any) => unknown);
-type Scope = Record<string, ScopeMember>;
+type Scope = Record<string, ScopeMember>; // TODO Replace with interface that has methods for getting members...
 type ScopeMember = Abstract.Model | Field | Method | Action | Abstract.Stream;
 
 interface ConcreteNode<Kind extends string> {
@@ -203,7 +203,6 @@ class Data extends Channel<unknown> implements ConcreteNode<"data"> {
     super();
 
     this.abstractNode = abstractNode;
-
     this.publish(Data.hydrate(abstractNode.value, scope, domain));
 
     if (abstractNode.modelName === "Boolean") {
@@ -250,6 +249,7 @@ class Data extends Channel<unknown> implements ConcreteNode<"data"> {
 
 class Parameter extends Channel<unknown> implements ConcreteNode<"parameter"> {
   readonly abstractNode: Abstract.Parameter;
+  field?: Field; // TODO When does this get assigned? Lifecycle?
 
   constructor(abstractNode: Abstract.Parameter) {
     super();
@@ -258,39 +258,62 @@ class Parameter extends Channel<unknown> implements ConcreteNode<"parameter"> {
   }
 
   getField(): Field {
-    // TODO
+    if (this.field !== undefined) {
+      return this.field;
+    }
+
+    throw new Error();
   }
 }
 
 class Pointer extends Channel<unknown> implements ConcreteNode<"pointer"> {
   readonly abstractNode: Abstract.Pointer;
+  private readonly field: Field;
 
   constructor(abstractNode: Abstract.Pointer, scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
 
-    // TODO
+    // TODO Follow the leader...
+    // TODO Assign field from scope
   }
 
   getField(): Field {
-    // TODO
+    return this.field;
   }
 }
 
-class Switch extends Channel<unknown> implements ConcreteNode<"switch"> {
+class Switch extends Publisher<unknown> implements Subscriber<unknown>, ConcreteNode<"switch"> {
   readonly abstractNode: Abstract.Switch;
+  private readonly condition: Field;
+  private readonly positive: Field;
+  private readonly negative: Field;
 
   constructor(abstractNode: Abstract.Switch, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
-    // TODO
+    this.positive = new Field(abstractNode.positive, scope, domain);
+    this.negative = new Field(abstractNode.negative, scope, domain);
+
+    this.condition = new Field(abstractNode.condition, scope, domain);
+    this.condition.sendTo(this);
   }
 
   getField(): Field {
-    // TODO
+    const value = this.getValue();
+    const field = value ? this.positive : this.negative;
+
+    return field;
+  }
+
+  take(value: unknown) {
+    const field = value ? this.positive : this.negative;
+    const fieldValue = field.getValue();
+
+    this.publish(fieldValue);
   }
 }
 
@@ -313,28 +336,23 @@ class MethodCall extends Channel<unknown> implements ConcreteNode<"methodCall"> 
 class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
   private readonly data: Data;
-  private readonly initialValue: unknown;
   private readonly actions: Record<string, Action> = {};
 
   constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
-
     this.data = new Data(abstractNode.data, scope, domain);
     this.data.sendTo(this);
 
-    this.initialValue = this.getValue();
+    const initialValue = this.getValue();
 
-    this.actions.reset = () => this.data.take(this.initialValue);
+    this.actions.reset = () => this.data.take(initialValue);
     this.actions.setTo = (argument) => this.data.take(argument);
 
     if (abstractNode.modelName === "Array") {
-      this.actions.push = (argument) => {
-        const value = this.getValue() as Array<unknown>;
-        value.push(argument); // TODO Do we want to mutate the value?
-        this.data.take(value);
-      };
+      this.actions.push = (argument) =>
+        this.data.take([...(this.getValue() as Array<unknown>), argument]);
     } else if (abstractNode.modelName === "Boolean") {
       this.actions.disable = () => this.data.take(false);
       this.actions.enable = () => this.data.take(true);
