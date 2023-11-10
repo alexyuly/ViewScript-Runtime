@@ -149,7 +149,7 @@ export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall
 export type StreamCall<M extends Model | null = Model | null> = Node<"streamCall"> &
   Modeled<M> & {
     streamName: string;
-    argument: M extends Model ? Field<M> : never;
+    output: M extends Model ? Field<M> : never;
   };
 
 export type Exception = Node<"exception"> & {

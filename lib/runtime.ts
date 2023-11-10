@@ -1,16 +1,13 @@
 import * as Abstract from "./abstract";
 import * as Dom from "./dom";
+import * as Helpers from "./helpers";
 import * as Style from "./style";
 
 type Domain = Record<string, DomainMember>;
-type DomainMember = Abstract.View | Abstract.Model | DomainModelFactory;
-type DomainModelFactory = (publisher: Publisher<unknown>) => Record<string, Handle>;
-
-type FieldMember = Abstract.Model | Field | Abstract.Method | Abstract.Action | Handle;
-type Handle = (argument: any) => unknown;
-
+type DomainMember = Abstract.Model | Abstract.View;
+type FieldMember = Field | Abstract.Method | Abstract.Action | ((argument: any) => unknown);
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = FieldMember | Abstract.Stream;
+type ScopeMember = FieldMember | Abstract.Model | Abstract.Stream;
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -57,39 +54,6 @@ abstract class Channel<T> extends Publisher<T> implements Subscriber<T> {
   }
 }
 
-const globalScope: Record<string, Abstract.Model> = {
-  browser: {
-    kind: "model",
-    name: "Browser",
-    members: {
-      console: {
-        kind: "model",
-        name: "Console",
-        members: {
-          log: window.console.log,
-        },
-      },
-    },
-  },
-};
-
-const defaultDomain: Record<string, DomainModelFactory> = {
-  Boolean: (publisher) => {
-    const members: Record<string, Handle> = {
-      and: (argument) => publisher.getValue() && argument,
-      not: () => !publisher.getValue(),
-    };
-
-    if (publisher instanceof Channel) {
-      members.disable = () => publisher.take(false);
-      members.enable = () => publisher.take(true);
-      members.toggle = () => publisher.take(!publisher.getValue());
-    }
-
-    return members;
-  },
-};
-
 /* Tier 0 */
 
 export class App implements ConcreteNode<"app"> {
@@ -100,10 +64,7 @@ export class App implements ConcreteNode<"app"> {
   constructor(app: Abstract.App) {
     this.abstractNode = app;
 
-    const scope = { ...globalScope };
-    const domain = { ...defaultDomain, ...app.domain };
-
-    this.renderable = new Renderable(app.renderable, scope, domain);
+    this.renderable = new Renderable(app.renderable, Helpers.getGlobalScope(), app.domain);
     this.renderable.sendTo(Dom.render);
 
     window.console.log(`[VSR] 🟢 Start app:`);
@@ -213,7 +174,7 @@ class Landscape extends Channel<HTMLElement> implements ConcreteNode<"landscape"
 class Data extends Publisher<unknown> implements ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
 
-  private readonly members: Record<string, FieldMember>;
+  private readonly members: Record<string, FieldMember> = {};
 
   constructor(abstractNode: Abstract.Data, scope: Scope, domain: Domain) {
     super();
@@ -224,11 +185,20 @@ class Data extends Publisher<unknown> implements ConcreteNode<"data"> {
 
     this.publish(value);
 
-    // TODO assign fields and methods from model
+    if (abstractNode.modelName === "Boolean") {
+      this.members.and = (argument) => this.getValue() && argument;
+      this.members.not = () => !this.getValue();
+    }
+
+    // TODO Add fields and methods for other models...
   }
 
   getMember(name: string): FieldMember {
-    // TODO
+    if (!(name in this.members)) {
+      throw new Error();
+    }
+
+    return this.members[name];
   }
 
   static hydrate(value: Abstract.Data["value"], scope: Scope, domain: Domain) {
@@ -310,7 +280,7 @@ class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
 
   private readonly seedData: Data;
-  private readonly members: Record<string, FieldMember>;
+  private readonly members: Record<string, FieldMember> = {};
 
   constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
     super();
@@ -318,7 +288,22 @@ class Store extends Channel<unknown> implements ConcreteNode<"store"> {
     this.abstractNode = abstractNode;
 
     this.seedData = new Data(abstractNode.seedData, scope, domain);
-    // TODO assign fields, methods, and actions from model
+
+    if (abstractNode.modelName === "Array") {
+      this.members.push = (argument) => {
+        const value = this.getValue() as Array<unknown>;
+        value.push(argument);
+        this.publish(value);
+      };
+    } else if (abstractNode.modelName === "Boolean") {
+      this.members.disable = () => this.publish(false);
+      this.members.enable = () => this.publish(true);
+      this.members.toggle = () => this.publish(!this.getValue());
+    } else if (abstractNode.modelName === "Number") {
+      this.members.add = (argument) => this.publish(this.getValue() + argument);
+    }
+
+    // TODO Add actions for other models...
   }
 
   getMember(name: string): FieldMember {
@@ -368,6 +353,10 @@ class Structure extends Publisher<unknown> implements ConcreteNode<"structure"> 
 
     this.abstractNode = abstractNode;
 
+    // TODO
+  }
+
+  getProperty(name: string): Field {
     // TODO
   }
 }
