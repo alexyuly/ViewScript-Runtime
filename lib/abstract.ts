@@ -17,12 +17,12 @@ export type Node<Kind extends string> = {
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
-  Pointable<Name> & {
+  Named<Name> & {
     members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
-  Pointable<Name> & {
+  Named<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
     renderable: Renderable;
@@ -34,7 +34,7 @@ export type Renderable = Node<"renderable"> & {
 
 /* Tier 2 */
 
-export type Pointable<Name extends string = string> = {
+export type Named<Name extends string = string> = {
   name: Name;
 };
 
@@ -45,26 +45,26 @@ export type Pointable<Name extends string = string> = {
 export type Field<M extends Model = Model> = Node<"field"> & {
   publisher:
     | Data<M>
-    | FieldPlan<M>
-    | FieldPointer<M>
-    | FieldSwitch<M>
-    | MethodPointer<M>
+    | Parameter<M>
+    | Pointer<M>
+    | Switch<M>
+    | MethodCall<M>
     | Store<M>
-    | WritableFieldPlan<M>
-    | WritableFieldPointer<M>;
+    | WritableParameter<M>
+    | WritablePointer<M>;
 };
 
 export type Method<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"method"> & {
-  parameter: P extends Model ? Pointable & Field<P> : never;
+  parameter: P extends Model ? Named & Parameter<P> : never;
   result: Field<M>;
 };
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
-  parameter: M extends Model ? Pointable & Field<M> : never;
-  steps: Array<ActionPointer | StreamPointer | Exception>;
+  parameter: M extends Model ? Named & Parameter<M> : never;
+  steps: Array<ActionCall | StreamCall | Exception>;
 };
 
 export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Modeled<M>;
@@ -104,27 +104,27 @@ export type Data<M extends Model | null = Model | null> = Node<"data"> &
       : unknown;
   };
 
-export type FieldPlan<M extends Model = Model> = Node<"fieldPlan"> & Modeled<M>;
+export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
-export type FieldPointer<M extends Model = Model> = Node<"fieldPointer"> &
+export type Pointer<M extends Model = Model> = Node<"pointer"> &
   Modeled<M> & {
-    leader?: MethodPointer;
+    leader?: MethodCall;
     fieldPath: Array<string>;
   };
 
-export type FieldSwitch<M extends Model = Model> = Node<"fieldSwitch"> &
+export type Switch<M extends Model = Model> = Node<"switch"> &
   Modeled<M> & {
     condition: Field<Model<"Boolean">>;
-    thenField: Field<M>;
-    elseField: Field<M>;
+    positive: Field<M>;
+    negative: Field<M>;
   };
 
-export type MethodPointer<
+export type MethodCall<
   M extends Model = Model,
   P extends Model | null = Model | null,
-> = Node<"methodPointer"> &
+> = Node<"methodCall"> &
   Modeled<M> & {
-    leader?: MethodPointer;
+    leader?: MethodCall;
     methodPath: Array<string>;
     argument: P extends Model ? Field<P> : never;
   };
@@ -134,35 +134,36 @@ export type Store<M extends Model = Model> = Node<"store"> &
     seedData: Data<M>;
   };
 
-export type WritableFieldPlan<M extends Model = Model> = Node<"writableFieldPlan"> & Modeled<M>;
+export type WritableParameter<M extends Model = Model> = Node<"writableParameter"> & Modeled<M>;
 
-export type WritableFieldPointer<M extends Model = Model> = Node<"writableFieldPointer"> &
+export type WritablePointer<M extends Model = Model> = Node<"writablePointer"> &
   Modeled<M> & {
     fieldPath: Array<string>;
   };
 
-export type ActionPointer<M extends Model | null = Model | null> = Node<"actionPointer"> & {
+export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> & {
   actionPath: Array<string>;
   argument: M extends Model ? Field<M> : never;
 };
 
-export type StreamPointer<M extends Model | null = Model | null> = Node<"streamPointer"> &
+export type StreamCall<M extends Model | null = Model | null> = Node<"streamCall"> &
   Modeled<M> & {
     streamName: string;
+    argument: M extends Model ? Field<M> : never;
   };
 
 export type Exception = Node<"exception"> & {
   condition: Field<Model<"Boolean">>;
-  steps?: Array<ActionPointer | StreamPointer | Exception>;
+  steps?: Array<ActionCall | StreamCall | Exception>;
 };
 
 export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
 };
 
-export type Property<F extends Field> = F["publisher"] extends FieldPlan<infer M>
+export type Property<F extends Field> = F["publisher"] extends Parameter<infer M>
   ? Field<M>
-  : F["publisher"] extends WritableFieldPlan<infer M>
+  : F["publisher"] extends WritableParameter<infer M>
   ? WritableField<M>
   : never;
 
@@ -182,5 +183,5 @@ export type Structure<M extends Model = Model> = Node<"structure"> &
  * It inherits sub-fields, methods, AND actions from its model.
  */
 export type WritableField<M extends Model> = Node<"field"> & {
-  publisher: Store<M> | WritableFieldPlan<M> | WritableFieldPointer<M>;
+  publisher: Store<M> | WritableParameter<M> | WritablePointer<M>;
 };

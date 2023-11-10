@@ -139,13 +139,13 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
 
   private readonly publisher:
     | Data
-    | FieldPlan
-    | FieldPointer
-    | FieldSwitch
-    | MethodPointer
+    | Parameter
+    | Pointer
+    | Switch
+    | MethodCall
     | Store
-    | WritableFieldPlan
-    | WritableFieldPointer;
+    | WritableParameter
+    | WritablePointer;
 
   constructor(abstractNode: Abstract.Field, scope: Scope, domain: Domain) {
     super();
@@ -155,20 +155,20 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
     this.publisher =
       abstractNode.publisher.kind === "data"
         ? new Data(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "fieldPlan"
-        ? new FieldPlan(abstractNode.publisher)
-        : abstractNode.publisher.kind === "fieldPointer"
-        ? new FieldPointer(abstractNode.publisher, scope)
-        : abstractNode.publisher.kind === "fieldSwitch"
-        ? new FieldSwitch(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "methodPointer"
-        ? new MethodPointer(abstractNode.publisher, scope)
+        : abstractNode.publisher.kind === "parameter"
+        ? new Parameter(abstractNode.publisher)
+        : abstractNode.publisher.kind === "pointer"
+        ? new Pointer(abstractNode.publisher, scope)
+        : abstractNode.publisher.kind === "switch"
+        ? new Switch(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "methodCall"
+        ? new MethodCall(abstractNode.publisher, scope)
         : abstractNode.publisher.kind === "store"
         ? new Store(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "writableFieldPlan"
-        ? new WritableFieldPlan(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "writableFieldPointer"
-        ? new WritableFieldPointer(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writableParameter"
+        ? new WritableParameter(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writablePointer"
+        ? new WritablePointer(abstractNode.publisher, scope, domain)
         : (() => {
             throw new Error();
           })();
@@ -244,10 +244,10 @@ class Data extends Publisher<unknown> implements ConcreteNode<"data"> {
   }
 }
 
-class FieldPlan extends Channel<unknown> implements ConcreteNode<"fieldPlan"> {
-  readonly abstractNode: Abstract.FieldPlan;
+class Parameter extends Channel<unknown> implements ConcreteNode<"parameter"> {
+  readonly abstractNode: Abstract.Parameter;
 
-  constructor(abstractNode: Abstract.FieldPlan) {
+  constructor(abstractNode: Abstract.Parameter) {
     super();
 
     this.abstractNode = abstractNode;
@@ -258,26 +258,10 @@ class FieldPlan extends Channel<unknown> implements ConcreteNode<"fieldPlan"> {
   }
 }
 
-class FieldPointer extends Channel<unknown> implements ConcreteNode<"fieldPointer"> {
-  readonly abstractNode: Abstract.FieldPointer;
+class Pointer extends Channel<unknown> implements ConcreteNode<"pointer"> {
+  readonly abstractNode: Abstract.Pointer;
 
-  constructor(abstractNode: Abstract.FieldPointer, scope: Scope) {
-    super();
-
-    this.abstractNode = abstractNode;
-
-    // TODO
-  }
-
-  getField(): Field {
-    // TODO
-  }
-}
-
-class FieldSwitch extends Channel<unknown> implements ConcreteNode<"fieldSwitch"> {
-  readonly abstractNode: Abstract.FieldSwitch;
-
-  constructor(abstractNode: Abstract.FieldSwitch, scope: Scope, domain: Domain) {
+  constructor(abstractNode: Abstract.Pointer, scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -290,10 +274,26 @@ class FieldSwitch extends Channel<unknown> implements ConcreteNode<"fieldSwitch"
   }
 }
 
-class MethodPointer extends Channel<unknown> implements ConcreteNode<"methodPointer"> {
-  readonly abstractNode: Abstract.MethodPointer;
+class Switch extends Channel<unknown> implements ConcreteNode<"switch"> {
+  readonly abstractNode: Abstract.Switch;
 
-  constructor(abstractNode: Abstract.MethodPointer, scope: Scope) {
+  constructor(abstractNode: Abstract.Switch, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+
+  getField(): Field {
+    // TODO
+  }
+}
+
+class MethodCall extends Channel<unknown> implements ConcreteNode<"methodCall"> {
+  readonly abstractNode: Abstract.MethodCall;
+
+  constructor(abstractNode: Abstract.MethodCall, scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -326,10 +326,10 @@ class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   }
 }
 
-class WritableFieldPlan extends Channel<unknown> implements ConcreteNode<"writableFieldPlan"> {
-  readonly abstractNode: Abstract.WritableFieldPlan;
+class WritableParameter extends Channel<unknown> implements ConcreteNode<"writableParameter"> {
+  readonly abstractNode: Abstract.WritableParameter;
 
-  constructor(abstractNode: Abstract.WritableFieldPlan, scope: Scope, domain: Domain) {
+  constructor(abstractNode: Abstract.WritableParameter, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
@@ -342,13 +342,10 @@ class WritableFieldPlan extends Channel<unknown> implements ConcreteNode<"writab
   }
 }
 
-class WritableFieldPointer
-  extends Channel<unknown>
-  implements ConcreteNode<"writableFieldPointer">
-{
-  readonly abstractNode: Abstract.WritableFieldPointer;
+class WritablePointer extends Channel<unknown> implements ConcreteNode<"writablePointer"> {
+  readonly abstractNode: Abstract.WritablePointer;
 
-  constructor(abstractNode: Abstract.WritableFieldPointer, scope: Scope, domain: Domain) {
+  constructor(abstractNode: Abstract.WritablePointer, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
