@@ -2,8 +2,18 @@ import * as Abstract from "./abstract";
 import * as Dom from "./dom";
 import * as Style from "./style";
 
+type Domain = Record<string, DomainMember>;
+type DomainMember = Abstract.View | Abstract.Model | DomainModelFactory;
+type DomainModelFactory = (
+  readable: Readable<unknown>,
+  subscriber?: Subscriber<unknown>,
+) => Abstract.Model;
+
+type FieldMember = Abstract.Model | Field | Method | Action | Fn;
+type Fn = (argument: any) => unknown;
+
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = Abstract.Model | Field | Method | Action | Stream | ((argument: any) => unknown);
+type ScopeMember = FieldMember | Stream;
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -66,6 +76,27 @@ const globalScope: Record<string, Abstract.Model> = {
   },
 };
 
+const defaultDomain: Record<string, DomainModelFactory> = {
+  Boolean: (readable, subscriber) => {
+    const members: Record<string, (argument: any) => unknown> = {
+      and: (argument) => readable.getValue() && argument,
+      not: () => !readable.getValue(),
+    };
+
+    if (subscriber) {
+      members.disable = () => subscriber.take(false);
+      members.enable = () => subscriber.take(true);
+      members.toggle = () => subscriber.take(!readable.getValue());
+    }
+
+    return {
+      kind: "model",
+      name: "Boolean",
+      members,
+    };
+  },
+};
+
 /* Tier 0 */
 
 export class App implements ConcreteNode<"app"> {
@@ -77,7 +108,7 @@ export class App implements ConcreteNode<"app"> {
     this.abstractNode = app;
 
     const scope = { ...globalScope };
-    const domain = { ...app.domain };
+    const domain = { ...defaultDomain, ...app.domain };
 
     this.renderable = new Renderable(app.renderable, scope, domain);
     this.renderable.sendTo(Dom.render);
@@ -94,15 +125,15 @@ class Renderable extends Channel<HTMLElement> implements ConcreteNode<"renderabl
 
   private readonly element: Feature | Landscape;
 
-  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Renderable, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
     this.element =
       abstractNode.element.kind === "feature"
-        ? new Feature(abstractNode.element, domain, scope)
-        : new Landscape(abstractNode.element, domain, scope);
+        ? new Feature(abstractNode.element, scope, domain)
+        : new Landscape(abstractNode.element, scope, domain);
 
     this.element.sendTo(this);
   }
@@ -113,54 +144,84 @@ class Renderable extends Channel<HTMLElement> implements ConcreteNode<"renderabl
 class Field extends Channel<unknown> implements ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
 
-  private readonly channel: Publisher<unknown>;
+  private readonly channel?: Channel<unknown>;
+  private readonly publisher: Publisher<unknown>;
+  private readonly members: Record<string, FieldMember> = {};
 
-  constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Field, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
     this.channel =
-      abstractNode.channel.kind === "value"
-        ? new Value(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "fieldPlan"
-        ? new FieldPlan(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "fieldPointer"
-        ? new FieldPointer(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "fieldSwitch"
-        ? new FieldSwitch(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "methodPointer"
-        ? new MethodPointer(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "store"
-        ? new Store(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "writableFieldPlan"
-        ? new WritableFieldPlan(abstractNode.channel, domain, scope)
-        : abstractNode.channel.kind === "writableFieldPointer"
-        ? new WritableFieldPointer(abstractNode.channel, domain, scope)
-        : (() => {
+      abstractNode.publisher.kind === "store"
+        ? new Store(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writableFieldPlan"
+        ? new WritableFieldPlan(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writableFieldPointer"
+        ? new WritableFieldPointer(abstractNode.publisher, scope, domain)
+        : undefined;
+
+    this.publisher =
+      abstractNode.publisher.kind === "value"
+        ? new Value(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "fieldPlan"
+        ? new FieldPlan(abstractNode.publisher)
+        : abstractNode.publisher.kind === "fieldPointer"
+        ? new FieldPointer(abstractNode.publisher, scope)
+        : abstractNode.publisher.kind === "fieldSwitch"
+        ? new FieldSwitch(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "methodPointer"
+        ? new MethodPointer(abstractNode.publisher, scope, domain)
+        : this.channel ??
+          (() => {
             throw new Error();
           })();
 
-    this.channel.sendTo(this);
+    this.publisher.sendTo(this);
+
+    const model = domain[abstractNode.publisher.modelName];
+
+    if (typeof model === "function") {
+      // TODO
+    } else if (model.kind === "model") {
+      // TODO
+    } else {
+      throw new Error();
+    }
+
+    // TODO Add members from model
   }
 }
 
-class Method {
-  // TODO
+class Method implements ConcreteNode<"method"> {
+  readonly abstractNode: Abstract.Method;
+
+  constructor(abstractNode: Abstract.Method) {
+    this.abstractNode = abstractNode;
+  }
 }
 
-class Action {
-  // TODO
+class Action implements ConcreteNode<"action"> {
+  readonly abstractNode: Abstract.Action;
+
+  constructor(abstractNode: Abstract.Action) {
+    this.abstractNode = abstractNode;
+  }
 }
 
-class Stream {
-  // TODO
+class Stream implements ConcreteNode<"stream"> {
+  readonly abstractNode: Abstract.Stream;
+
+  constructor(abstractNode: Abstract.Stream) {
+    this.abstractNode = abstractNode;
+  }
 }
 
 class Feature extends Channel<HTMLElement> implements ConcreteNode<"feature"> {
   readonly abstractNode: Abstract.Feature;
 
-  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Feature, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
@@ -171,7 +232,7 @@ class Feature extends Channel<HTMLElement> implements ConcreteNode<"feature"> {
 class Landscape extends Channel<HTMLElement> implements ConcreteNode<"landscape"> {
   readonly abstractNode: Abstract.Landscape;
 
-  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Landscape, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
@@ -186,28 +247,46 @@ class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
 
   private readonly content: unknown;
 
-  constructor(abstractNode: Abstract.Value, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Value, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
-    this.content = Value.hydrate(abstractNode.content, domain, scope);
+    this.content = Value.hydrate(abstractNode.content, scope, domain);
   }
 
-  static hydrate(
-    content: Abstract.Value["content"],
-    domain: Abstract.App["domain"],
-    scope: Scope,
-  ): unknown {
+  static hydrate(content: Abstract.Value["content"], scope: Scope, domain: Domain) {
     return content instanceof Array
-      ? content.map((item) => new Field(item, domain, scope))
+      ? content.map((item) => new Field(item, scope, domain))
       : typeof content === "boolean" || typeof content === "number" || typeof content === "string"
       ? content
       : typeof content === "object" && content && "kind" in content && content.kind === "renderable"
-      ? new Renderable(content as Abstract.Renderable, domain, scope)
+      ? new Renderable(content as Abstract.Renderable, scope, domain)
       : typeof content === "object" && content && "kind" in content && content.kind === "structure"
-      ? new Structure(content as Abstract.Structure, domain, scope)
+      ? new Structure(content as Abstract.Structure, scope, domain)
       : content;
+  }
+}
+
+class FieldPlan extends Channel<unknown> implements ConcreteNode<"fieldPlan"> {
+  readonly abstractNode: Abstract.FieldPlan;
+
+  constructor(abstractNode: Abstract.FieldPlan) {
+    super();
+
+    this.abstractNode = abstractNode;
+  }
+}
+
+class FieldPointer extends Channel<unknown> implements ConcreteNode<"fieldPointer"> {
+  readonly abstractNode: Abstract.FieldPointer;
+
+  constructor(abstractNode: Abstract.FieldPointer, scope: Scope) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
   }
 }
 
@@ -216,7 +295,7 @@ class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
 class Structure extends Publisher<unknown> implements ConcreteNode<"structure"> {
   readonly abstractNode: Abstract.Structure;
 
-  constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(abstractNode: Abstract.Structure, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;

@@ -39,11 +39,11 @@ export type Pointable<Name extends string = string> = {
 };
 
 /**
- * A field contains a channel which publishes values of a certain type.
+ * A field contains a publisher which sends out values of a certain type.
  * It inherits sub-fields and methods from its model.
  */
 export type Field<M extends Model = Model> = Node<"field"> & {
-  channel:
+  publisher:
     | Value<M>
     | FieldPlan<M>
     | FieldPointer<M>
@@ -87,25 +87,26 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 /* Tier 3 */
 
-export type Value<M extends Model | null = Model | null> = Node<"value"> & {
-  content: M extends Model
-    ? M["name"] extends "Array"
-      ? Array<Field>
-      : M["name"] extends "Boolean"
-      ? boolean
-      : M["name"] extends "Number"
-      ? number
-      : M["name"] extends "String"
-      ? string
-      : M["name"] extends "Renderable"
-      ? Renderable
-      : Array<Field> | boolean | number | string | Renderable | Structure<M>
-    : unknown;
-};
+export type Value<M extends Model | null = Model | null> = Node<"value"> &
+  Modeled<M> & {
+    content: M extends Model
+      ? M["name"] extends "Array"
+        ? Array<Field>
+        : M["name"] extends "Boolean"
+        ? boolean
+        : M["name"] extends "Number"
+        ? number
+        : M["name"] extends "String"
+        ? string
+        : M["name"] extends "Renderable"
+        ? Renderable
+        : Array<Field> | boolean | number | string | Renderable | Structure<M>
+      : unknown;
+  };
 
-export type FieldPlan<M extends Model> = Node<"fieldPlan"> & Modeled<M>;
+export type FieldPlan<M extends Model = Model> = Node<"fieldPlan"> & Modeled<M>;
 
-export type FieldPointer<M extends Model> = Node<"fieldPointer"> &
+export type FieldPointer<M extends Model = Model> = Node<"fieldPointer"> &
   Modeled<M> & {
     leader?: MethodPointer;
     fieldPath: Array<string>;
@@ -114,8 +115,8 @@ export type FieldPointer<M extends Model> = Node<"fieldPointer"> &
 export type FieldSwitch<M extends Model> = Node<"fieldSwitch"> &
   Modeled<M> & {
     condition: Field<Model<"Boolean">>;
-    fieldThen: Field<M>;
-    fieldElse: Field<M>;
+    thenField: Field<M>;
+    elseField: Field<M>;
   };
 
 export type MethodPointer<
@@ -151,7 +152,7 @@ export type StreamPointer<M extends Model | null = Model | null> = Node<"streamP
   };
 
 export type Exception = Node<"exception"> & {
-  exception: Field<Model<"Boolean">>;
+  condition: Field<Model<"Boolean">>;
   steps?: Array<ActionPointer | StreamPointer | Exception>;
 };
 
@@ -159,9 +160,9 @@ export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
 };
 
-export type Property<F extends Field> = F["channel"] extends FieldPlan<infer M>
+export type Property<F extends Field> = F["publisher"] extends FieldPlan<infer M>
   ? Field<M>
-  : F["channel"] extends WritableFieldPlan<infer M>
+  : F["publisher"] extends WritableFieldPlan<infer M>
   ? WritableField<M>
   : never;
 
@@ -177,9 +178,9 @@ export type Structure<M extends Model = Model> = Node<"structure"> &
   };
 
 /**
- * A writable field contains a channel which publishes AND receives values of a certain type.
+ * A writable field contains a publisher which publishes AND subscribes to values of a certain type.
  * It inherits sub-fields, methods, AND actions from its model.
  */
 export type WritableField<M extends Model> = Node<"field"> & {
-  channel: Store<M> | WritableFieldPlan<M> | WritableFieldPointer<M>;
+  publisher: Store<M> | WritableFieldPlan<M> | WritableFieldPointer<M>;
 };
