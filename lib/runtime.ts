@@ -4,16 +4,13 @@ import * as Style from "./style";
 
 type Domain = Record<string, DomainMember>;
 type DomainMember = Abstract.View | Abstract.Model | DomainModelFactory;
-type DomainModelFactory = (
-  readable: Readable<unknown>,
-  subscriber?: Subscriber<unknown>,
-) => Record<string, Handle>;
+type DomainModelFactory = (publisher: Publisher<unknown>) => Record<string, Handle>;
 
-type FieldMember = Abstract.Model | Field | Method | Action | Handle;
+type FieldMember = Abstract.Model | Field | Abstract.Method | Abstract.Action | Handle;
 type Handle = (argument: any) => unknown;
 
 type Scope = Record<string, ScopeMember>;
-type ScopeMember = FieldMember | Stream;
+type ScopeMember = FieldMember | Abstract.Stream;
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -77,16 +74,16 @@ const globalScope: Record<string, Abstract.Model> = {
 };
 
 const defaultDomain: Record<string, DomainModelFactory> = {
-  Boolean: (readable, subscriber) => {
+  Boolean: (publisher) => {
     const members: Record<string, Handle> = {
-      and: (argument) => readable.getValue() && argument,
-      not: () => !readable.getValue(),
+      and: (argument) => publisher.getValue() && argument,
+      not: () => !publisher.getValue(),
     };
 
-    if (subscriber) {
-      members.disable = () => subscriber.take(false);
-      members.enable = () => subscriber.take(true);
-      members.toggle = () => subscriber.take(!readable.getValue());
+    if (publisher instanceof Channel) {
+      members.disable = () => publisher.take(false);
+      members.enable = () => publisher.take(true);
+      members.toggle = () => publisher.take(!publisher.getValue());
     }
 
     return members;
@@ -140,23 +137,20 @@ class Renderable extends Channel<HTMLElement> implements ConcreteNode<"renderabl
 class Field extends Channel<unknown> implements ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
 
-  private readonly channel?: Channel<unknown>;
-  private readonly publisher: Publisher<unknown>;
-  private readonly members: Record<string, FieldMember>;
+  private readonly publisher:
+    | Value
+    | FieldPlan
+    | FieldPointer
+    | FieldSwitch
+    | MethodPointer
+    | Store
+    | WritableFieldPlan
+    | WritableFieldPointer;
 
   constructor(abstractNode: Abstract.Field, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
-
-    this.channel =
-      abstractNode.publisher.kind === "store"
-        ? new Store(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "writableFieldPlan"
-        ? new WritableFieldPlan(abstractNode.publisher, scope, domain)
-        : abstractNode.publisher.kind === "writableFieldPointer"
-        ? new WritableFieldPointer(abstractNode.publisher, scope, domain)
-        : undefined;
 
     this.publisher =
       abstractNode.publisher.kind === "value"
@@ -169,57 +163,26 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
         ? new FieldSwitch(abstractNode.publisher, scope, domain)
         : abstractNode.publisher.kind === "methodPointer"
         ? new MethodPointer(abstractNode.publisher, scope)
-        : this.channel ??
-          (() => {
+        : abstractNode.publisher.kind === "store"
+        ? new Store(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writableFieldPlan"
+        ? new WritableFieldPlan(abstractNode.publisher, scope, domain)
+        : abstractNode.publisher.kind === "writableFieldPointer"
+        ? new WritableFieldPointer(abstractNode.publisher, scope, domain)
+        : (() => {
             throw new Error();
           })();
 
     this.publisher.sendTo(this);
-
-    const model = domain[abstractNode.publisher.modelName];
-
-    if (typeof model === "function") {
-      this.members = model(this.publisher, this.channel);
-    } else if (model.kind === "model") {
-      this.members = {};
-      Object.entries(model.members).forEach(([name, member]) => {
-        if (typeof member === "function") {
-          this.members[name] = member;
-        } else if (member.kind === "field") {
-          this.members[name] = new Field(member, scope, domain); // TODO fix scope
-        } else if (member.kind === "method") {
-          this.members[name] = new Method(member);
-        } else if (member.kind === "action") {
-          this.members[name] = new Action(member);
-        }
-      });
-    } else {
-      throw new Error();
-    }
   }
-}
 
-class Method implements ConcreteNode<"method"> {
-  readonly abstractNode: Abstract.Method;
+  getMember(name: string): FieldMember {
+    const member =
+      this.publisher instanceof Value || this.publisher instanceof Store
+        ? this.publisher.getMember(name)
+        : this.publisher.getField().getMember(name);
 
-  constructor(abstractNode: Abstract.Method) {
-    this.abstractNode = abstractNode;
-  }
-}
-
-class Action implements ConcreteNode<"action"> {
-  readonly abstractNode: Abstract.Action;
-
-  constructor(abstractNode: Abstract.Action) {
-    this.abstractNode = abstractNode;
-  }
-}
-
-class Stream implements ConcreteNode<"stream"> {
-  readonly abstractNode: Abstract.Stream;
-
-  constructor(abstractNode: Abstract.Stream) {
-    this.abstractNode = abstractNode;
+    return member;
   }
 }
 
@@ -251,6 +214,7 @@ class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
   readonly abstractNode: Abstract.Value;
 
   private readonly content: unknown;
+  private readonly members: Record<string, FieldMember>;
 
   constructor(abstractNode: Abstract.Value, scope: Scope, domain: Domain) {
     super();
@@ -258,6 +222,12 @@ class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
     this.abstractNode = abstractNode;
 
     this.content = Value.hydrate(abstractNode.content, scope, domain);
+
+    // TODO assign fields and methods from model
+  }
+
+  getMember(name: string): FieldMember {
+    // TODO
   }
 
   static hydrate(content: Abstract.Value["content"], scope: Scope, domain: Domain) {
@@ -281,6 +251,10 @@ class FieldPlan extends Channel<unknown> implements ConcreteNode<"fieldPlan"> {
 
     this.abstractNode = abstractNode;
   }
+
+  getField(): Field {
+    // TODO
+  }
 }
 
 class FieldPointer extends Channel<unknown> implements ConcreteNode<"fieldPointer"> {
@@ -291,6 +265,10 @@ class FieldPointer extends Channel<unknown> implements ConcreteNode<"fieldPointe
 
     this.abstractNode = abstractNode;
 
+    // TODO
+  }
+
+  getField(): Field {
     // TODO
   }
 }
@@ -305,6 +283,10 @@ class FieldSwitch extends Channel<unknown> implements ConcreteNode<"fieldSwitch"
 
     // TODO
   }
+
+  getField(): Field {
+    // TODO
+  }
 }
 
 class MethodPointer extends Channel<unknown> implements ConcreteNode<"methodPointer"> {
@@ -317,16 +299,28 @@ class MethodPointer extends Channel<unknown> implements ConcreteNode<"methodPoin
 
     // TODO
   }
+
+  getField(): Field {
+    // TODO
+  }
 }
 
 class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
+
+  private readonly firstValue: Value;
+  private readonly members: Record<string, FieldMember>;
 
   constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
+    this.firstValue = new Value(abstractNode.firstValue, scope, domain);
+    // TODO assign fields, methods, and actions from model
+  }
+
+  getMember(name: string): FieldMember {
     // TODO
   }
 }
@@ -339,6 +333,10 @@ class WritableFieldPlan extends Channel<unknown> implements ConcreteNode<"writab
 
     this.abstractNode = abstractNode;
 
+    // TODO
+  }
+
+  getField(): Field {
     // TODO
   }
 }
@@ -354,6 +352,10 @@ class WritableFieldPointer
 
     this.abstractNode = abstractNode;
 
+    // TODO
+  }
+
+  getField(): Field {
     // TODO
   }
 }
