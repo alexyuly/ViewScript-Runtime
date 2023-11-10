@@ -109,7 +109,7 @@ export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
   Modeled<M> & {
     leader?: MethodCall;
-    fieldPath: Array<string>;
+    propertyPath: Array<string>;
   };
 
 export type Switch<M extends Model = Model> = Node<"switch"> &
@@ -138,7 +138,7 @@ export type WritableParameter<M extends Model = Model> = Node<"writableParameter
 
 export type WritablePointer<M extends Model = Model> = Node<"writablePointer"> &
   Modeled<M> & {
-    fieldPath: Array<string>;
+    propertyPath: Array<string>;
   };
 
 export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> & {
