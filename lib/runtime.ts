@@ -7,10 +7,10 @@ type DomainMember = Abstract.View | Abstract.Model | DomainModelFactory;
 type DomainModelFactory = (
   readable: Readable<unknown>,
   subscriber?: Subscriber<unknown>,
-) => Abstract.Model;
+) => Record<string, Handle>;
 
-type FieldMember = Abstract.Model | Field | Method | Action | Fn;
-type Fn = (argument: any) => unknown;
+type FieldMember = Abstract.Model | Field | Method | Action | Handle;
+type Handle = (argument: any) => unknown;
 
 type Scope = Record<string, ScopeMember>;
 type ScopeMember = FieldMember | Stream;
@@ -78,7 +78,7 @@ const globalScope: Record<string, Abstract.Model> = {
 
 const defaultDomain: Record<string, DomainModelFactory> = {
   Boolean: (readable, subscriber) => {
-    const members: Record<string, (argument: any) => unknown> = {
+    const members: Record<string, Handle> = {
       and: (argument) => readable.getValue() && argument,
       not: () => !readable.getValue(),
     };
@@ -89,11 +89,7 @@ const defaultDomain: Record<string, DomainModelFactory> = {
       members.toggle = () => subscriber.take(!readable.getValue());
     }
 
-    return {
-      kind: "model",
-      name: "Boolean",
-      members,
-    };
+    return members;
   },
 };
 
@@ -146,7 +142,7 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
 
   private readonly channel?: Channel<unknown>;
   private readonly publisher: Publisher<unknown>;
-  private readonly members: Record<string, FieldMember> = {};
+  private readonly members: Record<string, FieldMember>;
 
   constructor(abstractNode: Abstract.Field, scope: Scope, domain: Domain) {
     super();
@@ -172,7 +168,7 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
         : abstractNode.publisher.kind === "fieldSwitch"
         ? new FieldSwitch(abstractNode.publisher, scope, domain)
         : abstractNode.publisher.kind === "methodPointer"
-        ? new MethodPointer(abstractNode.publisher, scope, domain)
+        ? new MethodPointer(abstractNode.publisher, scope)
         : this.channel ??
           (() => {
             throw new Error();
@@ -183,14 +179,23 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
     const model = domain[abstractNode.publisher.modelName];
 
     if (typeof model === "function") {
-      // TODO
+      this.members = model(this.publisher, this.channel);
     } else if (model.kind === "model") {
-      // TODO
+      this.members = {};
+      Object.entries(model.members).forEach(([name, member]) => {
+        if (typeof member === "function") {
+          this.members[name] = member;
+        } else if (member.kind === "field") {
+          this.members[name] = new Field(member, scope, domain); // TODO fix scope
+        } else if (member.kind === "method") {
+          this.members[name] = new Method(member);
+        } else if (member.kind === "action") {
+          this.members[name] = new Action(member);
+        }
+      });
     } else {
       throw new Error();
     }
-
-    // TODO Add members from model
   }
 }
 
@@ -282,6 +287,69 @@ class FieldPointer extends Channel<unknown> implements ConcreteNode<"fieldPointe
   readonly abstractNode: Abstract.FieldPointer;
 
   constructor(abstractNode: Abstract.FieldPointer, scope: Scope) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+}
+
+class FieldSwitch extends Channel<unknown> implements ConcreteNode<"fieldSwitch"> {
+  readonly abstractNode: Abstract.FieldSwitch;
+
+  constructor(abstractNode: Abstract.FieldSwitch, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+}
+
+class MethodPointer extends Channel<unknown> implements ConcreteNode<"methodPointer"> {
+  readonly abstractNode: Abstract.MethodPointer;
+
+  constructor(abstractNode: Abstract.MethodPointer, scope: Scope) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+}
+
+class Store extends Channel<unknown> implements ConcreteNode<"store"> {
+  readonly abstractNode: Abstract.Store;
+
+  constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+}
+
+class WritableFieldPlan extends Channel<unknown> implements ConcreteNode<"writableFieldPlan"> {
+  readonly abstractNode: Abstract.WritableFieldPlan;
+
+  constructor(abstractNode: Abstract.WritableFieldPlan, scope: Scope, domain: Domain) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    // TODO
+  }
+}
+
+class WritableFieldPointer
+  extends Channel<unknown>
+  implements ConcreteNode<"writableFieldPointer">
+{
+  readonly abstractNode: Abstract.WritableFieldPointer;
+
+  constructor(abstractNode: Abstract.WritableFieldPointer, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;

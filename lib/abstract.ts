@@ -112,7 +112,7 @@ export type FieldPointer<M extends Model = Model> = Node<"fieldPointer"> &
     fieldPath: Array<string>;
   };
 
-export type FieldSwitch<M extends Model> = Node<"fieldSwitch"> &
+export type FieldSwitch<M extends Model = Model> = Node<"fieldSwitch"> &
   Modeled<M> & {
     condition: Field<Model<"Boolean">>;
     thenField: Field<M>;
@@ -129,14 +129,14 @@ export type MethodPointer<
     argument: P extends Model ? Field<P> : never;
   };
 
-export type Store<M extends Model> = Node<"store"> &
+export type Store<M extends Model = Model> = Node<"store"> &
   Modeled<M> & {
     firstValue: Value<M>;
   };
 
-export type WritableFieldPlan<M extends Model> = Node<"writableFieldPlan"> & Modeled<M>;
+export type WritableFieldPlan<M extends Model = Model> = Node<"writableFieldPlan"> & Modeled<M>;
 
-export type WritableFieldPointer<M extends Model> = Node<"writableFieldPointer"> &
+export type WritableFieldPointer<M extends Model = Model> = Node<"writableFieldPointer"> &
   Modeled<M> & {
     fieldPath: Array<string>;
   };
