@@ -44,7 +44,7 @@ export type Pointable<Name extends string = string> = {
  */
 export type Field<M extends Model = Model> = Node<"field"> & {
   publisher:
-    | Value<M>
+    | Data<M>
     | FieldPlan<M>
     | FieldPointer<M>
     | FieldSwitch<M>
@@ -87,9 +87,9 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 /* Tier 3 */
 
-export type Value<M extends Model | null = Model | null> = Node<"value"> &
+export type Data<M extends Model | null = Model | null> = Node<"data"> &
   Modeled<M> & {
-    content: M extends Model
+    value: M extends Model
       ? M["name"] extends "Array"
         ? Array<Field>
         : M["name"] extends "Boolean"
@@ -131,7 +131,7 @@ export type MethodPointer<
 
 export type Store<M extends Model = Model> = Node<"store"> &
   Modeled<M> & {
-    firstValue: Value<M>;
+    seedData: Data<M>;
   };
 
 export type WritableFieldPlan<M extends Model = Model> = Node<"writableFieldPlan"> & Modeled<M>;

@@ -138,7 +138,7 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
 
   private readonly publisher:
-    | Value
+    | Data
     | FieldPlan
     | FieldPointer
     | FieldSwitch
@@ -153,8 +153,8 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
     this.abstractNode = abstractNode;
 
     this.publisher =
-      abstractNode.publisher.kind === "value"
-        ? new Value(abstractNode.publisher, scope, domain)
+      abstractNode.publisher.kind === "data"
+        ? new Data(abstractNode.publisher, scope, domain)
         : abstractNode.publisher.kind === "fieldPlan"
         ? new FieldPlan(abstractNode.publisher)
         : abstractNode.publisher.kind === "fieldPointer"
@@ -178,7 +178,7 @@ class Field extends Channel<unknown> implements ConcreteNode<"field"> {
 
   getMember(name: string): FieldMember {
     const member =
-      this.publisher instanceof Value || this.publisher instanceof Store
+      this.publisher instanceof Data || this.publisher instanceof Store
         ? this.publisher.getMember(name)
         : this.publisher.getField().getMember(name);
 
@@ -210,18 +210,19 @@ class Landscape extends Channel<HTMLElement> implements ConcreteNode<"landscape"
 
 /* Tier 3 */
 
-class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
-  readonly abstractNode: Abstract.Value;
+class Data extends Publisher<unknown> implements ConcreteNode<"data"> {
+  readonly abstractNode: Abstract.Data;
 
-  private readonly content: unknown;
   private readonly members: Record<string, FieldMember>;
 
-  constructor(abstractNode: Abstract.Value, scope: Scope, domain: Domain) {
+  constructor(abstractNode: Abstract.Data, scope: Scope, domain: Domain) {
     super();
 
     this.abstractNode = abstractNode;
 
-    this.content = Value.hydrate(abstractNode.content, scope, domain);
+    const value = Data.hydrate(abstractNode.value, scope, domain);
+
+    this.publish(value);
 
     // TODO assign fields and methods from model
   }
@@ -230,16 +231,16 @@ class Value extends Publisher<unknown> implements ConcreteNode<"value"> {
     // TODO
   }
 
-  static hydrate(content: Abstract.Value["content"], scope: Scope, domain: Domain) {
-    return content instanceof Array
-      ? content.map((item) => new Field(item, scope, domain))
-      : typeof content === "boolean" || typeof content === "number" || typeof content === "string"
-      ? content
-      : typeof content === "object" && content && "kind" in content && content.kind === "renderable"
-      ? new Renderable(content as Abstract.Renderable, scope, domain)
-      : typeof content === "object" && content && "kind" in content && content.kind === "structure"
-      ? new Structure(content as Abstract.Structure, scope, domain)
-      : content;
+  static hydrate(value: Abstract.Data["value"], scope: Scope, domain: Domain) {
+    return value instanceof Array
+      ? value.map((item) => new Field(item, scope, domain))
+      : typeof value === "boolean" || typeof value === "number" || typeof value === "string"
+      ? value
+      : typeof value === "object" && value && "kind" in value && value.kind === "renderable"
+      ? new Renderable(value as Abstract.Renderable, scope, domain)
+      : typeof value === "object" && value && "kind" in value && value.kind === "structure"
+      ? new Structure(value as Abstract.Structure, scope, domain)
+      : value;
   }
 }
 
@@ -308,7 +309,7 @@ class MethodPointer extends Channel<unknown> implements ConcreteNode<"methodPoin
 class Store extends Channel<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
 
-  private readonly firstValue: Value;
+  private readonly seedData: Data;
   private readonly members: Record<string, FieldMember>;
 
   constructor(abstractNode: Abstract.Store, scope: Scope, domain: Domain) {
@@ -316,7 +317,7 @@ class Store extends Channel<unknown> implements ConcreteNode<"store"> {
 
     this.abstractNode = abstractNode;
 
-    this.firstValue = new Value(abstractNode.firstValue, scope, domain);
+    this.seedData = new Data(abstractNode.seedData, scope, domain);
     // TODO assign fields, methods, and actions from model
   }
 
