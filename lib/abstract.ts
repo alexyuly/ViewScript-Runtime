@@ -47,8 +47,8 @@ export type Field<M extends Model = Model> = Node<"field"> & {
     | Value<M>
     | FieldPlan<M>
     | FieldPointer<M>
+    | FieldSwitch<M>
     | MethodPointer<M>
-    | Option<M>
     | Store<M>
     | WritableFieldPlan<M>
     | WritableFieldPointer<M>;
@@ -87,17 +87,21 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 /* Tier 3 */
 
-export type Value<M extends Model = Model> = M["name"] extends "Array"
-  ? Array<Field>
-  : M["name"] extends "Boolean"
-  ? boolean
-  : M["name"] extends "Number"
-  ? number
-  : M["name"] extends "String"
-  ? string
-  : M["name"] extends "Renderable"
-  ? Renderable
-  : Array<Field> | boolean | number | string | Renderable | Structure<M>;
+export type Value<M extends Model | null = Model | null> = Node<"value"> & {
+  content: M extends Model
+    ? M["name"] extends "Array"
+      ? Array<Field>
+      : M["name"] extends "Boolean"
+      ? boolean
+      : M["name"] extends "Number"
+      ? number
+      : M["name"] extends "String"
+      ? string
+      : M["name"] extends "Renderable"
+      ? Renderable
+      : Array<Field> | boolean | number | string | Renderable | Structure<M>
+    : unknown;
+};
 
 export type FieldPlan<M extends Model> = Node<"fieldPlan"> & Modeled<M>;
 
@@ -105,6 +109,13 @@ export type FieldPointer<M extends Model> = Node<"fieldPointer"> &
   Modeled<M> & {
     leader?: MethodPointer;
     fieldPath: Array<string>;
+  };
+
+export type FieldSwitch<M extends Model> = Node<"fieldSwitch"> &
+  Modeled<M> & {
+    condition: Field<Model<"Boolean">>;
+    fieldThen: Field<M>;
+    fieldElse: Field<M>;
   };
 
 export type MethodPointer<
@@ -115,13 +126,6 @@ export type MethodPointer<
     leader?: MethodPointer;
     methodPath: Array<string>;
     argument: P extends Model ? Field<P> : never;
-  };
-
-export type Option<M extends Model> = Node<"option"> &
-  Modeled<M> & {
-    condition: Field<Model<"Boolean">>;
-    result: Field<M>;
-    opposite: Field<M>;
   };
 
 export type Store<M extends Model> = Node<"store"> &
@@ -147,7 +151,7 @@ export type StreamPointer<M extends Model | null = Model | null> = Node<"streamP
   };
 
 export type Exception = Node<"exception"> & {
-  condition: Field<Model<"Boolean">>;
+  exception: Field<Model<"Boolean">>;
   steps?: Array<ActionPointer | StreamPointer | Exception>;
 };
 
@@ -155,15 +159,15 @@ export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
 };
 
-export type Property<F extends Field> = F["channel"] extends WritableFieldPlan<infer M>
-  ? WritableField<M>
-  : F["channel"] extends FieldPlan<infer M>
+export type Property<F extends Field> = F["channel"] extends FieldPlan<infer M>
   ? Field<M>
+  : F["channel"] extends WritableFieldPlan<infer M>
+  ? WritableField<M>
   : never;
 
 /* Tier 4 */
 
-export type Structure<M extends Model> = Node<"structure"> &
+export type Structure<M extends Model = Model> = Node<"structure"> &
   Modeled<M> & {
     properties: {
       [Key in keyof M["members"]]?: M["members"][Key] extends Field
