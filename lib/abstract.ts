@@ -38,33 +38,21 @@ export type HasName<Name extends string = string> = {
   name: Name;
 };
 
-/**
- * A field contains a publisher which sends out values of a certain type.
- * It inherits sub-fields and methods from its model.
- */
 export type Field<M extends Model = Model> = Node<"field"> & {
-  publisher:
-    | Data<M>
-    | Parameter<M>
-    | Pointer<M>
-    | Switch<M>
-    | MethodCall<M>
-    | Store<M>
-    | WritableParameter<M>
-    | WritablePointer<M>;
+  publisher: Data<M> | Store<M> | Parameter<M> | Pointer<M> | Switch<M> | MethodCall<M>;
 };
 
 export type Method<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"method"> & {
-  parameter: P extends Model ? HasName & Parameter<P> : never;
   result: Field<M>;
+  parameter?: P extends Model ? HasName & Parameter<P> : never;
 };
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
-  parameter: M extends Model ? HasName & Parameter<M> : never;
   steps: Array<ActionCall | StreamCall | Exception>;
+  parameter?: M extends Model ? HasName & Parameter<M> : never;
 };
 
 export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Modeled<M>;
@@ -104,6 +92,11 @@ export type Data<M extends Model | null = Model | null> = Node<"data"> &
       : unknown;
   };
 
+export type Store<M extends Model = Model> = Node<"store"> &
+  Modeled<M> & {
+    data: Data<M>;
+  };
+
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
@@ -125,24 +118,13 @@ export type MethodCall<
 > = Node<"methodCall"> &
   Modeled<M> &
   HasAddress & {
-    argument: P extends Model ? Field<P> : never;
+    argument?: P extends Model ? Field<P> : never;
     scope?: MethodCall;
   };
 
-export type Store<M extends Model = Model> = Node<"store"> &
-  Modeled<M> & {
-    data: Data<M>;
-  };
-
-export type WritableParameter<M extends Model = Model> = Node<"writableParameter"> & Modeled<M>;
-
-export type WritablePointer<M extends Model = Model> = Node<"writablePointer"> &
-  Modeled<M> &
-  HasAddress;
-
 export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> &
   HasAddress & {
-    argument: M extends Model ? Field<M> : never;
+    argument?: M extends Model ? Field<M> : never;
   };
 
 export type StreamCall<M extends Model | null = Model | null> = Node<"streamCall"> &
@@ -181,10 +163,16 @@ export type HasAddress = {
   address: Array<string>;
 };
 
-/**
- * A writable field contains a publisher which publishes AND subscribes to values of a certain type.
- * It inherits sub-fields, methods, AND actions from its model.
- */
+export type WritableParameter<M extends Model = Model> = Parameter<M> & {
+  writable: true;
+};
+
 export type WritableField<M extends Model> = Node<"field"> & {
-  publisher: Store<M> | WritableParameter<M> | WritablePointer<M>;
+  publisher: WritableParameter<M> | WritablePointer<M> | Store<M>;
+};
+
+/* Tier 5 */
+
+export type WritablePointer<M extends Model = Model> = Pointer<M> & {
+  writable: true;
 };
