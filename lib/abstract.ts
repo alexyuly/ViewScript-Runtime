@@ -39,7 +39,7 @@ export type HasName<Name extends string = string> = {
 };
 
 export type Field<M extends Model = Model> = Node<"field"> & {
-  publisher: Data<M> | Store<M> | Parameter<M> | Pointer<M> | Switch<M> | MethodCall<M>;
+  publisher: Data<M> | Store<M> | Switch<M> | Parameter<M> | Pointer<M> | MethodCall<M>;
 };
 
 export type Method<
@@ -73,7 +73,7 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
   };
 };
 
-/* Tier 3 */
+/* Tiers 3 and greater */
 
 export type Data<M extends Model | null = Model | null> = Node<"data"> &
   Modeled<M> & {
@@ -97,19 +97,19 @@ export type Store<M extends Model = Model> = Node<"store"> &
     data: Data<M>;
   };
 
+export type Switch<M extends Model = Model> = Node<"switch"> &
+  Modeled<M> & {
+    condition: Field<Model<"Boolean">>;
+    positive: Field<M>;
+    negative: Field<M>;
+  };
+
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
   Modeled<M> &
   HasAddress & {
     scope?: MethodCall;
-  };
-
-export type Switch<M extends Model = Model> = Node<"switch"> &
-  Modeled<M> & {
-    condition: Field<Model<"Boolean">>;
-    positive: Field<M>;
-    negative: Field<M>;
   };
 
 export type MethodCall<
@@ -148,8 +148,6 @@ export type Property<F extends Field> = F["publisher"] extends Parameter<infer M
   ? WritableField<M>
   : never;
 
-/* Tier 4 */
-
 export type Structure<M extends Model = Model> = Node<"structure"> &
   Modeled<M> & {
     properties: {
@@ -170,8 +168,6 @@ export type WritableParameter<M extends Model = Model> = Parameter<M> & {
 export type WritableField<M extends Model> = Node<"field"> & {
   publisher: WritableParameter<M> | WritablePointer<M> | Store<M>;
 };
-
-/* Tier 5 */
 
 export type WritablePointer<M extends Model = Model> = Pointer<M> & {
   writable: true;

@@ -86,7 +86,7 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
   readonly abstractNode: Abstract.Renderable;
   private readonly element: Feature | Landscape;
 
-  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Renderable, domain?: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -104,9 +104,9 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
 
 class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
-  private readonly publisher: Data | Parameter | Pointer | Switch | MethodCall | Store;
+  private readonly publisher: Data | Store | Switch | Parameter | Pointer | MethodCall;
 
-  constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Field, domain?: Abstract.App["domain"], scope?: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -116,12 +116,12 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
         ? new Data(abstractNode.publisher, domain, scope)
         : abstractNode.publisher.kind === "store"
         ? new Store(abstractNode.publisher, domain, scope)
+        : abstractNode.publisher.kind === "switch"
+        ? new Switch(abstractNode.publisher, domain, scope)
         : abstractNode.publisher.kind === "parameter"
         ? new Parameter(abstractNode.publisher)
         : abstractNode.publisher.kind === "pointer"
         ? new Pointer(abstractNode.publisher, domain, scope)
-        : abstractNode.publisher.kind === "switch"
-        ? new Switch(abstractNode.publisher, domain, scope)
         : abstractNode.publisher.kind === "methodCall"
         ? new MethodCall(abstractNode.publisher, domain, scope)
         : (() => {
@@ -169,7 +169,7 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
 class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
   readonly abstractNode: Abstract.Feature;
 
-  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Feature, domain?: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -180,7 +180,7 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
 class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> {
   readonly abstractNode: Abstract.Landscape;
 
-  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Landscape, domain?: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -188,13 +188,13 @@ class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> 
   }
 }
 
-/* Tier 3 */
+/* Tiers 3 and greater */
 
 class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
   private readonly methods: Record<string, Method> = {};
 
-  constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Data, domain?: Abstract.App["domain"], scope?: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -229,7 +229,7 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
     throw new Error();
   }
 
-  static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Readable) {
+  static hydrate(value: Abstract.Data["value"], domain?: Abstract.App["domain"], scope?: Readable) {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
@@ -248,7 +248,7 @@ class Store extends Proxy<unknown> implements Writable, ConcreteNode<"store"> {
   private readonly data: Data;
   private readonly actions: Record<string, Action> = {};
 
-  constructor(abstractNode: Abstract.Store, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Store, domain?: Abstract.App["domain"], scope?: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -314,68 +314,13 @@ class Store extends Proxy<unknown> implements Writable, ConcreteNode<"store"> {
   }
 }
 
-class Parameter extends Proxy<unknown> implements ConcreteNode<"parameter"> {
-  readonly abstractNode: Abstract.Parameter;
-  field?: Field; // TODO When does this get assigned?
-
-  constructor(abstractNode: Abstract.Parameter) {
-    super();
-
-    this.abstractNode = abstractNode;
-  }
-
-  getField(): Field {
-    if (this.field !== undefined) {
-      return this.field;
-    }
-
-    throw new Error();
-  }
-}
-
-class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
-  readonly abstractNode: Abstract.Pointer;
-  private readonly field: Field;
-
-  constructor(abstractNode: Abstract.Pointer, domain: Abstract.App["domain"], scope: Readable) {
-    super();
-
-    this.abstractNode = abstractNode;
-
-    const realScope = abstractNode.scope
-      ? new MethodCall(abstractNode.scope, domain, scope).getField()
-      : scope;
-
-    const route = abstractNode.address.slice();
-
-    let terminal: Field | undefined;
-    let nextStop = route.shift();
-
-    while (nextStop !== undefined) {
-      terminal = (terminal ?? realScope).getProperty(nextStop);
-      nextStop = route.shift();
-    }
-
-    if (terminal !== undefined) {
-      this.field = terminal;
-      this.field.sendTo(this);
-    } else {
-      throw new Error();
-    }
-  }
-
-  getField(): Field {
-    return this.field;
-  }
-}
-
 class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
   readonly abstractNode: Abstract.Switch;
   private readonly condition: Field;
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(abstractNode: Abstract.Switch, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Switch, domain?: Abstract.App["domain"], scope?: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -400,11 +345,76 @@ class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
   }
 }
 
+class Parameter extends Proxy<unknown> implements ConcreteNode<"parameter"> {
+  readonly abstractNode: Abstract.Parameter;
+  field?: Field; // TODO When does this get assigned?
+
+  constructor(abstractNode: Abstract.Parameter) {
+    super();
+
+    this.abstractNode = abstractNode;
+  }
+
+  getField(): Field {
+    if (this.field !== undefined) {
+      return this.field;
+    }
+
+    throw new Error();
+  }
+}
+
+class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
+  readonly abstractNode: Abstract.Pointer;
+  private readonly field: Field;
+
+  constructor(abstractNode: Abstract.Pointer, domain?: Abstract.App["domain"], scope?: Readable) {
+    super();
+
+    this.abstractNode = abstractNode;
+
+    const realScope = abstractNode.scope
+      ? new MethodCall(abstractNode.scope, domain, scope).getField()
+      : scope;
+
+    const route = abstractNode.address.slice();
+
+    let terminal: Field | undefined;
+    let nextStop = route.shift();
+
+    while (nextStop) {
+      const propertyOwner = terminal ?? realScope;
+
+      if (!propertyOwner) {
+        break;
+      }
+
+      terminal = propertyOwner.getProperty(nextStop);
+      nextStop = route.shift();
+    }
+
+    if (terminal) {
+      this.field = terminal;
+      this.field.sendTo(this);
+    } else {
+      throw new Error();
+    }
+  }
+
+  getField(): Field {
+    return this.field;
+  }
+}
+
 class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
   readonly abstractNode: Abstract.MethodCall;
   private readonly result: Field;
 
-  constructor(abstractNode: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(
+    abstractNode: Abstract.MethodCall,
+    domain?: Abstract.App["domain"],
+    scope?: Readable,
+  ) {
     super();
 
     this.abstractNode = abstractNode;
@@ -418,16 +428,23 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
     let terminal: Field | undefined;
     let nextStop = route.shift();
 
-    while (nextStop !== undefined) {
-      terminal = (terminal ?? realScope).getProperty(nextStop);
+    while (nextStop) {
+      const propertyOwner = terminal ?? realScope;
+
+      if (!propertyOwner) {
+        break;
+      }
+
+      terminal = propertyOwner.getProperty(nextStop);
       nextStop = route.shift();
     }
 
+    const methodOwner = terminal ?? realScope;
     const methodName = abstractNode.address.slice(-1)[0];
     const argument = abstractNode.argument && new Field(abstractNode.argument, domain, scope);
 
-    if (methodName !== undefined) {
-      const method: Method = (terminal ?? realScope).getMethod(methodName);
+    if (methodOwner instanceof Field && methodName !== undefined) {
+      const method = methodOwner.getMethod(methodName);
 
       if (typeof method === "function") {
         const abstractResult: Abstract.Field = {
@@ -438,17 +455,12 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
           },
         };
 
-        this.result = new Field(abstractResult, domain, realScope);
+        this.result = new Field(abstractResult);
 
-        const methodOwner = terminal ?? scope;
-
-        if (methodOwner instanceof Publisher) {
-          methodOwner.sendTo(() => {
-            this.result.take(method(argument));
-          });
-        } else {
-          throw new Error();
-        }
+        methodOwner.sendTo(() => {
+          const resultingValue = method(argument);
+          this.result.take(resultingValue);
+        });
       } else {
         const closure = argument ? new Closure(argument, realScope) : realScope;
 
@@ -466,12 +478,10 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
   }
 }
 
-/* Tier 4 */
-
 class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"structure"> {
   readonly abstractNode: Abstract.Structure;
 
-  constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Structure, domain?: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
