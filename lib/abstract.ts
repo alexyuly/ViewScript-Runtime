@@ -1,9 +1,5 @@
 /* Tier 0 */
 
-/**
- * An app node is the root of a ViewScript application.
- * It has a set of models and views, and it renders a live tree of HTML elements.
- */
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   domain: Record<string, Model | View>;
@@ -17,12 +13,12 @@ export type Node<Kind extends string> = {
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
-  HasName<Name> & {
+  Named<Name> & {
     members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
-  HasName<Name> & {
+  Named<Name> & {
     fields: Record<string, Field>;
     streams: Record<`on${string}`, Stream>;
     renderable: Renderable;
@@ -34,7 +30,7 @@ export type Renderable = Node<"renderable"> & {
 
 /* Tier 2 */
 
-export type HasName<Name extends string = string> = {
+export type Named<Name extends string = string> = {
   name: Name;
 };
 
@@ -46,13 +42,13 @@ export type Method<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"method"> & {
+  parameter?: P extends Model ? Named & Parameter<P> : never;
   result: Field<M>;
-  parameter?: P extends Model ? HasName & Parameter<P> : never;
 };
 
 export type Action<M extends Model | null = Model | null> = Node<"action"> & {
+  parameter?: M extends Model ? Named & Parameter<M> : never;
   steps: Array<ActionCall | StreamCall | Exception>;
-  parameter?: M extends Model ? HasName & Parameter<M> : never;
 };
 
 export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Modeled<M>;
@@ -107,29 +103,29 @@ export type Switch<M extends Model = Model> = Node<"switch"> &
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
-  Modeled<M> &
-  HasAddress & {
+  Modeled<M> & {
     scope?: MethodCall;
+    address: Array<string>;
   };
 
 export type MethodCall<
   M extends Model = Model,
   P extends Model | null = Model | null,
 > = Node<"methodCall"> &
-  Modeled<M> &
-  HasAddress & {
-    argument?: P extends Model ? Field<P> : never;
+  Modeled<M> & {
     scope?: MethodCall;
+    address: Array<string>;
+    argument?: P extends Model ? Field<P> : never;
   };
 
-export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> &
-  HasAddress & {
-    argument?: M extends Model ? Field<M> : never;
-  };
+export type ActionCall<M extends Model | null = Model | null> = Node<"actionCall"> & {
+  address: Array<string>;
+  argument?: M extends Model ? Field<M> : never;
+};
 
 export type StreamCall<M extends Model | null = Model | null> = Node<"streamCall"> &
   Modeled<M> &
-  HasName & {
+  Named & {
     output: M extends Model ? Field<M> : never;
   };
 
@@ -144,7 +140,7 @@ export type Modeled<M extends Model | null> = {
 
 export type Property<F extends Field> = F["publisher"] extends Parameter<infer M>
   ? Field<M>
-  : F["publisher"] extends WritableParameter<infer M>
+  : F["publisher"] extends Writable & Parameter<infer M>
   ? WritableField<M>
   : never;
 
@@ -157,18 +153,10 @@ export type Structure<M extends Model = Model> = Node<"structure"> &
     };
   };
 
-export type HasAddress = {
-  address: Array<string>;
-};
-
-export type WritableParameter<M extends Model = Model> = Parameter<M> & {
+export type Writable = {
   writable: true;
 };
 
 export type WritableField<M extends Model> = Node<"field"> & {
-  publisher: WritableParameter<M> | WritablePointer<M> | Store<M>;
-};
-
-export type WritablePointer<M extends Model = Model> = Pointer<M> & {
-  writable: true;
+  publisher: Store<M> | (Writable & (Parameter<M> | Pointer<M>));
 };

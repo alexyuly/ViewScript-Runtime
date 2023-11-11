@@ -325,9 +325,9 @@ class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
 
     this.abstractNode = abstractNode;
 
+    this.condition = new Field(abstractNode.condition, domain, scope);
     this.positive = new Field(abstractNode.positive, domain, scope);
     this.negative = new Field(abstractNode.negative, domain, scope);
-    this.condition = new Field(abstractNode.condition, domain, scope);
 
     this.condition.sendTo((value) => {
       const field = value ? this.positive : this.negative;
@@ -382,10 +382,10 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
     let terminal: Field | undefined;
     let nextStop = route.shift();
 
-    while (nextStop) {
+    while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      if (!propertyOwner) {
+      if (propertyOwner === undefined) {
         break;
       }
 
@@ -393,7 +393,7 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
       nextStop = route.shift();
     }
 
-    if (terminal) {
+    if (terminal !== undefined) {
       this.field = terminal;
       this.field.sendTo(this);
     } else {
@@ -428,10 +428,10 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
     let terminal: Field | undefined;
     let nextStop = route.shift();
 
-    while (nextStop) {
+    while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      if (!propertyOwner) {
+      if (propertyOwner === undefined) {
         break;
       }
 
@@ -462,7 +462,17 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
           this.result.take(resultingValue);
         });
       } else {
-        const closure = argument ? new Closure(argument, realScope) : realScope;
+        const parameterName = method.parameter?.name;
+        const closure =
+          !argument || !parameterName || !realScope
+            ? realScope
+            : {
+                ...realScope,
+                getProperty: (name: string) => {
+                  const property = name === parameterName ? argument : realScope.getProperty(name);
+                  return property;
+                },
+              };
 
         this.result = new Field(method.result, domain, closure);
       }
