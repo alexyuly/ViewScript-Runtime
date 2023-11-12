@@ -14,7 +14,7 @@ export type Node<Kind extends string = string> = {
 
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
-    members: Record<string, Field | Method | Action | ((argument: any) => unknown)>;
+    members: Record<string, Field | Method | Action>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &

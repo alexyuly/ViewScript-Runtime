@@ -60,14 +60,24 @@ abstract class Proxy<T> extends Publisher<T> implements Subscriber<T> {
 
 class Scope implements FieldScope {
   private readonly base?: Field | Scope;
-  private readonly properties: Record<string, Field> = {};
+  private readonly members: Record<string, Field | Method | Action> = {};
 
   constructor(base?: Field | Scope) {
     this.base = base;
   }
 
   addProperty(name: string, property: Field): Scope {
-    this.properties[name] = property;
+    this.members[name] = property;
+    return this;
+  }
+
+  addMethod(name: string, method: Method): Scope {
+    this.members[name] = method;
+    return this;
+  }
+
+  addAction(name: string, action: Action): Scope {
+    this.members[name] = action;
     return this;
   }
 
@@ -80,8 +90,9 @@ class Scope implements FieldScope {
 
       throw new Error();
     } catch (error) {
-      if (name in this.properties) {
-        const property = this.properties[name];
+      const property = this.members[name];
+
+      if (property instanceof Field) {
         return property;
       }
 
@@ -90,21 +101,41 @@ class Scope implements FieldScope {
   }
 
   getMethod(name: string): Method {
-    if (this.base !== undefined) {
-      const method = this.base.getMethod(name);
-      return method;
-    }
+    try {
+      if (this.base !== undefined) {
+        const method = this.base.getMethod(name);
+        return method;
+      }
 
-    throw new Error();
+      throw new Error();
+    } catch (error) {
+      const method = this.members[name];
+
+      if (Guards.isMethod(method) || typeof method == "function") {
+        return method;
+      }
+
+      throw error;
+    }
   }
 
   getAction(name: string): Action {
-    if (this.base !== undefined) {
-      const action = this.base.getAction(name);
-      return action;
-    }
+    try {
+      if (this.base !== undefined) {
+        const action = this.base.getAction(name);
+        return action;
+      }
 
-    throw new Error();
+      throw new Error();
+    } catch (error) {
+      const action = this.members[name];
+
+      if (Guards.isAction(action) || typeof action == "function") {
+        return action;
+      }
+
+      throw error;
+    }
   }
 }
 
@@ -154,31 +185,56 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
 class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
   private readonly publisher: Data | Store | Switch | Pointer | MethodCall;
+  private readonly scope;
 
   constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
+    this.scope = new Scope(scope);
 
-    // TODO Define a new scope, which inherits from the given scope and adds members,
-    // and pass it to the publisher...
+    // TODO (WIP) Move the definition of properties, methods, and actions up from the publisher classes, to here...
+
+    const model = domain[abstractNode.publisher.modelName];
+
+    if (!Guards.isModel(model)) {
+      // TODO Account for native types: modelName === "Boolean", modelName === "Number", etc...
+
+      throw new Error();
+    }
+
+    Object.entries(model.members).forEach(([name, abstractMember]) => {
+      if (Guards.isField(abstractMember)) {
+        if (!Guards.isParameter(abstractMember.publisher)) {
+          const property = new Field(abstractMember, domain, scope);
+          scope.addProperty(name, property);
+        }
+      } else if (Guards.isMethod(abstractMember)) {
+        // TODO
+      } else {
+        // TODO
+      }
+    });
+
     this.publisher =
       abstractNode.publisher.kind === "data"
-        ? new Data(abstractNode.publisher, domain, scope)
+        ? new Data(abstractNode.publisher, domain, this.scope)
         : abstractNode.publisher.kind === "store"
-        ? new Store(abstractNode.publisher, domain, scope)
+        ? new Store(abstractNode.publisher, domain, this.scope)
         : abstractNode.publisher.kind === "switch"
-        ? new Switch(abstractNode.publisher, domain, scope)
+        ? new Switch(abstractNode.publisher, domain, this.scope)
         : abstractNode.publisher.kind === "pointer"
-        ? new Pointer(abstractNode.publisher, domain, scope)
+        ? new Pointer(abstractNode.publisher, domain, this.scope)
         : abstractNode.publisher.kind === "methodCall"
-        ? new MethodCall(abstractNode.publisher, domain, scope)
+        ? new MethodCall(abstractNode.publisher, domain, this.scope)
         : (() => {
             throw new Error();
           })();
 
     this.publisher.sendTo(this);
   }
+
+  // TODO Update these following 3 methods to use the scope...
 
   getProperty(name: string): Field {
     const field =
@@ -254,7 +310,6 @@ class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> 
 
 class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
-  private readonly methods: Record<string, Method> = {};
 
   constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -308,7 +363,6 @@ class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
 class Store extends Proxy<unknown> implements FieldScope, ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
   private readonly data: Data;
-  private readonly actions: Record<string, Action> = {};
 
   constructor(abstractNode: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -535,16 +589,9 @@ class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"
 
     Object.entries(abstractNode.properties).forEach(([name, property]) => {
       if (Guards.isField(property)) {
-        const abstractField = property as Abstract.Field; // TODO Fix the typing here?
+        // TODO If possible, fix the typing here, so that property isn't never:
+        const abstractField = property as Abstract.Field;
         this.properties[name] = new Field(abstractField, domain, scope);
-      }
-    });
-
-    Object.entries(model.members).forEach(([name, abstractMember]) => {
-      if (Guards.isField(abstractMember)) {
-        if (!(name in this.properties) && !Guards.isParameter(abstractMember.publisher)) {
-          this.properties[name] = new Field(abstractMember, domain, scope);
-        }
       }
     });
   }
