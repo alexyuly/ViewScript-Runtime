@@ -8,13 +8,13 @@ export type App = Node<"app"> & {
 
 /* Tier 1 */
 
-export type Node<Kind extends string> = {
+export type Node<Kind extends string = string> = {
   kind: Kind;
 };
 
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
-    members: Record<string, Model | Field | Method | Action | ((argument: any) => unknown)>;
+    members: Record<string, Field | Method | Action | ((argument: any) => unknown)>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
@@ -35,7 +35,7 @@ export type Named<Name extends string = string> = {
 };
 
 export type Field<M extends Model = Model> = Node<"field"> & {
-  publisher: Data<M> | Store<M> | Switch<M> | Parameter<M> | Pointer<M> | MethodCall<M>;
+  publisher: Parameter<M> | Data<M> | Store<M> | Switch<M> | Pointer<M> | MethodCall<M>;
 };
 
 export type Method<
@@ -71,6 +71,8 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 /* Tiers 3 and greater */
 
+export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
+
 export type Data<M extends Model | null = Model | null> = Node<"data"> &
   Modeled<M> & {
     value: M extends Model
@@ -99,8 +101,6 @@ export type Switch<M extends Model = Model> = Node<"switch"> &
     positive: Field<M>;
     negative: Field<M>;
   };
-
-export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
 export type Pointer<M extends Model = Model> = Node<"pointer"> &
   Modeled<M> & {
