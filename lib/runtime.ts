@@ -17,10 +17,6 @@ interface FieldScope extends DataScope {
   getAction(name: string): Action;
 }
 
-interface RenderableScope extends Dictionary {
-  // getStream(name: string): Stream;
-}
-
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
 }
@@ -62,7 +58,7 @@ abstract class Proxy<T> extends Publisher<T> implements Subscriber<T> {
   }
 }
 
-class Scope implements FieldScope, RenderableScope {
+class Scope implements FieldScope {
   private readonly base?: Field | Scope;
   private readonly properties: Record<string, Field> = {};
 
