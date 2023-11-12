@@ -73,20 +73,18 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
-export type Data<M extends Model | null = Model | null> = Node<"data"> &
+export type Data<M extends Model = Model> = Node<"data"> &
   Modeled<M> & {
-    value: M extends Model
-      ? M["name"] extends "Array"
-        ? Array<Field>
-        : M["name"] extends "Boolean"
-        ? boolean
-        : M["name"] extends "Number"
-        ? number
-        : M["name"] extends "String"
-        ? string
-        : M["name"] extends "Renderable"
-        ? Renderable
-        : Array<Field> | boolean | number | string | Renderable | Structure<M>
+    value: M["name"] extends "Array"
+      ? Array<Field>
+      : M["name"] extends "Boolean"
+      ? boolean
+      : M["name"] extends "Number"
+      ? number
+      : M["name"] extends "String"
+      ? string
+      : M["name"] extends "Renderable"
+      ? Renderable
       : unknown;
   };
 

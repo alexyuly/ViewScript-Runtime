@@ -5,15 +5,9 @@ import * as Dom from "./runtimeDom";
 type Action = Abstract.Action | ((argument?: Field) => unknown);
 type Method = Abstract.Method | ((argument?: Field) => unknown);
 
-interface Dictionary {
+interface FieldScope {
   getProperty(name: string): Field;
-}
-
-interface DataScope extends Dictionary {
   getMethod(name: string): Method;
-}
-
-interface FieldScope extends DataScope {
   getAction(name: string): Action;
 }
 
@@ -193,29 +187,6 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
     this.abstractNode = abstractNode;
     this.scope = new Scope(scope);
 
-    // TODO (WIP) Move the definition of properties, methods, and actions up from the publisher classes, to here...
-
-    const model = domain[abstractNode.publisher.modelName];
-
-    if (!Guards.isModel(model)) {
-      // TODO Account for native types: modelName === "Boolean", modelName === "Number", etc...
-
-      throw new Error();
-    }
-
-    Object.entries(model.members).forEach(([name, abstractMember]) => {
-      if (Guards.isField(abstractMember)) {
-        if (!Guards.isParameter(abstractMember.publisher)) {
-          const property = new Field(abstractMember, domain, scope);
-          scope.addProperty(name, property);
-        }
-      } else if (Guards.isMethod(abstractMember)) {
-        // TODO
-      } else {
-        // TODO
-      }
-    });
-
     this.publisher =
       abstractNode.publisher.kind === "data"
         ? new Data(abstractNode.publisher, domain, this.scope)
@@ -234,32 +205,31 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
     this.publisher.sendTo(this);
   }
 
-  // TODO Update these following 3 methods to use the scope...
-
   getProperty(name: string): Field {
-    const field =
+    const scope =
       this.publisher instanceof Data || this.publisher instanceof Store
-        ? this.publisher
+        ? this.scope
         : this.publisher.getField();
 
-    const property = field.getProperty(name);
+    const property = scope.getProperty(name);
     return property;
   }
 
   getMethod(name: string): Method {
-    const field =
+    const scope =
       this.publisher instanceof Data || this.publisher instanceof Store
-        ? this.publisher
+        ? this.scope
         : this.publisher.getField();
 
-    const method = field.getMethod(name);
+    const method = scope.getMethod(name);
     return method;
   }
 
   getAction(name: string): Action {
     if (this.publisher instanceof Store || this.publisher instanceof Pointer) {
-      const field = this.publisher instanceof Store ? this.publisher : this.publisher.getField();
-      const action = field.getAction(name);
+      const scope = this.publisher instanceof Store ? this.scope : this.publisher.getField();
+
+      const action = scope.getAction(name);
       return action;
     }
 
@@ -275,7 +245,6 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
 
     this.abstractNode = abstractNode;
 
-    // TODO...
     const domElement = Dom.create(abstractNode.tagName);
     // TODO Define a new scope, which inherits from the given scope and adds properties...
 
@@ -308,7 +277,7 @@ class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> 
 
 /* Tiers 3 and greater */
 
-class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
+class Data extends Proxy<unknown> implements ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
 
   constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Scope) {
@@ -319,31 +288,11 @@ class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
     this.publish(Data.hydrate(abstractNode.value, domain, scope));
 
     if (abstractNode.modelName === "Boolean") {
-      this.methods.and = (argument) => this.getValue() && argument?.getValue();
-      this.methods.not = () => !this.getValue();
+      scope.addMethod("and", (argument) => this.getValue() && argument?.getValue());
+      scope.addMethod("not", () => !this.getValue());
     }
 
     // TODO Add methods for all models...
-  }
-
-  getProperty(name: string): Field {
-    const value = this.getValue();
-
-    if (value instanceof Structure) {
-      const property = value.getProperty(name);
-      return property;
-    }
-
-    throw new Error();
-  }
-
-  getMethod(name: string): Method {
-    if (name in this.methods) {
-      const method = this.methods[name];
-      return method;
-    }
-
-    throw new Error();
   }
 
   static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Scope) {
@@ -360,7 +309,7 @@ class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
   }
 }
 
-class Store extends Proxy<unknown> implements FieldScope, ConcreteNode<"store"> {
+class Store extends Proxy<unknown> implements ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
   private readonly data: Data;
 
@@ -374,59 +323,40 @@ class Store extends Proxy<unknown> implements FieldScope, ConcreteNode<"store"> 
 
     const initialValue = this.getValue();
 
-    this.actions.reset = () => {
+    scope.addAction("reset", () => {
       this.data.take(initialValue);
-    };
-    this.actions.setTo = (argument) => {
+    });
+    scope.addAction("setTo", (argument) => {
       if (argument) {
         this.data.take(argument.getValue());
       }
-    };
+    });
 
     if (abstractNode.modelName === "Array") {
-      this.actions.push = (argument) => {
+      scope.addAction("push", (argument) => {
         if (argument) {
           this.data.take([...(this.getValue() as Array<Field>), argument]);
         }
-      };
+      });
     } else if (abstractNode.modelName === "Boolean") {
-      this.actions.disable = () => {
+      scope.addAction("disable", () => {
         this.data.take(false);
-      };
-      this.actions.enable = () => {
+      });
+      scope.addAction("enable", () => {
         this.data.take(true);
-      };
-      this.actions.toggle = () => {
+      });
+      scope.addAction("toggle", () => {
         this.data.take(!this.getValue());
-      };
+      });
     } else if (abstractNode.modelName === "Number") {
-      this.actions.add = (argument) => {
+      scope.addAction("add", (argument) => {
         if (argument) {
           this.data.take((this.getValue() as number) + (argument.getValue() as number));
         }
-      };
+      });
     }
 
     // TODO Add actions for all models...
-  }
-
-  getProperty(name: string): Field {
-    const property = this.data.getProperty(name);
-    return property;
-  }
-
-  getMethod(name: string): Method {
-    const method = this.data.getMethod(name);
-    return method;
-  }
-
-  getAction(name: string): Action {
-    if (name in this.actions) {
-      const action = this.actions[name];
-      return action;
-    }
-
-    throw new Error();
   }
 }
 
@@ -537,8 +467,9 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
         const abstractResult: Abstract.Field = {
           kind: "field",
           publisher: {
-            kind: "parameter",
+            kind: "data",
             modelName: abstractNode.modelName,
+            value: method(argument),
           },
         };
 
@@ -572,9 +503,8 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
   }
 }
 
-class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"structure"> {
+class Structure extends Publisher<unknown> implements ConcreteNode<"structure"> {
   readonly abstractNode: Abstract.Structure;
-  private readonly properties: Record<string, Field> = {};
 
   constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -587,21 +517,27 @@ class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"
       throw new Error();
     }
 
-    Object.entries(abstractNode.properties).forEach(([name, property]) => {
-      if (Guards.isField(property)) {
-        // TODO If possible, fix the typing here, so that property isn't never:
-        const abstractField = property as Abstract.Field;
-        this.properties[name] = new Field(abstractField, domain, scope);
+    Object.entries(model.members).forEach(([name, abstractMember]) => {
+      if (Guards.isField(abstractMember)) {
+        let abstractField: Abstract.Field | undefined;
+
+        if (Guards.isParameter(abstractMember.publisher)) {
+          const property = abstractNode.properties[name];
+
+          if (Guards.isField(property)) {
+            abstractField = property as Abstract.Field; // TODO fix typing?
+          }
+        } else {
+          abstractField = abstractMember;
+        }
+
+        if (Guards.isField(abstractField)) {
+          const field = new Field(abstractMember, domain, scope);
+          scope.addProperty(name, field);
+        }
+
+        throw new Error();
       }
     });
-  }
-
-  getProperty(name: string): Field {
-    if (name in this.properties) {
-      const method = this.properties[name];
-      return method;
-    }
-
-    throw new Error();
   }
 }
