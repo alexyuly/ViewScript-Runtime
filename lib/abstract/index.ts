@@ -140,9 +140,13 @@ export type Modeled<M extends Model | null> = {
 
 export type Property<F extends Field> = F["publisher"] extends Parameter<infer M>
   ? Field<M>
-  : F["publisher"] extends Writable & Parameter<infer M>
+  : F["publisher"] extends { writable: true } & Parameter<infer M>
   ? WritableField<M>
   : never;
+
+export type WritableField<M extends Model> = Node<"field"> & {
+  publisher: Store<M> | ({ writable: true } & (Parameter<M> | Pointer<M>));
+};
 
 export type Structure<M extends Model = Model> = Node<"structure"> &
   Modeled<M> & {
@@ -152,11 +156,3 @@ export type Structure<M extends Model = Model> = Node<"structure"> &
         : never;
     };
   };
-
-export type Writable = {
-  writable: true;
-};
-
-export type WritableField<M extends Model> = Node<"field"> & {
-  publisher: Store<M> | (Writable & (Parameter<M> | Pointer<M>));
-};
