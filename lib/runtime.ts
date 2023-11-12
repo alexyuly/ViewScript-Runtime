@@ -86,7 +86,7 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
   readonly abstractNode: Abstract.Renderable;
   private readonly element: Feature | Landscape;
 
-  constructor(abstractNode: Abstract.Renderable, domain?: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -104,9 +104,9 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
 
 class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
-  private readonly publisher: Data | Store | Switch | Parameter | Pointer | MethodCall;
+  private readonly publisher: Data | Store | Switch | Pointer | MethodCall;
 
-  constructor(abstractNode: Abstract.Field, domain?: Abstract.App["domain"], scope?: Readable) {
+  constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -118,8 +118,6 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
         ? new Store(abstractNode.publisher, domain, scope)
         : abstractNode.publisher.kind === "switch"
         ? new Switch(abstractNode.publisher, domain, scope)
-        : abstractNode.publisher.kind === "parameter"
-        ? new Parameter(abstractNode.publisher)
         : abstractNode.publisher.kind === "pointer"
         ? new Pointer(abstractNode.publisher, domain, scope)
         : abstractNode.publisher.kind === "methodCall"
@@ -152,11 +150,7 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
   }
 
   getAction(name: string): Action {
-    if (
-      this.publisher instanceof Store ||
-      this.publisher instanceof Parameter ||
-      this.publisher instanceof Pointer
-    ) {
+    if (this.publisher instanceof Store || this.publisher instanceof Pointer) {
       const field = this.publisher instanceof Store ? this.publisher : this.publisher.getField();
       const action = field.getAction(name);
       return action;
@@ -169,7 +163,7 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
 class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
   readonly abstractNode: Abstract.Feature;
 
-  constructor(abstractNode: Abstract.Feature, domain?: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -180,7 +174,7 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
 class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> {
   readonly abstractNode: Abstract.Landscape;
 
-  constructor(abstractNode: Abstract.Landscape, domain?: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"]) {
     super();
 
     this.abstractNode = abstractNode;
@@ -194,7 +188,7 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
   private readonly methods: Record<string, Method> = {};
 
-  constructor(abstractNode: Abstract.Data, domain?: Abstract.App["domain"], scope?: Readable) {
+  constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -229,14 +223,14 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
     throw new Error();
   }
 
-  static hydrate(value: Abstract.Data["value"], domain?: Abstract.App["domain"], scope?: Readable) {
+  static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Readable) {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
         : Helpers.isRenderable(value)
         ? new Renderable(value, domain)
         : Helpers.isStructure(value)
-        ? new Structure(value, domain)
+        ? new Structure(value, domain, scope)
         : value;
 
     return hydratedValue;
@@ -248,7 +242,7 @@ class Store extends Proxy<unknown> implements Writable, ConcreteNode<"store"> {
   private readonly data: Data;
   private readonly actions: Record<string, Action> = {};
 
-  constructor(abstractNode: Abstract.Store, domain?: Abstract.App["domain"], scope?: Readable) {
+  constructor(abstractNode: Abstract.Store, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -320,7 +314,7 @@ class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(abstractNode: Abstract.Switch, domain?: Abstract.App["domain"], scope?: Readable) {
+  constructor(abstractNode: Abstract.Switch, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -345,30 +339,11 @@ class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
   }
 }
 
-class Parameter extends Proxy<unknown> implements ConcreteNode<"parameter"> {
-  readonly abstractNode: Abstract.Parameter;
-  field?: Field; // TODO When does this get assigned?
-
-  constructor(abstractNode: Abstract.Parameter) {
-    super();
-
-    this.abstractNode = abstractNode;
-  }
-
-  getField(): Field {
-    if (this.field !== undefined) {
-      return this.field;
-    }
-
-    throw new Error();
-  }
-}
-
 class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
   readonly abstractNode: Abstract.Pointer;
   private readonly field: Field;
 
-  constructor(abstractNode: Abstract.Pointer, domain?: Abstract.App["domain"], scope?: Readable) {
+  constructor(abstractNode: Abstract.Pointer, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -410,11 +385,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
   readonly abstractNode: Abstract.MethodCall;
   private readonly result: Field;
 
-  constructor(
-    abstractNode: Abstract.MethodCall,
-    domain?: Abstract.App["domain"],
-    scope?: Readable,
-  ) {
+  constructor(abstractNode: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -455,7 +426,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
           },
         };
 
-        this.result = new Field(abstractResult);
+        this.result = new Field(abstractResult, domain, realScope);
 
         methodOwner.sendTo(() => {
           const resultingValue = method(argument);
@@ -468,7 +439,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
             ? realScope
             : {
                 ...realScope,
-                getProperty: (name: string) => {
+                getProperty(name: string) {
                   const property = name === parameterName ? argument : realScope.getProperty(name);
                   return property;
                 },
@@ -490,16 +461,41 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
 
 class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"structure"> {
   readonly abstractNode: Abstract.Structure;
+  private readonly properties: Record<string, Field> = {};
 
-  constructor(abstractNode: Abstract.Structure, domain?: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
 
-    // TODO Add fields from the model...
+    const model = domain[abstractNode.modelName];
+
+    if (!Helpers.isModel(model)) {
+      throw new Error();
+    }
+
+    Object.entries(abstractNode.properties).forEach(([name, property]) => {
+      if (Helpers.isField(property)) {
+        const abstractField = property as Abstract.Field; // TODO Fix the typing here?
+        this.properties[name] = new Field(abstractField, domain, scope);
+      }
+    });
+
+    Object.entries(model.members).forEach(([name, abstractMember]) => {
+      if (Helpers.isField(abstractMember)) {
+        if (!(name in this.properties) && !Helpers.isParameter(abstractMember.publisher)) {
+          this.properties[name] = new Field(abstractMember, domain, scope);
+        }
+      }
+    });
   }
 
   getProperty(name: string): Field {
-    // TODO
+    if (name in this.properties) {
+      const method = this.properties[name];
+      return method;
+    }
+
+    throw new Error();
   }
 }
