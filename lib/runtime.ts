@@ -9,17 +9,17 @@ interface Dictionary {
   getProperty(name: string): Field;
 }
 
-interface Readable extends Dictionary {
+interface DataScope extends Dictionary {
   getMethod(name: string): Method;
 }
 
-interface Writable extends Readable {
+interface FieldScope extends DataScope {
   getAction(name: string): Action;
 }
 
-// interface Listenable extends Dictionary {
-//   getStream(name: string): Stream;
-// }
+interface RenderableScope extends Dictionary {
+  // getStream(name: string): Stream;
+}
 
 interface ConcreteNode<Kind extends string> {
   abstractNode: Abstract.Node<Kind>;
@@ -62,6 +62,56 @@ abstract class Proxy<T> extends Publisher<T> implements Subscriber<T> {
   }
 }
 
+class Scope implements FieldScope, RenderableScope {
+  private readonly base?: Field | Scope;
+  private readonly properties: Record<string, Field> = {};
+
+  constructor(base?: Field | Scope) {
+    this.base = base;
+  }
+
+  addProperty(name: string, property: Field): Scope {
+    this.properties[name] = property;
+    return this;
+  }
+
+  getProperty(name: string): Field {
+    try {
+      if (this.base !== undefined) {
+        const property = this.base.getProperty(name);
+        return property;
+      }
+
+      throw new Error();
+    } catch (error) {
+      if (name in this.properties) {
+        const property = this.properties[name];
+        return property;
+      }
+
+      throw error;
+    }
+  }
+
+  getMethod(name: string): Method {
+    if (this.base !== undefined) {
+      const method = this.base.getMethod(name);
+      return method;
+    }
+
+    throw new Error();
+  }
+
+  getAction(name: string): Action {
+    if (this.base !== undefined) {
+      const action = this.base.getAction(name);
+      return action;
+    }
+
+    throw new Error();
+  }
+}
+
 /* Tier 0 */
 
 export class App implements ConcreteNode<"app"> {
@@ -85,14 +135,18 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
   readonly abstractNode: Abstract.Renderable;
   private readonly element: Feature | Landscape;
 
-  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"], scope?: Readable) {
+  constructor(
+    abstractNode: Abstract.Renderable,
+    domain: Abstract.App["domain"],
+    scope: Scope = new Scope(),
+  ) {
     super();
 
     this.abstractNode = abstractNode;
 
     this.element =
       abstractNode.element.kind === "feature"
-        ? new Feature(abstractNode.element, domain, scope) // TODO Provide a default empty scope...
+        ? new Feature(abstractNode.element, domain, scope)
         : new Landscape(abstractNode.element, domain, scope);
 
     this.element.sendTo(this);
@@ -101,15 +155,17 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
 
 /* Tier 2 */
 
-class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
+class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> {
   readonly abstractNode: Abstract.Field;
   private readonly publisher: Data | Store | Switch | Pointer | MethodCall;
 
-  constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
 
+    // TODO Define a new scope, which inherits from the given scope and adds members,
+    // and pass it to the publisher...
     this.publisher =
       abstractNode.publisher.kind === "data"
         ? new Data(abstractNode.publisher, domain, scope)
@@ -162,7 +218,7 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
 class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
   readonly abstractNode: Abstract.Feature;
 
-  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -190,7 +246,7 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
 class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> {
   readonly abstractNode: Abstract.Landscape;
 
-  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -200,11 +256,11 @@ class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> 
 
 /* Tiers 3 and greater */
 
-class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
+class Data extends Proxy<unknown> implements DataScope, ConcreteNode<"data"> {
   readonly abstractNode: Abstract.Data;
   private readonly methods: Record<string, Method> = {};
 
-  constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Data, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -239,7 +295,7 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
     throw new Error();
   }
 
-  static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Readable) {
+  static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Scope) {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
@@ -253,12 +309,12 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
   }
 }
 
-class Store extends Proxy<unknown> implements Writable, ConcreteNode<"store"> {
+class Store extends Proxy<unknown> implements FieldScope, ConcreteNode<"store"> {
   readonly abstractNode: Abstract.Store;
   private readonly data: Data;
   private readonly actions: Record<string, Action> = {};
 
-  constructor(abstractNode: Abstract.Store, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -330,7 +386,7 @@ class Switch extends Publisher<unknown> implements ConcreteNode<"switch"> {
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(abstractNode: Abstract.Switch, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
@@ -359,13 +415,13 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
   readonly abstractNode: Abstract.Pointer;
   private readonly field: Field;
 
-  constructor(abstractNode: Abstract.Pointer, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Pointer, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
 
     const realScope = abstractNode.scope
-      ? new MethodCall(abstractNode.scope, domain, scope).getField()
+      ? new Scope(new MethodCall(abstractNode.scope, domain, scope).getField())
       : scope;
 
     const route = abstractNode.address.slice();
@@ -399,13 +455,13 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
   readonly abstractNode: Abstract.MethodCall;
   private readonly result: Field;
 
-  constructor(abstractNode: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
 
     const realScope = abstractNode.scope
-      ? new MethodCall(abstractNode.scope, domain, scope).getField()
+      ? new Scope(new MethodCall(abstractNode.scope, domain, scope).getField())
       : scope;
 
     const route = abstractNode.address.slice(0, abstractNode.address.length - 1);
@@ -445,17 +501,10 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
       } else {
         const parameterName = method.parameter?.name;
 
-        // TODO Define a reusable way to construct new scopes, also to use in Features...
         const closure =
           !argument || !parameterName || !realScope
             ? realScope
-            : {
-                ...realScope,
-                getProperty(name: string) {
-                  const property = name === parameterName ? argument : realScope.getProperty(name);
-                  return property;
-                },
-              };
+            : new Scope(realScope).addProperty(parameterName, argument);
 
         this.result = new Field(method.result, domain, closure);
       }
@@ -477,7 +526,7 @@ class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"
   readonly abstractNode: Abstract.Structure;
   private readonly properties: Record<string, Field> = {};
 
-  constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"], scope: Readable) {
+  constructor(abstractNode: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.abstractNode = abstractNode;
