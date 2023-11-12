@@ -1,7 +1,6 @@
 import * as Abstract from "./abstract";
-import * as Dom from "./dom";
-import * as Helpers from "./helpers";
-import * as Style from "./style";
+import * as Guards from "./abstractGuards";
+import * as Dom from "./runtimeDom";
 
 type Action = Abstract.Action | ((argument?: Field) => unknown);
 type Method = Abstract.Method | ((argument?: Field) => unknown);
@@ -86,15 +85,15 @@ class Renderable extends Proxy<HTMLElement> implements ConcreteNode<"renderable"
   readonly abstractNode: Abstract.Renderable;
   private readonly element: Feature | Landscape;
 
-  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Renderable, domain: Abstract.App["domain"], scope?: Readable) {
     super();
 
     this.abstractNode = abstractNode;
 
     this.element =
       abstractNode.element.kind === "feature"
-        ? new Feature(abstractNode.element, domain)
-        : new Landscape(abstractNode.element, domain);
+        ? new Feature(abstractNode.element, domain, scope) // TODO Provide a default empty scope...
+        : new Landscape(abstractNode.element, domain, scope);
 
     this.element.sendTo(this);
   }
@@ -163,18 +162,27 @@ class Field extends Proxy<unknown> implements Writable, ConcreteNode<"field"> {
 class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
   readonly abstractNode: Abstract.Feature;
 
-  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Feature, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
-    // TODO
+
+    // TODO...
+    const domElement = Dom.create(abstractNode.tagName);
+
+    Object.entries(abstractNode.properties).forEach(([name, property]) => {
+      const field = new Field(property, domain, scope);
+      field.sendTo((value) => {
+        Dom.attribute(domElement, name, value);
+      });
+    });
   }
 }
 
 class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> {
   readonly abstractNode: Abstract.Landscape;
 
-  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"]) {
+  constructor(abstractNode: Abstract.Landscape, domain: Abstract.App["domain"], scope: Readable) {
     super();
 
     this.abstractNode = abstractNode;
@@ -227,9 +235,9 @@ class Data extends Proxy<unknown> implements Readable, ConcreteNode<"data"> {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
-        : Helpers.isRenderable(value)
-        ? new Renderable(value, domain)
-        : Helpers.isStructure(value)
+        : Guards.isRenderable(value)
+        ? new Renderable(value, domain, scope)
+        : Guards.isStructure(value)
         ? new Structure(value, domain, scope)
         : value;
 
@@ -372,6 +380,8 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
       this.field = terminal;
       this.field.sendTo(this);
     } else {
+      // TODO Resolve properties on window...
+
       throw new Error();
     }
   }
@@ -450,6 +460,8 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
 
       this.result.sendTo(this);
     } else {
+      // TODO Resolve methods on window...
+
       throw new Error();
     }
   }
@@ -470,20 +482,20 @@ class Structure extends Publisher<unknown> implements Dictionary, ConcreteNode<"
 
     const model = domain[abstractNode.modelName];
 
-    if (!Helpers.isModel(model)) {
+    if (!Guards.isModel(model)) {
       throw new Error();
     }
 
     Object.entries(abstractNode.properties).forEach(([name, property]) => {
-      if (Helpers.isField(property)) {
+      if (Guards.isField(property)) {
         const abstractField = property as Abstract.Field; // TODO Fix the typing here?
         this.properties[name] = new Field(abstractField, domain, scope);
       }
     });
 
     Object.entries(model.members).forEach(([name, abstractMember]) => {
-      if (Helpers.isField(abstractMember)) {
-        if (!(name in this.properties) && !Helpers.isParameter(abstractMember.publisher)) {
+      if (Guards.isField(abstractMember)) {
+        if (!(name in this.properties) && !Guards.isParameter(abstractMember.publisher)) {
           this.properties[name] = new Field(abstractMember, domain, scope);
         }
       }

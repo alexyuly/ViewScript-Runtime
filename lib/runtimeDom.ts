@@ -9,7 +9,7 @@ export const populate = (element: HTMLElement, children: Array<HTMLElement | str
   window.console.log(`[DOM] 🌿 Populate <${element.tagName.toLowerCase()}>`, children);
 };
 
-export const styleProp = (element: HTMLElement, name: string, value?: unknown) => {
+export const styleProp = (element: HTMLElement, name: string, value: unknown) => {
   if (value == null || value === false) {
     element.style.removeProperty(name);
   } else {
@@ -18,7 +18,7 @@ export const styleProp = (element: HTMLElement, name: string, value?: unknown) =
   window.console.log(`[DOM] 💧 Update <${element.tagName.toLowerCase()}> ${name} =`, value);
 };
 
-export const attribute = (element: HTMLElement, name: string, value?: unknown) => {
+export const attribute = (element: HTMLElement, name: string, value: unknown) => {
   if (value == null || value === false) {
     element.removeAttribute(name);
   } else {
