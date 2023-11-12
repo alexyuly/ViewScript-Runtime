@@ -169,13 +169,21 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
 
     // TODO...
     const domElement = Dom.create(abstractNode.tagName);
+    // TODO Define a new scope, which inherits from the given scope and adds properties...
 
     Object.entries(abstractNode.properties).forEach(([name, property]) => {
       const field = new Field(property, domain, scope);
+
       field.sendTo((value) => {
-        Dom.attribute(domElement, name, value);
+        if (name === "content") {
+          // TODO Populate the domElement...
+        } else {
+          Dom.attribute(domElement, name, value);
+        }
       });
     });
+
+    // TODO Add the reactions...
   }
 }
 
@@ -368,10 +376,6 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
     while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      if (propertyOwner === undefined) {
-        break;
-      }
-
       terminal = propertyOwner.getProperty(nextStop);
       nextStop = route.shift();
     }
@@ -412,10 +416,6 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
     while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      if (propertyOwner === undefined) {
-        break;
-      }
-
       terminal = propertyOwner.getProperty(nextStop);
       nextStop = route.shift();
     }
@@ -444,6 +444,8 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
         });
       } else {
         const parameterName = method.parameter?.name;
+
+        // TODO Define a reusable way to construct new scopes, also to use in Features...
         const closure =
           !argument || !parameterName || !realScope
             ? realScope
