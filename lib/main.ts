@@ -1,9 +1,8 @@
 import * as Abstract from "./abstract";
-import * as Guards from "./abstractGuards";
-import * as Dom from "./runtimeDom";
+import * as Dom from "./dom";
 
-type Action = Abstract.Action | ((argument?: Field) => unknown);
 type Method = Abstract.Method | ((argument?: Field) => unknown);
+type Action = Abstract.Action | ((argument?: Field) => unknown);
 
 interface FieldScope {
   getProperty(name: string): Field;
@@ -105,7 +104,7 @@ class Scope implements FieldScope {
     } catch (error) {
       const method = this.members[name];
 
-      if (Guards.isMethod(method) || typeof method == "function") {
+      if (Abstract.isMethod(method) || typeof method == "function") {
         return method;
       }
 
@@ -124,7 +123,7 @@ class Scope implements FieldScope {
     } catch (error) {
       const action = this.members[name];
 
-      if (Guards.isAction(action) || typeof action == "function") {
+      if (Abstract.isAction(action) || typeof action == "function") {
         return action;
       }
 
@@ -246,7 +245,8 @@ class Feature extends Proxy<HTMLElement> implements ConcreteNode<"feature"> {
     this.abstractNode = abstractNode;
 
     const domElement = Dom.create(abstractNode.tagName);
-    // TODO Define a new scope, which inherits from the given scope and adds properties...
+
+    // TODO For Landscapes, define a new scope, which inherits from the given scope and adds properties...
 
     Object.entries(abstractNode.properties).forEach(([name, property]) => {
       const field = new Field(property, domain, scope);
@@ -299,9 +299,9 @@ class Data extends Proxy<unknown> implements ConcreteNode<"data"> {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
-        : Guards.isRenderable(value)
+        : Abstract.isRenderable(value)
         ? new Renderable(value, domain, scope)
-        : Guards.isStructure(value)
+        : Abstract.isStructure(value)
         ? new Structure(value, domain, scope)
         : value;
 
@@ -513,25 +513,25 @@ class Structure extends Publisher<unknown> implements ConcreteNode<"structure"> 
 
     const model = domain[abstractNode.modelName];
 
-    if (!Guards.isModel(model)) {
+    if (!Abstract.isModel(model)) {
       throw new Error();
     }
 
     Object.entries(model.members).forEach(([name, abstractMember]) => {
-      if (Guards.isField(abstractMember)) {
+      if (Abstract.isField(abstractMember)) {
         let abstractField: Abstract.Field | undefined;
 
-        if (Guards.isParameter(abstractMember.publisher)) {
+        if (Abstract.isParameter(abstractMember.publisher)) {
           const property = abstractNode.properties[name];
 
-          if (Guards.isField(property)) {
+          if (Abstract.isField(property)) {
             abstractField = property as Abstract.Field; // TODO fix typing?
           }
         } else {
           abstractField = abstractMember;
         }
 
-        if (Guards.isField(abstractField)) {
+        if (Abstract.isField(abstractField)) {
           const field = new Field(abstractMember, domain, scope);
           scope.addProperty(name, field);
         }

@@ -1,4 +1,4 @@
-import * as Abstract from "./abstract";
+import * as Abstract from ".";
 
 function isNode(value: unknown): value is Abstract.Node {
   const result = isNode(value);
