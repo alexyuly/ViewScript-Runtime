@@ -64,8 +64,8 @@ class Scope implements FieldScope {
     this.base = base;
   }
 
-  addField(name: string, property: Field): Scope {
-    this.fields[name] = property;
+  addField(name: string, field: Field): Scope {
+    this.fields[name] = field;
     return this;
   }
 
@@ -193,39 +193,38 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
     this.id = window.crypto.randomUUID();
     this.scope = new Scope(scope);
 
-    this.publisher =
-      source.publisher.kind === "store"
-        ? new Store(source.publisher, domain, this.scope)
-        : source.publisher.kind === "switch"
-        ? new Switch(source.publisher, domain, this.scope)
-        : source.publisher.kind === "pointer"
-        ? new Pointer(source.publisher, domain, this.scope)
-        : source.publisher.kind === "methodCall"
-        ? new MethodCall(source.publisher, domain, this.scope)
-        : (() => {
-            throw new Error();
-          })();
+    if (source.publisher.kind === "store") {
+      this.publisher = new Store(source.publisher, domain, this.scope);
 
-    this.publisher.sendTo(this);
+      const model = domain[source.publisher.modelName];
 
-    if (!(this.publisher instanceof Store)) {
-      return;
-    }
+      if (Abstract.isModel(model)) {
+        // TODO How do I deal with the order of definitions?
 
-    const model = domain[source.publisher.modelName];
+        Object.entries(model.actions).forEach(([name, member]) => {
+          scope.addAction(name, member);
+        });
 
-    if (Abstract.isModel(model)) {
-      Object.entries(model.fields).forEach(([name, member]) => {
-        if (!Abstract.isParameter(member.publisher)) {
-          const field = new Field(member, domain, scope);
-          scope.addField(name, field);
+        Object.entries(model.methods).forEach(([name, member]) => {
+          scope.addMethod(name, member);
+        });
+
+        Object.entries(model.fields).forEach(([name, member]) => {
+          if (!Abstract.isParameter(member.publisher)) {
+            const field = new Field(member, domain, scope);
+            scope.addField(name, field);
+          }
+        });
+
+        if (Abstract.isStructure(source.publisher.value)) {
+          Object.entries(source.publisher.value.properties).forEach(([name, property]) => {
+            if (property) {
+              const field = new Field(property, domain, scope);
+              scope.addField(name, field);
+            }
+          });
         }
-      });
-      const structure = source.publisher.kind === "store" ? source.publisher.value : undefined;
-      // TODO methods...
-      // TODO actions...
-    } else if (source.publisher.modelName === "Array") {
-      if (this.publisher instanceof Store) {
+      } else if (source.publisher.modelName === "Array") {
         const store = this.publisher;
 
         scope.addAction("push", (argument) => {
@@ -234,13 +233,7 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
             store.take([...currentValue, argument]);
           }
         });
-      }
-    } else if (source.publisher.modelName === "Boolean") {
-      scope
-        .addMethod("and", (argument) => this.getValue() && argument?.getValue())
-        .addMethod("not", () => !this.getValue());
-
-      if (this.publisher instanceof Store) {
+      } else if (source.publisher.modelName === "Boolean") {
         const store = this.publisher;
 
         scope
@@ -250,9 +243,11 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
             }
           })
           .addAction("toggle", () => store.take(!this.getValue()));
-      }
-    } else if (source.publisher.modelName === "Number") {
-      if (this.publisher instanceof Store) {
+
+        scope
+          .addMethod("and", (argument) => this.getValue() && argument?.getValue())
+          .addMethod("not", () => !this.getValue());
+      } else if (source.publisher.modelName === "Number") {
         const store = this.publisher;
 
         scope
@@ -268,19 +263,29 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
               store.take(argument.getValue());
             }
           });
-      }
-    } else if (source.publisher.modelName === "String") {
-      const store = this.publisher;
+      } else if (source.publisher.modelName === "String") {
+        const store = this.publisher;
 
-      scope.addAction("setTo", (argument) => {
-        if (argument) {
-          store.take(argument.getValue());
-        }
-      });
-    } else if (source.publisher.modelName !== "Renderable") {
-      // Renderable fields have no members.
+        scope.addAction("setTo", (argument) => {
+          if (argument) {
+            store.take(argument.getValue());
+          }
+        });
+      } else if (source.publisher.modelName !== "Renderable") {
+        // Renderable fields have no members.
+        throw new Error();
+      }
+    } else if (source.publisher.kind === "switch") {
+      this.publisher = new Switch(source.publisher, domain, this.scope);
+    } else if (source.publisher.kind === "pointer") {
+      this.publisher = new Pointer(source.publisher, domain, this.scope);
+    } else if (source.publisher.kind === "methodCall") {
+      this.publisher = new MethodCall(source.publisher, domain, this.scope);
+    } else {
       throw new Error();
     }
+
+    this.publisher.sendTo(this);
   }
 
   getField(name: string): Field {
@@ -367,10 +372,11 @@ class Store extends Proxy<unknown> implements Dictionary, ConcreteNode<"store"> 
     this.source = source;
 
     const data = Store.hydrate(source.value, domain, scope);
-    this.publish(data);
 
     if (data instanceof Structure) {
       this.structure = data;
+    } else {
+      this.publish(data);
     }
   }
 
