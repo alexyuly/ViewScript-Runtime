@@ -16,13 +16,15 @@ export type Node<Kind extends string = string> = {
 
 export type Model<Name extends string = string> = Node<"model"> &
   Named<Name> & {
-    members: Record<string, Field | Method | Action>;
+    fields: Record<string, Field>;
+    methods: Record<string, Method>;
+    actions: Record<string, Action>;
   };
 
 export type View<Name extends string = string> = Node<"view"> &
   Named<Name> & {
     fields: Record<string, Field>;
-    streams: Record<`on${string}`, Stream>;
+    streams: Record<string, Stream>;
     renderable: Renderable;
   };
 
@@ -37,7 +39,7 @@ export type Named<Name extends string = string> = {
 };
 
 export type Field<M extends Model = Model> = Node<"field"> & {
-  publisher: Parameter<M> | Data<M> | Store<M> | Switch<M> | Pointer<M> | MethodCall<M>;
+  publisher: Parameter<M> | Store<M> | Switch<M> | Pointer<M> | MethodCall<M>;
 };
 
 export type Method<
@@ -58,14 +60,12 @@ export type Stream<M extends Model | null = Model | null> = Node<"stream"> & Mod
 export type Feature = Node<"feature"> & {
   tagName: string;
   properties: Record<string, Field>;
-  reactions: Record<`on${string}`, Action>;
+  reactions: Record<string, Action>;
 };
 
 export type Landscape<V extends View = View> = Node<"landscape"> & {
   viewName: V["name"];
-  properties: {
-    [Key in keyof V["fields"]]?: Property<V["fields"][Key]>;
-  };
+  properties: Partial<V["fields"]>;
   reactions: {
     [Key in keyof V["streams"]]?: V["streams"][Key] extends Stream<infer M> ? Action<M> : never;
   };
@@ -75,7 +75,7 @@ export type Landscape<V extends View = View> = Node<"landscape"> & {
 
 export type Parameter<M extends Model = Model> = Node<"parameter"> & Modeled<M>;
 
-export type Data<M extends Model = Model> = Node<"data"> &
+export type Store<M extends Model = Model> = Node<"store"> &
   Modeled<M> & {
     value: M["name"] extends "Array"
       ? Array<Field>
@@ -88,11 +88,6 @@ export type Data<M extends Model = Model> = Node<"data"> &
       : M["name"] extends "Renderable"
       ? Renderable
       : unknown;
-  };
-
-export type Store<M extends Model = Model> = Node<"store"> &
-  Modeled<M> & {
-    data: Data<M>;
   };
 
 export type Switch<M extends Model = Model> = Node<"switch"> &
@@ -138,21 +133,7 @@ export type Modeled<M extends Model | null> = {
   modelName: M extends Model ? M["name"] : never;
 };
 
-export type Property<F extends Field> = F["publisher"] extends Parameter<infer M>
-  ? Field<M>
-  : F["publisher"] extends { writable: true } & Parameter<infer M>
-  ? WritableField<M>
-  : never;
-
-export type WritableField<M extends Model> = Node<"field"> & {
-  publisher: Store<M> | ({ writable: true } & (Parameter<M> | Pointer<M>));
-};
-
 export type Structure<M extends Model = Model> = Node<"structure"> &
   Modeled<M> & {
-    properties: {
-      [Key in keyof M["members"]]?: M["members"][Key] extends Field
-        ? Property<M["members"][Key]>
-        : never;
-    };
+    properties: Partial<M["fields"]>;
   };

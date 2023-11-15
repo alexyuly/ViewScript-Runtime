@@ -5,7 +5,7 @@ type Method = Abstract.Method | ((argument?: Field) => unknown);
 type Action = Abstract.Action | ((argument?: Field) => unknown);
 
 interface Dictionary {
-  getProperty(name: string): Field;
+  getField(name: string): Field;
 }
 
 interface FieldScope extends Dictionary {
@@ -56,40 +56,42 @@ abstract class Proxy<T> extends Publisher<T> implements Subscriber<T> {
 
 class Scope implements FieldScope {
   private readonly base?: Field | Scope;
-  private readonly members: Record<string, Field | Method | Action> = {};
+  private readonly fields: Record<string, Field> = {};
+  private readonly methods: Record<string, Method> = {};
+  private readonly actions: Record<string, Action> = {};
 
   constructor(base?: Field | Scope) {
     this.base = base;
   }
 
-  addProperty(name: string, property: Field): Scope {
-    this.members[name] = property;
+  addField(name: string, property: Field): Scope {
+    this.fields[name] = property;
     return this;
   }
 
   addMethod(name: string, method: Method): Scope {
-    this.members[name] = method;
+    this.methods[name] = method;
     return this;
   }
 
   addAction(name: string, action: Action): Scope {
-    this.members[name] = action;
+    this.actions[name] = action;
     return this;
   }
 
-  getProperty(name: string): Field {
+  getField(name: string): Field {
     try {
       if (this.base !== undefined) {
-        const property = this.base.getProperty(name);
-        return property;
+        const field = this.base.getField(name);
+        return field;
       }
 
       throw new Error();
     } catch (error) {
-      const property = this.members[name];
+      const field = this.fields[name];
 
-      if (property instanceof Field) {
-        return property;
+      if (field instanceof Field) {
+        return field;
       }
 
       throw error;
@@ -105,7 +107,7 @@ class Scope implements FieldScope {
 
       throw new Error();
     } catch (error) {
-      const method = this.members[name];
+      const method = this.methods[name];
 
       if (Abstract.isMethod(method) || typeof method == "function") {
         return method;
@@ -124,7 +126,7 @@ class Scope implements FieldScope {
 
       throw new Error();
     } catch (error) {
-      const action = this.members[name];
+      const action = this.actions[name];
 
       if (Abstract.isAction(action) || typeof action == "function") {
         return action;
@@ -182,7 +184,7 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
   readonly source: Abstract.Field;
   readonly id: ReturnType<typeof window.crypto.randomUUID>;
   private readonly scope;
-  private readonly publisher: Data | Store | Switch | Pointer | MethodCall;
+  private readonly publisher: Store | Switch | Pointer | MethodCall;
 
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -192,9 +194,7 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
     this.scope = new Scope(scope);
 
     this.publisher =
-      source.publisher.kind === "data"
-        ? new Data(source.publisher, domain, this.scope)
-        : source.publisher.kind === "store"
+      source.publisher.kind === "store"
         ? new Store(source.publisher, domain, this.scope)
         : source.publisher.kind === "switch"
         ? new Switch(source.publisher, domain, this.scope)
@@ -208,65 +208,22 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
 
     this.publisher.sendTo(this);
 
-    if (!(this.publisher instanceof Data || this.publisher instanceof Store)) {
+    if (!(this.publisher instanceof Store)) {
       return;
     }
 
     const model = domain[source.publisher.modelName];
 
-    if (this.publisher instanceof Store) {
-      const store = this.publisher;
-      const initialValue = this.getValue();
-
-      scope
-        .addAction("reset", () => {
-          store.setTo(initialValue);
-        })
-        .addAction("setTo", (argument) => {
-          if (argument) {
-            store.setTo(argument.getValue());
-          }
-        });
-    }
-
     if (Abstract.isModel(model)) {
-      Object.entries(model.members).forEach(([name, member]) => {
-        if (Abstract.isField(member)) {
-          // TODO Fix all of this field stuff...
-          const structure =
-            source.publisher.kind === "data"
-              ? source.publisher.value
-              : source.publisher.kind === "store"
-              ? source.publisher.data.value
-              : undefined;
-
-          if (!Abstract.isStructure(structure)) {
-            throw new Error();
-          }
-
-          let abstractField: Abstract.Field | undefined;
-          if (Abstract.isParameter(member.publisher)) {
-            const property = structure.properties[name];
-            if (Abstract.isField(property)) {
-              abstractField = property; // TODO Fix the typing of property?
-            }
-          } else {
-            abstractField = member;
-          }
-
-          if (!Abstract.isField(abstractField)) {
-            throw new Error();
-          }
-
-          // TODO Do not add already constructed Fields that exist in the Data publisher:
-          const field = new Field(abstractField, domain, scope);
-          scope.addProperty(name, field);
-        } else if (Abstract.isMethod(member)) {
-          // TODO Add methods...
-        } else if (this.publisher instanceof Store) {
-          // TODO Add actions...
+      Object.entries(model.fields).forEach(([name, member]) => {
+        if (!Abstract.isParameter(member.publisher)) {
+          const field = new Field(member, domain, scope);
+          scope.addField(name, field);
         }
       });
+      const structure = source.publisher.kind === "store" ? source.publisher.value : undefined;
+      // TODO methods...
+      // TODO actions...
     } else if (source.publisher.modelName === "Array") {
       if (this.publisher instanceof Store) {
         const store = this.publisher;
@@ -274,7 +231,7 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
         scope.addAction("push", (argument) => {
           if (argument) {
             const currentValue = this.getValue() as Array<Field>;
-            store.setTo([...currentValue, argument]);
+            store.take([...currentValue, argument]);
           }
         });
       }
@@ -287,43 +244,58 @@ class Field extends Proxy<unknown> implements FieldScope, ConcreteNode<"field"> 
         const store = this.publisher;
 
         scope
-          .addAction("disable", () => store.setTo(false))
-          .addAction("enable", () => store.setTo(true))
-          .addAction("toggle", () => store.setTo(!this.getValue()));
+          .addAction("setTo", (argument) => {
+            if (argument) {
+              store.take(argument.getValue());
+            }
+          })
+          .addAction("toggle", () => store.take(!this.getValue()));
       }
     } else if (source.publisher.modelName === "Number") {
       if (this.publisher instanceof Store) {
         const store = this.publisher;
 
-        scope.addAction("add", (argument) => {
-          if (argument) {
-            const currentValue = this.getValue() as number;
-            const argumentValue = this.getValue() as number;
-            store.take(currentValue + argumentValue);
-          }
-        });
+        scope
+          .addAction("add", (argument) => {
+            if (argument) {
+              const currentValue = this.getValue() as number;
+              const argumentValue = this.getValue() as number;
+              store.take(currentValue + argumentValue);
+            }
+          })
+          .addAction("setTo", (argument) => {
+            if (argument) {
+              store.take(argument.getValue());
+            }
+          });
       }
     } else if (source.publisher.modelName === "String") {
-      // TODO
+      const store = this.publisher;
+
+      scope.addAction("setTo", (argument) => {
+        if (argument) {
+          store.take(argument.getValue());
+        }
+      });
     } else if (source.publisher.modelName !== "Renderable") {
-      // TODO Renderable fields have no members.
+      // Renderable fields have no members.
       throw new Error();
     }
   }
 
-  getProperty(name: string): Field {
+  getField(name: string): Field {
     const scope =
-      this.publisher instanceof Data || this.publisher instanceof Store
+      this.publisher instanceof Store || this.publisher instanceof Store
         ? this.scope
         : this.publisher.getField();
 
-    const property = scope.getProperty(name);
+    const property = scope.getField(name);
     return property;
   }
 
   getMethod(name: string): Method {
     const scope =
-      this.publisher instanceof Data || this.publisher instanceof Store
+      this.publisher instanceof Store || this.publisher instanceof Store
         ? this.scope
         : this.publisher.getField();
 
@@ -385,16 +357,16 @@ class Landscape extends Proxy<HTMLElement> implements ConcreteNode<"landscape"> 
 
 /* Tiers 3 and greater */
 
-class Data extends Proxy<unknown> implements Dictionary, ConcreteNode<"data"> {
-  readonly source: Abstract.Data;
+class Store extends Proxy<unknown> implements Dictionary, ConcreteNode<"store"> {
+  readonly source: Abstract.Store;
   private readonly structure?: Structure;
 
-  constructor(source: Abstract.Data, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.source = source;
 
-    const data = Data.hydrate(source.value, domain, scope);
+    const data = Store.hydrate(source.value, domain, scope);
     this.publish(data);
 
     if (data instanceof Structure) {
@@ -402,16 +374,16 @@ class Data extends Proxy<unknown> implements Dictionary, ConcreteNode<"data"> {
     }
   }
 
-  getProperty(name: string): Field {
+  getField(name: string): Field {
     if (this.structure === undefined) {
       throw new Error();
     }
 
-    const property = this.structure.getProperty(name);
+    const property = this.structure.getField(name);
     return property;
   }
 
-  static hydrate(value: Abstract.Data["value"], domain: Abstract.App["domain"], scope: Scope) {
+  static hydrate(value: Abstract.Store["value"], domain: Abstract.App["domain"], scope: Scope) {
     const hydratedValue =
       value instanceof Array
         ? value.map((item) => new Field(item, domain, scope))
@@ -422,24 +394,6 @@ class Data extends Proxy<unknown> implements Dictionary, ConcreteNode<"data"> {
         : value;
 
     return hydratedValue;
-  }
-}
-
-class Store extends Proxy<unknown> implements ConcreteNode<"store"> {
-  readonly source: Abstract.Store;
-  private readonly data: Data;
-
-  constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
-    super();
-
-    this.source = source;
-
-    this.data = new Data(source.data, domain, scope);
-    this.data.sendTo(this);
-  }
-
-  setTo(value: unknown) {
-    this.data.take(value);
   }
 }
 
@@ -495,7 +449,7 @@ class Pointer extends Proxy<unknown> implements ConcreteNode<"pointer"> {
     while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      terminal = propertyOwner.getProperty(nextStop);
+      terminal = propertyOwner.getField(nextStop);
       nextStop = route.shift();
     }
 
@@ -535,7 +489,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
     while (nextStop !== undefined) {
       const propertyOwner = terminal ?? realScope;
 
-      terminal = propertyOwner.getProperty(nextStop);
+      terminal = propertyOwner.getField(nextStop);
       nextStop = route.shift();
     }
 
@@ -550,7 +504,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
         const abstractResult: Abstract.Field = {
           kind: "field",
           publisher: {
-            kind: "data",
+            kind: "store",
             modelName: source.modelName,
             value: method(argument),
           },
@@ -568,7 +522,7 @@ class MethodCall extends Proxy<unknown> implements ConcreteNode<"methodCall"> {
         const closure =
           !argument || !parameterName || !realScope
             ? realScope
-            : new Scope(realScope).addProperty(parameterName, argument);
+            : new Scope(realScope).addField(parameterName, argument);
 
         this.result = new Field(method.result, domain, closure);
       }
@@ -603,7 +557,7 @@ class Structure implements Dictionary, ConcreteNode<"structure"> {
     });
   }
 
-  getProperty(name: string): Field {
+  getField(name: string): Field {
     if (!(name in this.properties)) {
       throw new Error();
     }
