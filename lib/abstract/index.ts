@@ -40,7 +40,7 @@ export type Action = Node<"action"> & {
 };
 
 export type Stream = Node<"stream"> & {
-  modelName?: string;
+  parameter?: Parameter;
 };
 
 export type Feature = Node<"feature"> & {
@@ -70,13 +70,11 @@ export type Switch = Node<"switch"> & {
 };
 
 export type FieldCall = Node<"fieldCall"> & {
-  modelName: string;
   base?: MethodCall;
   address: Array<string>;
 };
 
 export type MethodCall = Node<"methodCall"> & {
-  modelName: string;
   base?: MethodCall;
   address: Array<string>;
   argument?: Field;
@@ -88,7 +86,6 @@ export type ActionCall = Node<"actionCall"> & {
 };
 
 export type StreamCall = Node<"streamCall"> & {
-  modelName?: string;
   name: string;
   output?: Field;
 };
@@ -101,7 +98,6 @@ export type Exception = Node<"exception"> & {
 /* Tier 4 */
 
 export type Part = Node<"part"> & {
-  modelName: string;
   value: unknown;
 };
 
