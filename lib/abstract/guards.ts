@@ -30,11 +30,6 @@ export function isParameter(value: unknown): value is Abstract.Parameter {
   return result;
 }
 
-export function isRenderable(value: unknown): value is Abstract.Renderable {
-  const result = isNode(value) && value.kind === "renderable";
-  return result;
-}
-
 export function isStructure(value: unknown): value is Abstract.Structure {
   const result = isNode(value) && value.kind === "structure";
   return result;

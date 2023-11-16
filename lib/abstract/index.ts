@@ -5,7 +5,7 @@ export * from "./guards";
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   domain: Record<string, Model | View>;
-  renderable: Renderable;
+  renderable: Feature | Landscape;
 };
 
 /* Tier 1 */
@@ -20,11 +20,7 @@ export type Model = Node<"model"> & {
 
 export type View = Node<"view"> & {
   scope: Record<string, Field | Stream>;
-  renderable: Renderable;
-};
-
-export type Renderable = Node<"renderable"> & {
-  element: Feature | Landscape;
+  renderable: Feature | Landscape;
 };
 
 /* Tier 2 */
@@ -64,7 +60,7 @@ export type Parameter = Node<"parameter"> & {
 };
 
 export type Store = Node<"store"> & {
-  value: Value;
+  value: Feature | Landscape | Part | Structure;
 };
 
 export type Switch = Node<"switch"> & {
@@ -103,11 +99,7 @@ export type Exception = Node<"exception"> & {
   steps?: Array<ActionCall | StreamCall | Exception>;
 };
 
-/* Tiers 4 and greater */
-
-export type Value = Node<"value"> & {
-  element: Part | Renderable | Structure;
-};
+/* Tier 4 */
 
 export type Part = Node<"part"> & {
   data: unknown;
