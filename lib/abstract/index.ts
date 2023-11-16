@@ -64,7 +64,6 @@ export type Store = Node<"store"> & {
 };
 
 export type Switch = Node<"switch"> & {
-  modelName: string;
   condition: Field;
   positive: Field;
   negative: Field;
@@ -102,6 +101,7 @@ export type Exception = Node<"exception"> & {
 /* Tier 4 */
 
 export type Part = Node<"part"> & {
+  modelName: string;
   value: unknown;
 };
 
