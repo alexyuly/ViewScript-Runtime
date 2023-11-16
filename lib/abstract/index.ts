@@ -87,7 +87,7 @@ export type ActionCall = Node<"actionCall"> & {
 
 export type StreamCall = Node<"streamCall"> & {
   name: string;
-  output?: Field;
+  argument?: Field;
 };
 
 export type Exception = Node<"exception"> & {
