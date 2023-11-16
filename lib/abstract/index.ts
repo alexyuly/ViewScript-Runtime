@@ -26,7 +26,7 @@ export type View = Node<"view"> & {
 /* Tier 2 */
 
 export type Field = Node<"field"> & {
-  publisher: Parameter | Store | Switch | Pointer | MethodCall;
+  publisher: Parameter | Store | Switch | FieldCall | MethodCall;
 };
 
 export type Method = Node<"method"> & {
@@ -70,7 +70,7 @@ export type Switch = Node<"switch"> & {
   negative: Field;
 };
 
-export type Pointer = Node<"pointer"> & {
+export type FieldCall = Node<"fieldCall"> & {
   modelName: string;
   base?: MethodCall;
   address: Array<string>;
