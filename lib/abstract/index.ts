@@ -60,7 +60,7 @@ export type Parameter = Node<"parameter"> & {
 };
 
 export type Store = Node<"store"> & {
-  value: Feature | Landscape | Part | Structure;
+  content: Feature | Landscape | Part | Structure;
 };
 
 export type Switch = Node<"switch"> & {
@@ -102,7 +102,7 @@ export type Exception = Node<"exception"> & {
 /* Tier 4 */
 
 export type Part = Node<"part"> & {
-  data: unknown;
+  value: unknown;
 };
 
 export type Structure = Node<"structure"> & {
