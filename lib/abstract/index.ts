@@ -5,7 +5,7 @@ export * from "./guards";
 export type App = Node<"app"> & {
   version: "ViewScript v0.4.0";
   domain: Record<string, Model | View>;
-  renderable: Feature | Landscape;
+  render: Feature | Landscape;
 };
 
 /* Tier 1 */
@@ -20,7 +20,7 @@ export type Model = Node<"model"> & {
 
 export type View = Node<"view"> & {
   scope: Record<string, Field | Stream>;
-  renderable: Feature | Landscape;
+  render: Feature | Landscape;
 };
 
 /* Tier 2 */
