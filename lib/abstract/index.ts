@@ -15,13 +15,11 @@ export type Node<Kind extends string = string> = {
 };
 
 export type Model = Node<"model"> & {
-  name: string;
   scope: Record<string, Field | Method | Action>;
 };
 
 export type View = Node<"view"> & {
-  name: string;
-  scope: Record<string, Stream | Field>;
+  scope: Record<string, Field | Stream>;
   renderable: Renderable;
 };
 
@@ -54,12 +52,12 @@ export type Feature = Node<"feature"> & {
   properties: Record<string, Field | Action>;
 };
 
-export type Landscape<V extends View = View> = Node<"landscape"> & {
-  viewName: V["name"];
+export type Landscape = Node<"landscape"> & {
+  viewName: string;
   properties: Record<string, Field | Action>;
 };
 
-/* Tiers 3 and greater */
+/* Tier 3 */
 
 export type Parameter = Node<"parameter"> & {
   modelName: string;
@@ -79,24 +77,24 @@ export type Switch = Node<"switch"> & {
 export type Pointer = Node<"pointer"> & {
   modelName: string;
   base?: MethodCall;
-  fieldAddress: Array<string>;
+  address: Array<string>;
 };
 
 export type MethodCall = Node<"methodCall"> & {
   modelName: string;
   base?: MethodCall;
-  methodAddress: Array<string>;
+  address: Array<string>;
   argument?: Field;
 };
 
 export type ActionCall = Node<"actionCall"> & {
-  actionAddress: Array<string>;
+  address: Array<string>;
   argument?: Field;
 };
 
 export type StreamCall = Node<"streamCall"> & {
   modelName?: string;
-  streamName: string;
+  name: string;
   output?: Field;
 };
 
@@ -104,6 +102,8 @@ export type Exception = Node<"exception"> & {
   condition: Field;
   steps?: Array<ActionCall | StreamCall | Exception>;
 };
+
+/* Tiers 4 and greater */
 
 export type Value = Node<"value"> & {
   element: Part | Renderable | Structure;
