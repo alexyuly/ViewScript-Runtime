@@ -1,7 +1,7 @@
 import * as Abstract from ".";
 
-function isNode(value: unknown): value is Abstract.Node {
-  const result = isNode(value);
+function isNode(value: unknown): value is { kind: string } {
+  const result = typeof value === "object" && value !== null && "kind" in value;
   return result;
 }
 

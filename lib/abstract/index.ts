@@ -1,107 +1,123 @@
 export * from "./guards";
 
-/* Tier 0 */
+/* Tier I */
 
-export type App = Node<"app"> & {
+export type App = {
+  kind: "app";
   version: "ViewScript v0.4.0";
   domain: Record<string, Model | View>;
   render: Feature | Landscape;
 };
 
-/* Tier 1 */
+/* Tier II */
 
-export type Node<Kind extends string = string> = {
-  kind: Kind;
-};
-
-export type Model = Node<"model"> & {
+export type Model = {
+  kind: "model";
   scope: Record<string, Field | Method | Action>;
 };
 
-export type View = Node<"view"> & {
+export type View = {
+  kind: "view";
   scope: Record<string, Field | Stream>;
   render: Feature | Landscape;
 };
 
-export type Feature = Node<"feature"> & {
+export type Feature = {
+  kind: "feature";
   tagName: string;
   properties: Record<string, Field | Action>;
 };
 
-export type Landscape = Node<"landscape"> & {
+export type Landscape = {
+  kind: "landscape";
   viewName: string;
   properties: Record<string, Field | Action>;
 };
 
-/* Tier 2 */
+/* Tier III */
 
-export type Field = Node<"field"> & {
+export type Field = {
+  kind: "field";
   publisher: Parameter | Store | Switch | FieldCall | MethodCall;
 };
 
-export type Method = Node<"method"> & {
+export type Method = {
+  kind: "method";
   parameter?: Parameter & { name: string };
   result: Field;
 };
 
-export type Action = Node<"action"> & {
+export type Action = {
+  kind: "action";
   parameter?: Parameter & { name: string };
   steps: Array<ActionCall | StreamCall | Exception>;
 };
 
-export type Stream = Node<"stream"> & {
+export type Stream = {
+  kind: "stream";
   parameter?: Parameter;
 };
 
-/* Tier 3 */
+/* Tier IV */
 
-export type Parameter = Node<"parameter"> & {
+export type Parameter = {
+  kind: "parameter";
   modelName: string;
 };
 
-export type Store = Node<"store"> & {
+export type Store = {
+  kind: "store";
   content: Feature | Landscape | Part | Structure;
 };
 
-export type Switch = Node<"switch"> & {
+export type Switch = {
+  kind: "switch";
   condition: Field;
   positive: Field;
-  negative: Field;
+  negative?: Field;
 };
 
-export type FieldCall = Node<"fieldCall"> & {
-  base?: MethodCall;
-  address: Array<string>;
+export type FieldCall = {
+  kind: "fieldCall";
+  scope?: Field;
+  name: string;
 };
 
-export type MethodCall = Node<"methodCall"> & {
-  base?: MethodCall;
-  address: Array<string>;
-  argument?: Field;
-};
-
-export type ActionCall = Node<"actionCall"> & {
-  address: Array<string>;
-  argument?: Field;
-};
-
-export type StreamCall = Node<"streamCall"> & {
+export type MethodCall = {
+  kind: "methodCall";
+  scope?: Field;
   name: string;
   argument?: Field;
 };
 
-export type Exception = Node<"exception"> & {
+export type ActionCall = {
+  kind: "actionCall";
+  scope?: Field;
+  name: string;
+  argument?: Field;
+};
+
+export type StreamCall = {
+  kind: "streamCall";
+  name: string;
+  argument?: Field;
+};
+
+export type Exception = {
+  kind: "exception";
   condition: Field;
   steps?: Array<ActionCall | StreamCall | Exception>;
 };
 
-/* Tier 4 */
+/* Tier V */
 
-export type Part = Node<"part"> & {
+export type Part = {
+  kind: "part";
   value: unknown;
 };
 
-export type Structure = Node<"structure"> & {
+export type Structure = {
+  kind: "structure";
   modelName: string;
   properties: Record<string, Field>;
 };
