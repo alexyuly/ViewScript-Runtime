@@ -11,14 +11,20 @@ export type App = {
 
 /* Tier II */
 
+/**
+ * Represents a data structure and its operations.
+ */
 export type Model = {
   kind: "model";
   scope: Record<string, Field | Method | Action>;
 };
 
+/**
+ * Represents a user interface and its interactions.
+ */
 export type View = {
   kind: "view";
-  scope: Record<string, Field | Method | Action | Stream>;
+  scope: Record<string, Stream | Field | Method | Action>;
   render: Feature | Landscape;
 };
 
