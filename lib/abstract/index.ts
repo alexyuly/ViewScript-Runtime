@@ -23,6 +23,16 @@ export type View = Node<"view"> & {
   render: Feature | Landscape;
 };
 
+export type Feature = Node<"feature"> & {
+  tagName: string;
+  properties: Record<string, Field | Action>;
+};
+
+export type Landscape = Node<"landscape"> & {
+  viewName: string;
+  properties: Record<string, Field | Action>;
+};
+
 /* Tier 2 */
 
 export type Field = Node<"field"> & {
@@ -41,16 +51,6 @@ export type Action = Node<"action"> & {
 
 export type Stream = Node<"stream"> & {
   parameter?: Parameter;
-};
-
-export type Feature = Node<"feature"> & {
-  tagName: string;
-  properties: Record<string, Field | Action>;
-};
-
-export type Landscape = Node<"landscape"> & {
-  viewName: string;
-  properties: Record<string, Field | Action>;
 };
 
 /* Tier 3 */
