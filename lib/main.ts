@@ -1,32 +1,46 @@
 import type { Abstract } from "./abstract";
-import { isFeature, isLandscape, isField, isAction } from "./abstract/guards";
-import { Publisher, Subscriber } from "./pubsub";
+import {
+  isView,
+  isFeature,
+  isLandscape,
+  isField,
+  isMethod,
+  isAction,
+  isStream,
+} from "./abstract/guards";
+import { Publisher, Pubsubber, Subscriber } from "./pubsub";
+
+type Scope = Record<string, Field | Abstract.Method | Action | Stream>;
+
+/* Tier I */
 
 export class App {
   constructor(source: Abstract.App) {
     let render: Feature | Landscape;
 
     if (isFeature(source.render)) {
-      render = new Feature(source.render);
+      render = new Feature(source.render, source.domain);
     } else if (isLandscape(source.render)) {
-      render = new Landscape(source.render);
+      render = new Landscape(source.render, source.domain);
     } else {
-      throw new Error(`Invalid render: ${source.render}`);
+      throw new Error(`Invalid app render: ${JSON.stringify(source.render)}`);
     }
 
     render.sendTo(document.body.append);
   }
 }
 
+/* Tier II */
+
 class Feature extends Publisher<HTMLElement> {
-  constructor(source: Abstract.Feature) {
+  constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
     const htmlElement = document.createElement(source.tagName);
 
     for (const [name, property] of Object.entries(source.properties)) {
       if (isField(property)) {
-        const field = new Field(property);
+        const field = new Field(property, domain);
         field.sendTo((value) => {
           if (name === "content") {
             htmlElement.replaceChildren(
@@ -56,10 +70,10 @@ class Feature extends Publisher<HTMLElement> {
           }
         });
       } else if (isAction(property)) {
-        const action = new Action(property);
+        const action = new Action(property, domain);
         htmlElement.addEventListener(name, action);
       } else {
-        throw new Error(`Invalid property: ${property}`);
+        throw new Error(`Invalid property at \`${name}\`: ${JSON.stringify(property)}`);
       }
     }
 
@@ -67,22 +81,69 @@ class Feature extends Publisher<HTMLElement> {
   }
 }
 
-class Landscape extends Publisher<HTMLElement> {
-  constructor(source: Abstract.Landscape) {
+class Landscape extends Pubsubber<HTMLElement> {
+  constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
-    // TODO
+
+    const view = domain[source.viewName];
+
+    if (!isView(view)) {
+      throw new Error(`Invalid view at \`${source.viewName}\`: ${JSON.stringify(view)}`);
+    }
+
+    const viewScope = Object.entries(view.scope).reduce<Scope>(
+      (scope, [name, member]) => {
+        if (isField(member)) {
+          scope[name] = new Field(member, domain);
+        } else if (isMethod(member)) {
+          scope[name] = member;
+        } else if (isAction(member)) {
+          scope[name] = new Action(member, domain);
+        } else if (isStream(member)) {
+          scope[name] = new Stream(member, domain);
+        } else {
+          throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
+        }
+        return scope;
+      },
+      { ...scope },
+    );
+
+    let render: Feature | Landscape;
+
+    if (isFeature(view.render)) {
+      render = new Feature(view.render, domain, viewScope);
+    } else if (isLandscape(view.render)) {
+      render = new Landscape(view.render, domain, viewScope);
+    } else {
+      throw new Error(`Invalid view render: ${JSON.stringify(view.render)}`);
+    }
+
+    render.sendTo(this);
   }
 }
 
+/* Tier III */
+
 class Field extends Publisher {
-  constructor(source: Abstract.Field) {
+  constructor(source: Abstract.Field, domain: Abstract.App["domain"]) {
     super();
     // TODO
   }
 }
 
 class Action implements Subscriber {
-  constructor(source: Abstract.Action) {
+  constructor(source: Abstract.Action, domain: Abstract.App["domain"]) {
+    // TODO
+  }
+
+  handleEvent(event: unknown) {
+    // TODO
+  }
+}
+
+class Stream implements Subscriber {
+  constructor(source: Abstract.Stream, domain: Abstract.App["domain"]) {
     // TODO
   }
 
