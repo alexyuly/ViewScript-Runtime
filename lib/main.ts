@@ -1,5 +1,6 @@
 import type { Abstract } from "./abstract";
-import { isFeature, isLandscape, isField, isMethod, isAction } from "./abstract/guards";
+import { isFeature, isLandscape, isField, isAction } from "./abstract/guards";
+import { Publisher, Subscriber } from "./pubsub";
 
 export class App {
   constructor(source: Abstract.App) {
@@ -13,30 +14,45 @@ export class App {
       throw new Error(`Invalid render: ${source.render}`);
     }
 
-    render.sendTo(window.document.body.append);
+    render.sendTo(document.body.append);
   }
 }
 
-class Feature {
+class Feature extends Publisher<HTMLElement> {
   constructor(source: Abstract.Feature) {
-    const htmlElement = window.document.createElement(source.tagName);
+    super();
+
+    const htmlElement = document.createElement(source.tagName);
 
     for (const [name, property] of Object.entries(source.properties)) {
       if (isField(property)) {
         const field = new Field(property);
         field.sendTo((value) => {
-          if (CSS.supports(name, value)) {
-            if (value === false || value === null || value === undefined) {
-              htmlElement.style.removeProperty(name);
-            } else {
-              htmlElement.style.setProperty(name, value);
-            }
+          if (name === "content") {
+            htmlElement.replaceChildren(
+              ...(function r(nextValue = value) {
+                const result: Array<HTMLElement | string> = [];
+                if (nextValue instanceof Array) {
+                  for (const child of nextValue) {
+                    result.push(...r(child));
+                  }
+                } else if (nextValue instanceof Feature || nextValue instanceof Landscape) {
+                  nextValue.sendTo(result.push);
+                } else {
+                  result.push((nextValue ?? "") as string);
+                }
+                return result;
+              })(),
+            );
+          } else if (CSS.supports(name, value as string)) {
+            htmlElement.style.setProperty(name, value as string);
+          } else if (value === true) {
+            htmlElement.setAttribute(name, name);
+          } else if (value !== false && value !== null && value !== undefined) {
+            htmlElement.setAttribute(name, value as string);
           } else {
-            if (value === false || value === null || value === undefined) {
-              htmlElement.removeAttribute(name);
-            } else {
-              htmlElement.setAttribute(name, value);
-            }
+            htmlElement.style.removeProperty(name);
+            htmlElement.removeAttribute(name);
           }
         });
       } else if (isAction(property)) {
@@ -46,19 +62,31 @@ class Feature {
         throw new Error(`Invalid property: ${property}`);
       }
     }
-  }
 
-  sendTo(app: App) {
+    this.publish(htmlElement);
+  }
+}
+
+class Landscape extends Publisher<HTMLElement> {
+  constructor(source: Abstract.Landscape) {
+    super();
     // TODO
   }
 }
 
-class Landscape {
-  constructor(source: Abstract.Landscape) {
+class Field extends Publisher {
+  constructor(source: Abstract.Field) {
+    super();
+    // TODO
+  }
+}
+
+class Action implements Subscriber {
+  constructor(source: Abstract.Action) {
     // TODO
   }
 
-  sendTo(app: App) {
+  handleEvent(event: unknown) {
     // TODO
   }
 }
