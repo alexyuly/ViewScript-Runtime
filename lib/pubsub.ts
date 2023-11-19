@@ -6,14 +6,8 @@ export abstract class Publisher<T = unknown> {
   private eventHandlers: Array<Subscriber<T>["handleEvent"]> = [];
   private value?: T;
 
-  sendTo(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
-    const handleEvent = typeof target === "function" ? target : target.handleEvent;
-
-    if (this.value !== undefined) {
-      handleEvent(this.value);
-    }
-
-    this.eventHandlers.push(handleEvent);
+  getValue() {
+    return this.value;
   }
 
   protected publish(event: T) {
@@ -22,6 +16,16 @@ export abstract class Publisher<T = unknown> {
     for (const handleEvent of this.eventHandlers) {
       handleEvent(event);
     }
+  }
+
+  sendTo(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
+    const handleEvent = typeof target === "function" ? target : target.handleEvent;
+
+    if (this.value !== undefined) {
+      handleEvent(this.value);
+    }
+
+    this.eventHandlers.push(handleEvent);
   }
 }
 

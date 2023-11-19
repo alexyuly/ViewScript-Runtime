@@ -134,26 +134,28 @@ class Landscape extends Pubsubber<HTMLElement> {
 /* Tier III */
 
 class Field extends Pubsubber {
+  private readonly publisher: Store | Switch | FieldCall | MethodCall;
+
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
-    let publisher: Store | Switch | FieldCall | MethodCall;
-
-    if (isParameter(source.publisher)) {
-      throw new Error(`Parametric field is not allowed: ${JSON.stringify(source.publisher)}`);
-    } else if (isStore(source.publisher)) {
-      publisher = new Store(source.publisher, domain, scope);
+    if (isStore(source.publisher)) {
+      this.publisher = new Store(source.publisher, domain, scope);
     } else if (isSwitch(source.publisher)) {
-      publisher = new Switch(source.publisher, domain, scope);
+      this.publisher = new Switch(source.publisher, domain, scope);
     } else if (isFieldCall(source.publisher)) {
-      publisher = new FieldCall(source.publisher, domain, scope);
+      this.publisher = new FieldCall(source.publisher, domain, scope);
     } else if (isMethodCall(source.publisher)) {
-      publisher = new MethodCall(source.publisher, domain, scope);
+      this.publisher = new MethodCall(source.publisher, domain, scope);
     } else {
       throw new Error(`Invalid field publisher: ${JSON.stringify(source.publisher)}`);
     }
 
-    publisher.sendTo(this);
+    this.publisher.sendTo(this);
+  }
+
+  getScope(): Scope {
+    return this.publisher.getScope();
   }
 }
 
@@ -177,29 +179,120 @@ class Stream extends Pubsubber {
 /* Tier IV */
 
 class Store extends Pubsubber {
+  private readonly scope: Scope;
+
   constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
     if (isFeature(source.content)) {
       const feature = new Feature(source.content, domain, scope);
       feature.sendTo(this);
+      this.scope = {};
     } else if (isLandscape(source.content)) {
       const landscape = new Landscape(source.content, domain, scope);
       landscape.sendTo(this);
+      this.scope = {};
     } else if (isPart(source.content)) {
-      this.publish(source.content.value);
+      const part = new Part(source.content, domain, scope);
+      part.sendTo(this);
+      this.scope = part.getScope();
     } else if (isStructure(source.content)) {
-      new Structure(source.content, domain, scope);
+      const structure = new Structure(source.content, domain, scope);
+      this.scope = structure.getScope();
     } else {
       throw new Error(`Invalid store content: ${JSON.stringify(source.content)}`);
     }
+  }
+
+  getScope(): Scope {
+    return this.scope;
+  }
+}
+
+class Switch extends Publisher {
+  constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope = {}) {
+    super();
+
+    const condition = new Field(source.condition, domain, scope);
+    const positive = new Field(source.positive, domain, scope);
+    const negative = source.negative && new Field(source.negative, domain, scope);
+
+    condition.sendTo((value) => {
+      this.publish((value ? positive : negative)?.getValue());
+    });
+  }
+
+  getScope(): Scope {
+    // TODO
+  }
+}
+
+class FieldCall extends Pubsubber {
+  constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope = {}) {
+    super();
+
+    const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
+    const field = callScope[source.name];
+
+    if (!(field instanceof Field)) {
+      throw new Error(`Invalid field at \`${source.name}\`: ${JSON.stringify(field)}`);
+    }
+
+    field.sendTo(this);
+  }
+
+  getScope(): Scope {
+    // TODO
+  }
+}
+
+class MethodCall extends Pubsubber {
+  constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope = {}) {
+    super();
+
+    const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
+    const method = callScope[source.name];
+
+    if (!isMethod(method)) {
+      throw new Error(`Invalid method at \`${source.name}\`: ${JSON.stringify(method)}`);
+    }
+
+    const resultScope = { ...callScope };
+
+    if (method.parameter && source.argument) {
+      resultScope[method.parameter.name] = new Field(source.argument, domain, scope);
+    }
+
+    const result = new Field(method.result, domain, resultScope);
+
+    result.sendTo(this);
+  }
+
+  getScope(): Scope {
+    // TODO
   }
 }
 
 /* Tier V */
 
+class Part extends Publisher {
+  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope = {}) {
+    super();
+
+    this.publish(source.value);
+  }
+
+  getScope(): Scope {
+    // TODO
+  }
+}
+
 class Structure {
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope = {}) {
+    // TODO
+  }
+
+  getScope(): Scope {
     // TODO
   }
 }
