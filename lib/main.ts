@@ -429,6 +429,8 @@ class Primitive extends Publisher {
   ) {
     super();
 
+    // TODO Create a mechanism to publish the result of functional method calls to MethodCall instances.
+
     if (source.value instanceof Array) {
       scope.push = (argumentValue) => {
         if (isField(argumentValue)) {
@@ -515,7 +517,6 @@ class Structure extends Publisher<Abstract.Structure> {
         const propertyOrMember = isField(property) ? property : member;
         accumulator[name] = new Field(propertyOrMember, domain, { ...scope, ...accumulator });
       } else if (isMethod(member)) {
-        // TODO Create a mechanism to update functional methods to MethodCalls here.
         accumulator[name] = member;
       } else if (isAction(member)) {
         accumulator[name] = new Action(member, domain, { ...scope, ...accumulator });
