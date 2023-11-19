@@ -112,14 +112,13 @@ class Landscape extends Pubsubber<HTMLElement> {
           const propertyOrMember = isField(property) ? property : member;
           accumulator[name] = new Field(propertyOrMember, domain, accumulator);
         } else if (isStream(member)) {
-          // TODO Fix to connect Action properties to Streams.
           const property = source.properties[name];
-          const stream = new Stream();
-          stream.sendTo((value) => {
-            // TODO
-            // const actionCall = new ActionCall()
-          });
-          accumulator[name] = stream;
+          const action = isAction(property) ? new Action(property, domain, accumulator) : undefined;
+          if (action) {
+            const stream = new Stream();
+            stream.sendTo(action);
+            accumulator[name] = stream;
+          }
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
