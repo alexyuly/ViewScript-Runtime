@@ -1,5 +1,6 @@
 import type { Abstract } from "./abstract";
 import {
+  isModel,
   isView,
   isFeature,
   isLandscape,
@@ -7,7 +8,6 @@ import {
   isMethod,
   isAction,
   isStream,
-  isParameter,
   isStore,
   isSwitch,
   isFieldCall,
@@ -26,9 +26,9 @@ export class App {
     let render: Feature | Landscape;
 
     if (isFeature(source.render)) {
-      render = new Feature(source.render, source.domain);
+      render = new Feature(source.render, source.domain, {});
     } else if (isLandscape(source.render)) {
-      render = new Landscape(source.render, source.domain);
+      render = new Landscape(source.render, source.domain, {});
     } else {
       throw new Error(`Invalid app render: ${JSON.stringify(source.render)}`);
     }
@@ -40,14 +40,14 @@ export class App {
 /* Tier II */
 
 class Feature extends Publisher<HTMLElement> {
-  constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     const htmlElement = document.createElement(source.tagName);
 
     for (const [name, property] of Object.entries(source.properties)) {
       if (isField(property)) {
-        const field = new Field(property, domain);
+        const field = new Field(property, domain, scope);
         field.sendTo((value) => {
           if (name === "content") {
             htmlElement.replaceChildren(
@@ -77,7 +77,7 @@ class Feature extends Publisher<HTMLElement> {
           }
         });
       } else if (isAction(property)) {
-        const action = new Action(property, domain);
+        const action = new Action(property, domain, scope);
         htmlElement.addEventListener(name, action);
       } else {
         throw new Error(`Invalid property at \`${name}\`: ${JSON.stringify(property)}`);
@@ -89,7 +89,7 @@ class Feature extends Publisher<HTMLElement> {
 }
 
 class Landscape extends Pubsubber<HTMLElement> {
-  constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     const view = domain[source.viewName];
@@ -99,20 +99,20 @@ class Landscape extends Pubsubber<HTMLElement> {
     }
 
     const viewScope = Object.entries(view.scope).reduce<Scope>(
-      (scope, [name, member]) => {
+      (x, [name, member]) => {
         const appliedMember = name in source.properties ? source.properties[name] : member;
         if (isField(appliedMember)) {
-          scope[name] = new Field(appliedMember, domain);
+          x[name] = new Field(appliedMember, domain, scope);
         } else if (isMethod(appliedMember)) {
-          scope[name] = appliedMember;
+          x[name] = appliedMember;
         } else if (isAction(appliedMember)) {
-          scope[name] = new Action(appliedMember, domain);
+          x[name] = new Action(appliedMember, domain, scope);
         } else if (isStream(appliedMember)) {
-          scope[name] = new Stream(appliedMember);
+          x[name] = new Stream(appliedMember, domain, scope);
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
-        return scope;
+        return x;
       },
       { ...scope },
     );
@@ -136,7 +136,7 @@ class Landscape extends Pubsubber<HTMLElement> {
 class Field extends Pubsubber {
   private readonly publisher: Store | Switch | FieldCall | MethodCall;
 
-  constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     if (isStore(source.publisher)) {
@@ -160,7 +160,7 @@ class Field extends Pubsubber {
 }
 
 class Action implements Subscriber {
-  constructor(source: Abstract.Action, domain: Abstract.App["domain"]) {
+  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
 
@@ -170,7 +170,7 @@ class Action implements Subscriber {
 }
 
 class Stream extends Pubsubber {
-  constructor(source: Abstract.Stream) {
+  constructor(source: Abstract.Stream, domain: Abstract.App["domain"], scope: Scope) {
     super();
     // TODO Anything else?
   }
@@ -179,33 +179,37 @@ class Stream extends Pubsubber {
 /* Tier IV */
 
 class Store extends Pubsubber {
-  private readonly scope: Scope;
+  private readonly content: Feature | Landscape | Part | Structure;
 
-  constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     if (isFeature(source.content)) {
       const feature = new Feature(source.content, domain, scope);
       feature.sendTo(this);
-      this.scope = {};
+      this.content = feature;
     } else if (isLandscape(source.content)) {
       const landscape = new Landscape(source.content, domain, scope);
       landscape.sendTo(this);
-      this.scope = {};
+      this.content = landscape;
     } else if (isPart(source.content)) {
       const part = new Part(source.content, domain, scope);
       part.sendTo(this);
-      this.scope = part.getScope();
+      this.content = part;
     } else if (isStructure(source.content)) {
       const structure = new Structure(source.content, domain, scope);
-      this.scope = structure.getScope();
+      this.content = structure;
     } else {
       throw new Error(`Invalid store content: ${JSON.stringify(source.content)}`);
     }
   }
 
   getScope(): Scope {
-    return this.scope;
+    if (this.content instanceof Feature || this.content instanceof Landscape) {
+      return {};
+    }
+
+    return this.content.getScope();
   }
 }
 
@@ -214,7 +218,7 @@ class Switch extends Publisher {
   private readonly positive: Field;
   private readonly negative: Field;
 
-  constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     this.condition = new Field(source.condition, domain, scope);
@@ -235,7 +239,7 @@ class Switch extends Publisher {
 class FieldCall extends Pubsubber {
   private readonly field: Field;
 
-  constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
@@ -257,7 +261,7 @@ class FieldCall extends Pubsubber {
 class MethodCall extends Pubsubber {
   private readonly result: Field;
 
-  constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope = {}) {
+  constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
@@ -285,23 +289,48 @@ class MethodCall extends Pubsubber {
 /* Tier V */
 
 class Part extends Publisher {
-  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope = {}) {
+  private readonly scope: Scope;
+
+  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope) {
     super();
+
+    // TODO Assign scope based on type of source.value
+    // TODO Handle arrays with dignity
 
     this.publish(source.value);
   }
 
   getScope(): Scope {
-    // TODO
+    return this.scope;
   }
 }
 
 class Structure {
-  constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope = {}) {
-    // TODO
+  private readonly scope: Scope;
+
+  constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
+    const model = domain[source.modelName];
+
+    if (!isModel(model)) {
+      throw new Error(`Invalid model at \`${source.modelName}\`: ${JSON.stringify(model)}`);
+    }
+
+    this.scope = Object.entries(model.scope).reduce<Scope>((x, [name, member]) => {
+      const appliedMember = name in source.properties ? source.properties[name] : member;
+      if (isField(appliedMember)) {
+        x[name] = new Field(appliedMember, domain, scope);
+      } else if (isMethod(appliedMember)) {
+        x[name] = appliedMember;
+      } else if (isAction(appliedMember)) {
+        x[name] = new Action(appliedMember, domain, scope);
+      } else {
+        throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
+      }
+      return x;
+    }, {});
   }
 
   getScope(): Scope {
-    // TODO
+    return this.scope;
   }
 }

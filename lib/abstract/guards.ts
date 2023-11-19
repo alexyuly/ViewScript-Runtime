@@ -4,6 +4,10 @@ function isAbstractNode(value: unknown): value is { kind: string } {
   return typeof value === "object" && value != null && "kind" in value;
 }
 
+export function isModel(value: unknown): value is Abstract.Model {
+  return isAbstractNode(value) && value.kind === "model";
+}
+
 export function isView(value: unknown): value is Abstract.View {
   return isAbstractNode(value) && value.kind === "view";
 }
@@ -30,10 +34,6 @@ export function isAction(value: unknown): value is Abstract.Action {
 
 export function isStream(value: unknown): value is Abstract.Stream {
   return isAbstractNode(value) && value.kind === "stream";
-}
-
-export function isParameter(value: unknown): value is Abstract.Parameter {
-  return isAbstractNode(value) && value.kind === "parameter";
 }
 
 export function isStore(value: unknown): value is Abstract.Store {
