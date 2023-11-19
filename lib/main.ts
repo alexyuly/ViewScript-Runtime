@@ -301,7 +301,7 @@ class FieldCall extends Pubsubber {
 }
 
 class MethodCall extends Pubsubber {
-  private readonly result: Field;
+  private readonly result: Field | Store;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -309,19 +309,35 @@ class MethodCall extends Pubsubber {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
     const method = callScope[source.name];
 
-    // TODO Support functions
-    if (!isMethod(method)) {
+    if (typeof method === "function") {
+      const argument = source.argument && new Field(source.argument, domain, scope);
+      const resultValue = method(argument?.getValue());
+      this.result = new Field(
+        {
+          kind: "field",
+          publisher: {
+            kind: "store",
+            modelName: source.modelName,
+            content: {
+              kind: "primitive",
+              value: resultValue,
+            },
+          },
+        },
+        domain,
+        scope,
+      );
+      // TODO Keep this.result up to date with method calls. ???
+    } else if (isMethod(method)) {
+      const resultScope = { ...callScope };
+      if (method.parameter && source.argument) {
+        resultScope[method.parameter.name] = new Field(source.argument, domain, scope);
+      }
+      this.result = new Field(method.result, domain, resultScope);
+      this.result.sendTo(this);
+    } else {
       throw new Error(`Invalid method at \`${source.name}\`: ${JSON.stringify(method)}`);
     }
-
-    const resultScope = { ...callScope };
-
-    if (method.parameter && source.argument) {
-      resultScope[method.parameter.name] = new Field(source.argument, domain, scope);
-    }
-
-    this.result = new Field(method.result, domain, resultScope);
-    this.result.sendTo(this);
   }
 
   getScope(): Scope {
@@ -330,8 +346,8 @@ class MethodCall extends Pubsubber {
 }
 
 class ActionCall implements Subscriber<void> {
-  private readonly action: Action | ((argument: unknown) => unknown);
-  private readonly argument?: Field | Abstract.Field;
+  private readonly action: Action | ((argument: unknown) => void);
+  private readonly argument?: Abstract.Field | Field;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
@@ -499,6 +515,7 @@ class Structure extends Publisher<Abstract.Structure> {
         const propertyOrMember = isField(property) ? property : member;
         accumulator[name] = new Field(propertyOrMember, domain, { ...scope, ...accumulator });
       } else if (isMethod(member)) {
+        // TODO Create a mechanism to update functional methods to MethodCalls here.
         accumulator[name] = member;
       } else if (isAction(member)) {
         accumulator[name] = new Action(member, domain, { ...scope, ...accumulator });
