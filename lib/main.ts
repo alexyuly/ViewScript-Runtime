@@ -7,6 +7,13 @@ import {
   isMethod,
   isAction,
   isStream,
+  isParameter,
+  isStore,
+  isSwitch,
+  isFieldCall,
+  isMethodCall,
+  isPart,
+  isStructure,
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
@@ -93,14 +100,15 @@ class Landscape extends Pubsubber<HTMLElement> {
 
     const viewScope = Object.entries(view.scope).reduce<Scope>(
       (scope, [name, member]) => {
-        if (isField(member)) {
-          scope[name] = new Field(member, domain);
-        } else if (isMethod(member)) {
-          scope[name] = member;
-        } else if (isAction(member)) {
-          scope[name] = new Action(member, domain);
-        } else if (isStream(member)) {
-          scope[name] = new Stream(member, domain);
+        const appliedMember = name in source.properties ? source.properties[name] : member;
+        if (isField(appliedMember)) {
+          scope[name] = new Field(appliedMember, domain);
+        } else if (isMethod(appliedMember)) {
+          scope[name] = appliedMember;
+        } else if (isAction(appliedMember)) {
+          scope[name] = new Action(appliedMember, domain);
+        } else if (isStream(appliedMember)) {
+          scope[name] = new Stream(appliedMember);
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
@@ -125,10 +133,27 @@ class Landscape extends Pubsubber<HTMLElement> {
 
 /* Tier III */
 
-class Field extends Publisher {
-  constructor(source: Abstract.Field, domain: Abstract.App["domain"]) {
+class Field extends Pubsubber {
+  constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
-    // TODO
+
+    let publisher: Store | Switch | FieldCall | MethodCall;
+
+    if (isParameter(source.publisher)) {
+      throw new Error(`Parametric field is not allowed: ${JSON.stringify(source.publisher)}`);
+    } else if (isStore(source.publisher)) {
+      publisher = new Store(source.publisher, domain, scope);
+    } else if (isSwitch(source.publisher)) {
+      publisher = new Switch(source.publisher, domain, scope);
+    } else if (isFieldCall(source.publisher)) {
+      publisher = new FieldCall(source.publisher, domain, scope);
+    } else if (isMethodCall(source.publisher)) {
+      publisher = new MethodCall(source.publisher, domain, scope);
+    } else {
+      throw new Error(`Invalid field publisher: ${JSON.stringify(source.publisher)}`);
+    }
+
+    publisher.sendTo(this);
   }
 }
 
@@ -142,12 +167,39 @@ class Action implements Subscriber {
   }
 }
 
-class Stream implements Subscriber {
-  constructor(source: Abstract.Stream, domain: Abstract.App["domain"]) {
-    // TODO
+class Stream extends Pubsubber {
+  constructor(source: Abstract.Stream) {
+    super();
+    // TODO Anything else?
   }
+}
 
-  handleEvent(event: unknown) {
+/* Tier IV */
+
+class Store extends Pubsubber {
+  constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope = {}) {
+    super();
+
+    if (isFeature(source.content)) {
+      const feature = new Feature(source.content, domain, scope);
+      feature.sendTo(this);
+    } else if (isLandscape(source.content)) {
+      const landscape = new Landscape(source.content, domain, scope);
+      landscape.sendTo(this);
+    } else if (isPart(source.content)) {
+      this.publish(source.content.value);
+    } else if (isStructure(source.content)) {
+      new Structure(source.content, domain, scope);
+    } else {
+      throw new Error(`Invalid store content: ${JSON.stringify(source.content)}`);
+    }
+  }
+}
+
+/* Tier V */
+
+class Structure {
+  constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope = {}) {
     // TODO
   }
 }

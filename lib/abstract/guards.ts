@@ -31,3 +31,31 @@ export function isAction(value: unknown): value is Abstract.Action {
 export function isStream(value: unknown): value is Abstract.Stream {
   return isAbstractNode(value) && value.kind === "stream";
 }
+
+export function isParameter(value: unknown): value is Abstract.Parameter {
+  return isAbstractNode(value) && value.kind === "parameter";
+}
+
+export function isStore(value: unknown): value is Abstract.Store {
+  return isAbstractNode(value) && value.kind === "store";
+}
+
+export function isSwitch(value: unknown): value is Abstract.Switch {
+  return isAbstractNode(value) && value.kind === "switch";
+}
+
+export function isFieldCall(value: unknown): value is Abstract.FieldCall {
+  return isAbstractNode(value) && value.kind === "fieldCall";
+}
+
+export function isMethodCall(value: unknown): value is Abstract.MethodCall {
+  return isAbstractNode(value) && value.kind === "methodCall";
+}
+
+export function isPart(value: unknown): value is Abstract.Part {
+  return isAbstractNode(value) && value.kind === "part";
+}
+
+export function isStructure(value: unknown): value is Abstract.Structure {
+  return isAbstractNode(value) && value.kind === "structure";
+}
