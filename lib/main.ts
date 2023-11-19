@@ -17,7 +17,10 @@ import {
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Scope = Record<string, Field | Abstract.Method | Action | Stream>;
+type Scope = Record<
+  string,
+  Field | Abstract.Method | Action | Stream | ((argument: Field) => unknown)
+>;
 
 /* Tier I */
 
@@ -193,7 +196,7 @@ class Store extends Pubsubber {
       landscape.sendTo(this);
       this.content = landscape;
     } else if (isPart(source.content)) {
-      const part = new Part(source.content, domain, scope);
+      const part = new Part(source.content, domain, scope, this);
       part.sendTo(this);
       this.content = part;
     } else if (isStructure(source.content)) {
@@ -289,13 +292,64 @@ class MethodCall extends Pubsubber {
 /* Tier V */
 
 class Part extends Publisher {
-  private readonly scope: Scope;
+  private readonly scope: Scope = {};
 
-  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope, store: Store) {
     super();
 
-    // TODO Assign scope based on type of source.value
-    // TODO Handle arrays with dignity
+    if (source.value instanceof Array) {
+      scope.push = (argument: Field) => {
+        const storedValue = store.getValue();
+        const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
+        store.handleEvent(nextValue);
+      };
+      scope.setTo = (argument: Field) => {
+        const nextValue = argument.getValue();
+        store.handleEvent(nextValue);
+      };
+      // TODO More...?
+    } else if (typeof source.value === "boolean") {
+      scope.not = () => {
+        const nextValue = !store.getValue();
+        return nextValue;
+      };
+      scope.setTo = (argument: Field) => {
+        const nextValue = argument.getValue();
+        store.handleEvent(nextValue);
+      };
+      scope.toggle = () => {
+        const nextValue = !store.getValue();
+        store.handleEvent(nextValue);
+      };
+      // TODO More...?
+    } else if (typeof source.value === "number") {
+      scope.add = (argument: Field) => {
+        const storedValue = store.getValue();
+        const nextValue = (storedValue as number) + (argument.getValue() as number);
+        store.handleEvent(nextValue);
+      };
+      scope.isAtLeast = (argument: Field) => {
+        const storedValue = store.getValue();
+        const nextValue = (storedValue as number) >= (argument.getValue() as number);
+        return nextValue;
+      };
+      scope.setTo = (argument: Field) => {
+        const nextValue = argument.getValue();
+        store.handleEvent(nextValue);
+      };
+      // TODO More...?
+    } else if (typeof source.value === "string") {
+      scope.setTo = (argument: Field) => {
+        const nextValue = argument.getValue();
+        store.handleEvent(nextValue);
+      };
+      // TODO More...?
+    } else {
+      // TODO More...?
+    }
+
+    // TODO Handle bigints?
+    // TODO Handle symbols?
 
     this.publish(source.value);
   }
