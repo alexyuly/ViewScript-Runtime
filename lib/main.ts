@@ -20,7 +20,7 @@ import {
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Member = Stream | Field | Abstract.Method | Abstract.Action | ((argument?: Field) => unknown);
+type Member = Stream | Field | Abstract.Method | Action | ((argument: unknown) => unknown);
 type Scope = Record<string, Member>;
 
 /* Tier I */
@@ -107,7 +107,11 @@ class Landscape extends Pubsubber<HTMLElement> {
 
     const viewScope = Object.entries(view.scope).reduce<Scope>(
       (accumulator, [name, member]) => {
-        if (isStream(member)) {
+        if (isField(member)) {
+          const property = source.properties[name];
+          const propertyOrMember = isField(property) ? property : member;
+          accumulator[name] = new Field(propertyOrMember, domain, accumulator);
+        } else if (isStream(member)) {
           // TODO Fix to connect Action properties to Streams.
           const property = source.properties[name];
           const stream = new Stream();
@@ -116,10 +120,6 @@ class Landscape extends Pubsubber<HTMLElement> {
             // const actionCall = new ActionCall()
           });
           accumulator[name] = stream;
-        } else if (isField(member)) {
-          const property = source.properties[name];
-          const propertyOrMember = isField(property) ? property : member;
-          accumulator[name] = new Field(propertyOrMember, domain, scope);
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
@@ -170,6 +170,46 @@ class Field extends Pubsubber {
   }
 }
 
+class Action implements Subscriber<Abstract.Field> {
+  private readonly source: Abstract.Action;
+  private readonly domain: Abstract.App["domain"];
+  private readonly scope: Scope;
+
+  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
+    this.source = source;
+    this.domain = domain;
+    this.scope = scope;
+  }
+
+  handleEvent(argumentValue?: Abstract.Field): void {
+    const stepScope = { ...this.scope };
+    const argument = argumentValue && new Field(argumentValue, this.domain, this.scope);
+
+    if (this.source.parameter && argument) {
+      stepScope[this.source.parameter.name] = argument;
+    }
+
+    for (const abstractStep of this.source.steps) {
+      let step: ActionCall | StreamCall | Exception;
+      if (isActionCall(abstractStep)) {
+        step = new ActionCall(abstractStep, this.domain, this.scope);
+      } else if (isStreamCall(abstractStep)) {
+        step = new StreamCall(abstractStep, this.domain, this.scope);
+      } else if (isException(abstractStep)) {
+        step = new Exception(abstractStep, this.domain, this.scope);
+      } else {
+        throw new Error(`Invalid step: ${JSON.stringify(abstractStep)}`);
+      }
+      if (!(step instanceof Exception) || step.getConditionalValue()) {
+        step.handleEvent();
+      }
+      if (step instanceof Exception) {
+        break;
+      }
+    }
+  }
+}
+
 class Stream extends Pubsubber {
   constructor() {
     super();
@@ -193,11 +233,12 @@ class Store extends Pubsubber {
       landscape.sendTo(this);
       this.content = landscape;
     } else if (isPrimitive(source.content)) {
-      const primitive = new Primitive(source.content, scope, this);
+      const primitive = new Primitive(source.content, domain, scope, this);
       primitive.sendTo(this);
       this.content = primitive;
     } else if (isStructure(source.content)) {
       const structure = new Structure(source.content, domain, scope);
+      structure.sendTo(this);
       this.content = structure;
     } else {
       throw new Error(`Invalid store content: ${JSON.stringify(source.content)}`);
@@ -289,56 +330,35 @@ class MethodCall extends Pubsubber {
 }
 
 class ActionCall implements Subscriber<void> {
-  private readonly source: Abstract.ActionCall;
-  private readonly scope: Scope;
-  private readonly argument?: Field;
-  private readonly steps?: Array<ActionCall | StreamCall | Exception>;
+  private readonly action: Action | ((argument: unknown) => unknown);
+  private readonly argument?: Field | Abstract.Field;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    this.source = source;
-    this.scope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
-    this.argument = source.argument && new Field(source.argument, domain, scope);
+    const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
+    const action = callScope[source.name];
 
-    const action = this.scope[source.name];
-
-    if (isAction(action)) {
-      this.steps = [];
-      for (const step of action.steps) {
-        if (isActionCall(step)) {
-          this.steps.push(new ActionCall(step, domain, this.scope));
-        } else if (isStreamCall(step)) {
-          this.steps.push(new StreamCall(step, domain, this.scope));
-        } else if (isException(step)) {
-          this.steps.push(new Exception(step, domain, this.scope));
-        } else {
-          throw new Error(`Invalid step: ${JSON.stringify(step)}`);
-        }
-      }
-    } else if (typeof action !== "function") {
+    if (typeof action === "function") {
+      this.argument = source.argument && new Field(source.argument, domain, scope);
+    } else if (action instanceof Action) {
+      this.argument = source.argument;
+    } else {
       throw new Error(`Invalid action at \`${source.name}\`: ${JSON.stringify(action)}`);
     }
+
+    this.action = action;
   }
 
   handleEvent(): void {
-    const action = this.scope[this.source.name];
-
-    if (typeof action === "function") {
-      action(this.argument);
-    } else if (isAction(action) && this.steps) {
-      const stepsScope = { ...this.scope };
-
-      if (action.parameter && this.argument) {
-        stepsScope[action.parameter.name] = this.argument;
-      }
-
-      for (const step of this.steps ?? []) {
-        if (!(step instanceof Exception) || step.getConditionalValue()) {
-          step.handleEvent();
-        }
-        if (step instanceof Exception) {
-          break;
-        }
-      }
+    if (
+      typeof this.action === "function" &&
+      (this.argument === undefined || this.argument instanceof Field)
+    ) {
+      this.action(this.argument?.getValue());
+    } else if (
+      this.action instanceof Action &&
+      (this.argument === undefined || isField(this.argument))
+    ) {
+      this.action.handleEvent(this.argument);
     }
   }
 }
@@ -385,20 +405,27 @@ class Exception implements Subscriber<void> {
 class Primitive extends Publisher {
   private readonly scope: Scope = {};
 
-  constructor(source: Abstract.Primitive, scope: Scope, store: Store) {
+  constructor(
+    source: Abstract.Primitive,
+    domain: Abstract.App["domain"],
+    scope: Scope,
+    store: Store,
+  ) {
     super();
 
     if (source.value instanceof Array) {
-      scope.push = (argument) => {
-        if (argument) {
+      scope.push = (argumentValue) => {
+        if (isField(argumentValue)) {
           const storedValue = store.getValue();
-          const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
+          const nextValue = [
+            ...(storedValue instanceof Array ? storedValue : []),
+            new Field(argumentValue, domain, scope),
+          ];
           store.handleEvent(nextValue);
         }
       };
-      scope.setTo = (argument) => {
-        const nextValue = argument?.getValue();
-        store.handleEvent(nextValue);
+      scope.setTo = (argumentValue) => {
+        store.handleEvent(argumentValue);
       };
       // TODO More...?
     } else if (typeof source.value === "boolean") {
@@ -406,9 +433,8 @@ class Primitive extends Publisher {
         const nextValue = !store.getValue();
         return nextValue;
       };
-      scope.setTo = (argument) => {
-        const nextValue = argument?.getValue();
-        store.handleEvent(nextValue);
+      scope.setTo = (argumentValue) => {
+        store.handleEvent(argumentValue);
       };
       scope.toggle = () => {
         const nextValue = !store.getValue();
@@ -416,32 +442,28 @@ class Primitive extends Publisher {
       };
       // TODO More...?
     } else if (typeof source.value === "number") {
-      scope.add = (argument) => {
-        if (argument) {
-          const storedValue = store.getValue();
-          const nextValue = (storedValue as number) + (argument.getValue() as number);
-          store.handleEvent(nextValue);
-        }
-      };
-      scope.is = (argument) => {
+      scope.add = (argumentValue) => {
         const storedValue = store.getValue();
-        const nextValue = storedValue === argument?.getValue();
-        return nextValue;
-      };
-      scope.isAtLeast = (argument) => {
-        const storedValue = store.getValue();
-        const nextValue = (storedValue as number) >= (argument?.getValue() as number);
-        return nextValue;
-      };
-      scope.setTo = (argument) => {
-        const nextValue = argument?.getValue();
+        const nextValue = (storedValue as number) + (argumentValue as number);
         store.handleEvent(nextValue);
+      };
+      scope.is = (argumentValue) => {
+        const storedValue = store.getValue();
+        const nextValue = storedValue === argumentValue;
+        return nextValue;
+      };
+      scope.isAtLeast = (argumentValue) => {
+        const storedValue = store.getValue();
+        const nextValue = (storedValue as number) >= (argumentValue as number);
+        return nextValue;
+      };
+      scope.setTo = (argumentValue) => {
+        store.handleEvent(argumentValue);
       };
       // TODO More...?
     } else if (typeof source.value === "string") {
-      scope.setTo = (argument) => {
-        const nextValue = argument?.getValue();
-        store.handleEvent(nextValue);
+      scope.setTo = (argumentValue) => {
+        store.handleEvent(argumentValue);
       };
       // TODO More...?
     } else {
@@ -459,10 +481,12 @@ class Primitive extends Publisher {
   }
 }
 
-class Structure {
+class Structure extends Publisher<Abstract.Structure> {
   private readonly scope: Scope;
 
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
     const model = domain[source.modelName];
 
     if (!isModel(model)) {
@@ -470,18 +494,21 @@ class Structure {
     }
 
     this.scope = Object.entries(model.scope).reduce<Scope>((accumulator, [name, member]) => {
-      const appliedMember = name in source.properties ? source.properties[name] : member;
-      if (isField(appliedMember)) {
-        accumulator[name] = new Field(appliedMember, domain, scope);
-      } else if (isMethod(appliedMember)) {
-        accumulator[name] = appliedMember;
-      } else if (isAction(appliedMember)) {
-        accumulator[name] = appliedMember;
+      if (isField(member)) {
+        const property = source.properties[name];
+        const propertyOrMember = isField(property) ? property : member;
+        accumulator[name] = new Field(propertyOrMember, domain, { ...scope, ...accumulator });
+      } else if (isMethod(member)) {
+        accumulator[name] = member;
+      } else if (isAction(member)) {
+        accumulator[name] = new Action(member, domain, { ...scope, ...accumulator });
       } else {
         throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
       }
       return accumulator;
     }, {});
+
+    this.publish(source);
   }
 
   getScope(): Scope {

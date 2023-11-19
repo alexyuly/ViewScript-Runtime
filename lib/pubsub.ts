@@ -1,5 +1,5 @@
 export interface Subscriber<T = unknown> {
-  handleEvent(event: T): void;
+  handleEvent(value: T): void;
 }
 
 export abstract class Publisher<T = unknown> {
@@ -10,11 +10,11 @@ export abstract class Publisher<T = unknown> {
     return this.value;
   }
 
-  protected publish(event: T) {
-    this.value = event;
+  protected publish(value: T) {
+    this.value = value;
 
     for (const handleEvent of this.eventHandlers) {
-      handleEvent(event);
+      handleEvent(value);
     }
   }
 
@@ -30,7 +30,7 @@ export abstract class Publisher<T = unknown> {
 }
 
 export abstract class Pubsubber<T = unknown> extends Publisher<T> implements Subscriber<T> {
-  handleEvent(event: T): void {
-    this.publish(event);
+  handleEvent(value: T): void {
+    this.publish(value);
   }
 }
