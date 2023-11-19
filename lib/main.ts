@@ -12,15 +12,16 @@ import {
   isSwitch,
   isFieldCall,
   isMethodCall,
-  isPart,
+  isActionCall,
+  isStreamCall,
+  isException,
+  isPrimitive,
   isStructure,
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Scope = Record<
-  string,
-  Field | Abstract.Method | Action | Stream | ((argument: Field) => unknown)
->;
+type Member = Stream | Field | Abstract.Method | Abstract.Action | ((argument?: Field) => unknown);
+type Scope = Record<string, Member>;
 
 /* Tier I */
 
@@ -79,9 +80,12 @@ class Feature extends Publisher<HTMLElement> {
             htmlElement.removeAttribute(name);
           }
         });
-      } else if (isAction(property)) {
-        const action = new Action(property, domain, scope);
-        htmlElement.addEventListener(name, action);
+      } else if (isActionCall(property)) {
+        const actionCall = new ActionCall(property, domain, scope);
+        htmlElement.addEventListener(name, actionCall);
+      } else if (isStreamCall(property)) {
+        const streamCall = new StreamCall(property, domain, scope);
+        htmlElement.addEventListener(name, streamCall);
       } else {
         throw new Error(`Invalid property at \`${name}\`: ${JSON.stringify(property)}`);
       }
@@ -103,15 +107,23 @@ class Landscape extends Pubsubber<HTMLElement> {
 
     const viewScope = Object.entries(view.scope).reduce<Scope>(
       (accumulator, [name, member]) => {
-        const appliedMember = name in source.properties ? source.properties[name] : member;
-        if (isField(appliedMember)) {
-          accumulator[name] = new Field(appliedMember, domain, scope);
-        } else if (isMethod(appliedMember)) {
-          accumulator[name] = appliedMember;
-        } else if (isAction(appliedMember)) {
-          accumulator[name] = new Action(appliedMember, domain, scope);
-        } else if (isStream(appliedMember)) {
-          accumulator[name] = new Stream(appliedMember, domain, scope);
+        if (isStream(member)) {
+          // TODO Fix to connect Action properties to Streams.
+          const property = source.properties[name];
+          const stream = new Stream();
+          stream.sendTo((value) => {
+            // TODO
+            // const actionCall = new ActionCall()
+          });
+          accumulator[name] = stream;
+        } else if (isField(member)) {
+          const property = source.properties[name];
+          const propertyOrMember = isField(property) ? property : member;
+          accumulator[name] = new Field(propertyOrMember, domain, scope);
+        } else if (isMethod(member)) {
+          accumulator[name] = member;
+        } else if (isAction(member)) {
+          accumulator[name] = member;
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
@@ -162,27 +174,16 @@ class Field extends Pubsubber {
   }
 }
 
-class Action implements Subscriber {
-  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
-    // TODO
-  }
-
-  handleEvent(event: unknown) {
-    // TODO
-  }
-}
-
 class Stream extends Pubsubber {
-  constructor(source: Abstract.Stream, domain: Abstract.App["domain"], scope: Scope) {
+  constructor() {
     super();
-    // TODO Anything else?
   }
 }
 
 /* Tier IV */
 
 class Store extends Pubsubber {
-  private readonly content: Feature | Landscape | Part | Structure;
+  private readonly content: Feature | Landscape | Primitive | Structure;
 
   constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -195,8 +196,8 @@ class Store extends Pubsubber {
       const landscape = new Landscape(source.content, domain, scope);
       landscape.sendTo(this);
       this.content = landscape;
-    } else if (isPart(source.content)) {
-      const part = new Part(source.content, domain, scope, this);
+    } else if (isPrimitive(source.content)) {
+      const part = new Primitive(source.content, scope, this);
       part.sendTo(this);
       this.content = part;
     } else if (isStructure(source.content)) {
@@ -235,7 +236,8 @@ class Switch extends Publisher {
 
   getScope(): Scope {
     const conditionalValue = this.condition.getValue();
-    return (conditionalValue ? this.positive : this.negative).getScope();
+    const result = conditionalValue ? this.positive : this.negative;
+    return result.getScope();
   }
 }
 
@@ -270,6 +272,7 @@ class MethodCall extends Pubsubber {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
     const method = callScope[source.name];
 
+    // TODO Support functions
     if (!isMethod(method)) {
       throw new Error(`Invalid method at \`${source.name}\`: ${JSON.stringify(method)}`);
     }
@@ -289,22 +292,116 @@ class MethodCall extends Pubsubber {
   }
 }
 
+class ActionCall implements Subscriber<void> {
+  private readonly source: Abstract.ActionCall;
+  private readonly scope: Scope;
+  private readonly argument?: Field;
+  private readonly steps?: Array<ActionCall | StreamCall | Exception>;
+
+  constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
+    this.source = source;
+    this.scope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
+    this.argument = source.argument && new Field(source.argument, domain, scope);
+
+    const action = this.scope[source.name];
+
+    if (isAction(action)) {
+      this.steps = [];
+      for (const step of action.steps) {
+        if (isActionCall(step)) {
+          this.steps.push(new ActionCall(step, domain, this.scope));
+        } else if (isStreamCall(step)) {
+          this.steps.push(new StreamCall(step, domain, this.scope));
+        } else if (isException(step)) {
+          this.steps.push(new Exception(step, domain, this.scope));
+        } else {
+          throw new Error(`Invalid step: ${JSON.stringify(step)}`);
+        }
+      }
+    } else if (typeof action !== "function") {
+      throw new Error(`Invalid action at \`${source.name}\`: ${JSON.stringify(action)}`);
+    }
+  }
+
+  handleEvent(): void {
+    const action = this.scope[this.source.name];
+
+    if (typeof action === "function") {
+      action(this.argument);
+    } else if (isAction(action) && this.steps) {
+      const stepsScope = { ...this.scope };
+
+      if (action.parameter && this.argument) {
+        stepsScope[action.parameter.name] = this.argument;
+      }
+
+      for (const step of this.steps ?? []) {
+        if (!(step instanceof Exception) || step.getConditionalValue()) {
+          step.handleEvent();
+        }
+        if (step instanceof Exception) {
+          break;
+        }
+      }
+    }
+  }
+}
+
+class StreamCall implements Subscriber<void> {
+  private readonly source: Abstract.StreamCall;
+  private readonly scope: Scope;
+  private readonly argument?: Field;
+
+  constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
+    this.source = source;
+    this.scope = scope;
+    this.argument = source.argument && new Field(source.argument, domain, scope);
+  }
+
+  handleEvent(): void {
+    const stream = this.scope[this.source.name];
+
+    if (stream instanceof ActionCall || stream instanceof StreamCall) {
+      stream.handleEvent(this.argument);
+    } else {
+      throw new Error(`Invalid stream at \`${this.source.name}\`: ${JSON.stringify(stream)}`);
+    }
+  }
+}
+
+class Exception implements Subscriber<void> {
+  constructor(source: Abstract.Exception, domain: Abstract.App["domain"], scope: Scope) {
+    // TODO
+  }
+
+  getConditionalValue(): boolean {
+    // TODO
+    return false;
+  }
+
+  handleEvent(): void {
+    // TODO
+  }
+}
+
 /* Tier V */
 
-class Part extends Publisher {
+class Primitive extends Publisher {
   private readonly scope: Scope = {};
 
-  constructor(source: Abstract.Part, domain: Abstract.App["domain"], scope: Scope, store: Store) {
+  constructor(source: Abstract.Primitive, scope: Scope, store: Store) {
     super();
 
     if (source.value instanceof Array) {
       scope.push = (argument) => {
-        const storedValue = store.getValue();
-        const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
-        store.handleEvent(nextValue);
+        if (argument) {
+          const storedValue = store.getValue();
+          const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
+          store.handleEvent(nextValue);
+        }
       };
       scope.setTo = (argument) => {
-        const nextValue = argument.getValue();
+        const nextValue = argument?.getValue();
         store.handleEvent(nextValue);
       };
       // TODO More...?
@@ -314,7 +411,7 @@ class Part extends Publisher {
         return nextValue;
       };
       scope.setTo = (argument) => {
-        const nextValue = argument.getValue();
+        const nextValue = argument?.getValue();
         store.handleEvent(nextValue);
       };
       scope.toggle = () => {
@@ -324,28 +421,30 @@ class Part extends Publisher {
       // TODO More...?
     } else if (typeof source.value === "number") {
       scope.add = (argument) => {
-        const storedValue = store.getValue();
-        const nextValue = (storedValue as number) + (argument.getValue() as number);
-        store.handleEvent(nextValue);
+        if (argument) {
+          const storedValue = store.getValue();
+          const nextValue = (storedValue as number) + (argument.getValue() as number);
+          store.handleEvent(nextValue);
+        }
       };
       scope.is = (argument) => {
         const storedValue = store.getValue();
-        const nextValue = storedValue === argument.getValue();
+        const nextValue = storedValue === argument?.getValue();
         return nextValue;
       };
       scope.isAtLeast = (argument) => {
         const storedValue = store.getValue();
-        const nextValue = (storedValue as number) >= (argument.getValue() as number);
+        const nextValue = (storedValue as number) >= (argument?.getValue() as number);
         return nextValue;
       };
       scope.setTo = (argument) => {
-        const nextValue = argument.getValue();
+        const nextValue = argument?.getValue();
         store.handleEvent(nextValue);
       };
       // TODO More...?
     } else if (typeof source.value === "string") {
       scope.setTo = (argument) => {
-        const nextValue = argument.getValue();
+        const nextValue = argument?.getValue();
         store.handleEvent(nextValue);
       };
       // TODO More...?
@@ -381,7 +480,7 @@ class Structure {
       } else if (isMethod(appliedMember)) {
         accumulator[name] = appliedMember;
       } else if (isAction(appliedMember)) {
-        accumulator[name] = new Action(appliedMember, domain, scope);
+        accumulator[name] = appliedMember;
       } else {
         throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
       }

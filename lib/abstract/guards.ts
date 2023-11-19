@@ -52,8 +52,20 @@ export function isMethodCall(value: unknown): value is Abstract.MethodCall {
   return isAbstractNode(value) && value.kind === "methodCall";
 }
 
-export function isPart(value: unknown): value is Abstract.Part {
-  return isAbstractNode(value) && value.kind === "part";
+export function isActionCall(value: unknown): value is Abstract.ActionCall {
+  return isAbstractNode(value) && value.kind === "actionCall";
+}
+
+export function isStreamCall(value: unknown): value is Abstract.StreamCall {
+  return isAbstractNode(value) && value.kind === "streamCall";
+}
+
+export function isException(value: unknown): value is Abstract.Exception {
+  return isAbstractNode(value) && value.kind === "exception";
+}
+
+export function isPrimitive(value: unknown): value is Abstract.Primitive {
+  return isAbstractNode(value) && value.kind === "primitive";
 }
 
 export function isStructure(value: unknown): value is Abstract.Structure {

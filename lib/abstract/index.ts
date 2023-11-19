@@ -97,7 +97,7 @@ export namespace Abstract {
   export type Store<T extends string = string> = {
     kind: "store";
     modelName: T;
-    content: Feature | Landscape | Part | Structure<T>;
+    content: Feature | Landscape | Primitive | Structure<T>;
   };
 
   /**
@@ -164,8 +164,8 @@ export namespace Abstract {
   /**
    * Represents a value that is not associated with a model.
    */
-  export type Part = {
-    kind: "part";
+  export type Primitive = {
+    kind: "primitive";
     value: unknown;
   };
 
