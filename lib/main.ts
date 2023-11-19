@@ -298,12 +298,12 @@ class Part extends Publisher {
     super();
 
     if (source.value instanceof Array) {
-      scope.push = (argument: Field) => {
+      scope.push = (argument) => {
         const storedValue = store.getValue();
         const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
         store.handleEvent(nextValue);
       };
-      scope.setTo = (argument: Field) => {
+      scope.setTo = (argument) => {
         const nextValue = argument.getValue();
         store.handleEvent(nextValue);
       };
@@ -313,7 +313,7 @@ class Part extends Publisher {
         const nextValue = !store.getValue();
         return nextValue;
       };
-      scope.setTo = (argument: Field) => {
+      scope.setTo = (argument) => {
         const nextValue = argument.getValue();
         store.handleEvent(nextValue);
       };
@@ -323,23 +323,28 @@ class Part extends Publisher {
       };
       // TODO More...?
     } else if (typeof source.value === "number") {
-      scope.add = (argument: Field) => {
+      scope.add = (argument) => {
         const storedValue = store.getValue();
         const nextValue = (storedValue as number) + (argument.getValue() as number);
         store.handleEvent(nextValue);
       };
-      scope.isAtLeast = (argument: Field) => {
+      scope.is = (argument) => {
+        const storedValue = store.getValue();
+        const nextValue = storedValue === argument.getValue();
+        return nextValue;
+      };
+      scope.isAtLeast = (argument) => {
         const storedValue = store.getValue();
         const nextValue = (storedValue as number) >= (argument.getValue() as number);
         return nextValue;
       };
-      scope.setTo = (argument: Field) => {
+      scope.setTo = (argument) => {
         const nextValue = argument.getValue();
         store.handleEvent(nextValue);
       };
       // TODO More...?
     } else if (typeof source.value === "string") {
-      scope.setTo = (argument: Field) => {
+      scope.setTo = (argument) => {
         const nextValue = argument.getValue();
         store.handleEvent(nextValue);
       };
