@@ -50,9 +50,9 @@ export namespace Abstract {
   /**
    * Publishes content from a single store, directly or indirectly.
    */
-  export type Field = {
+  export type Field<T extends string = string> = {
     kind: "field";
-    publisher: Parameter | Store | Switch | FieldCall | MethodCall;
+    publisher: Parameter<T> | Store<T> | Switch<T> | FieldCall<T> | MethodCall<T>;
   };
 
   /**
@@ -86,34 +86,36 @@ export namespace Abstract {
   /**
    * Represents a placeholder for a value.
    */
-  export type Parameter = {
+  export type Parameter<T extends string = string> = {
     kind: "parameter";
-    modelName: string;
+    modelName: T;
   };
 
   /**
    * Maintains a value while the app is running.
    */
-  export type Store = {
+  export type Store<T extends string = string> = {
     kind: "store";
-    content: Feature | Landscape | Part | Structure;
+    modelName: T;
+    content: Feature | Landscape | Part | Structure<T>;
   };
 
   /**
    * Conditionally selects from two fields.
    */
-  export type Switch = {
+  export type Switch<T extends string = string> = {
     kind: "switch";
     condition: Field;
-    positive: Field;
-    negative?: Field;
+    positive: Field<T>;
+    negative: Field<T>;
   };
 
   /**
    * Forwards content from a field.
    */
-  export type FieldCall = {
+  export type FieldCall<T extends string = string> = {
     kind: "fieldCall";
+    modelName: T;
     scope?: Field;
     name: string;
   };
@@ -121,8 +123,9 @@ export namespace Abstract {
   /**
    * Forwards content from a method.
    */
-  export type MethodCall = {
+  export type MethodCall<T extends string = string> = {
     kind: "methodCall";
+    modelName: T;
     scope?: Field;
     name: string;
     argument?: Field;
@@ -169,9 +172,9 @@ export namespace Abstract {
   /**
    * Represents an instance of a model.
    */
-  export type Structure = {
+  export type Structure<T extends string = string> = {
     kind: "structure";
-    modelName: string;
+    modelName: T;
     properties: Record<string, Field>;
   };
 }

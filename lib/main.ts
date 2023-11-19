@@ -210,24 +210,31 @@ class Store extends Pubsubber {
 }
 
 class Switch extends Publisher {
+  private readonly condition: Field;
+  private readonly positive: Field;
+  private readonly negative: Field;
+
   constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
-    const condition = new Field(source.condition, domain, scope);
-    const positive = new Field(source.positive, domain, scope);
-    const negative = source.negative && new Field(source.negative, domain, scope);
+    this.condition = new Field(source.condition, domain, scope);
+    this.positive = new Field(source.positive, domain, scope);
+    this.negative = source.negative && new Field(source.negative, domain, scope);
 
-    condition.sendTo((value) => {
-      this.publish((value ? positive : negative)?.getValue());
+    this.condition.sendTo((value) => {
+      this.publish((value ? this.positive : this.negative).getValue());
     });
   }
 
   getScope(): Scope {
-    // TODO
+    const conditionalValue = this.condition.getValue();
+    return (conditionalValue ? this.positive : this.negative).getScope();
   }
 }
 
 class FieldCall extends Pubsubber {
+  private readonly field: Field;
+
   constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
@@ -238,15 +245,18 @@ class FieldCall extends Pubsubber {
       throw new Error(`Invalid field at \`${source.name}\`: ${JSON.stringify(field)}`);
     }
 
-    field.sendTo(this);
+    this.field = field;
+    this.field.sendTo(this);
   }
 
   getScope(): Scope {
-    // TODO
+    return this.field.getScope();
   }
 }
 
 class MethodCall extends Pubsubber {
+  private readonly result: Field;
+
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope = {}) {
     super();
 
@@ -263,13 +273,12 @@ class MethodCall extends Pubsubber {
       resultScope[method.parameter.name] = new Field(source.argument, domain, scope);
     }
 
-    const result = new Field(method.result, domain, resultScope);
-
-    result.sendTo(this);
+    this.result = new Field(method.result, domain, resultScope);
+    this.result.sendTo(this);
   }
 
   getScope(): Scope {
-    // TODO
+    return this.result.getScope();
   }
 }
 
