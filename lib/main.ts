@@ -99,20 +99,20 @@ class Landscape extends Pubsubber<HTMLElement> {
     }
 
     const viewScope = Object.entries(view.scope).reduce<Scope>(
-      (x, [name, member]) => {
+      (accumulator, [name, member]) => {
         const appliedMember = name in source.properties ? source.properties[name] : member;
         if (isField(appliedMember)) {
-          x[name] = new Field(appliedMember, domain, scope);
+          accumulator[name] = new Field(appliedMember, domain, scope);
         } else if (isMethod(appliedMember)) {
-          x[name] = appliedMember;
+          accumulator[name] = appliedMember;
         } else if (isAction(appliedMember)) {
-          x[name] = new Action(appliedMember, domain, scope);
+          accumulator[name] = new Action(appliedMember, domain, scope);
         } else if (isStream(appliedMember)) {
-          x[name] = new Stream(appliedMember, domain, scope);
+          accumulator[name] = new Stream(appliedMember, domain, scope);
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
-        return x;
+        return accumulator;
       },
       { ...scope },
     );
@@ -315,18 +315,18 @@ class Structure {
       throw new Error(`Invalid model at \`${source.modelName}\`: ${JSON.stringify(model)}`);
     }
 
-    this.scope = Object.entries(model.scope).reduce<Scope>((x, [name, member]) => {
+    this.scope = Object.entries(model.scope).reduce<Scope>((accumulator, [name, member]) => {
       const appliedMember = name in source.properties ? source.properties[name] : member;
       if (isField(appliedMember)) {
-        x[name] = new Field(appliedMember, domain, scope);
+        accumulator[name] = new Field(appliedMember, domain, scope);
       } else if (isMethod(appliedMember)) {
-        x[name] = appliedMember;
+        accumulator[name] = appliedMember;
       } else if (isAction(appliedMember)) {
-        x[name] = new Action(appliedMember, domain, scope);
+        accumulator[name] = new Action(appliedMember, domain, scope);
       } else {
         throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
       }
-      return x;
+      return accumulator;
     }, {});
   }
 
