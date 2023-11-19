@@ -120,10 +120,6 @@ class Landscape extends Pubsubber<HTMLElement> {
           const property = source.properties[name];
           const propertyOrMember = isField(property) ? property : member;
           accumulator[name] = new Field(propertyOrMember, domain, scope);
-        } else if (isMethod(member)) {
-          accumulator[name] = member;
-        } else if (isAction(member)) {
-          accumulator[name] = member;
         } else {
           throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
         }
@@ -197,9 +193,9 @@ class Store extends Pubsubber {
       landscape.sendTo(this);
       this.content = landscape;
     } else if (isPrimitive(source.content)) {
-      const part = new Primitive(source.content, scope, this);
-      part.sendTo(this);
-      this.content = part;
+      const primitive = new Primitive(source.content, scope, this);
+      primitive.sendTo(this);
+      this.content = primitive;
     } else if (isStructure(source.content)) {
       const structure = new Structure(source.content, domain, scope);
       this.content = structure;

@@ -23,7 +23,7 @@ export namespace Abstract {
    */
   export type View = {
     kind: "view";
-    scope: Record<string, Stream | Field | Method | Action>;
+    scope: Record<string, Stream | Field>;
     render: Feature | Landscape;
   };
 
