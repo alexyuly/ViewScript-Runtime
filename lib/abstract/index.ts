@@ -96,7 +96,6 @@ export namespace Abstract {
    */
   export type Store<T extends string = string> = {
     kind: "store";
-    modelName: T;
     content: Feature | Landscape | Primitive | Structure<T>;
   };
 
@@ -115,7 +114,6 @@ export namespace Abstract {
    */
   export type FieldCall<T extends string = string> = {
     kind: "fieldCall";
-    modelName: T;
     scope?: Field;
     name: string;
   };
@@ -125,7 +123,6 @@ export namespace Abstract {
    */
   export type MethodCall<T extends string = string> = {
     kind: "methodCall";
-    modelName: T;
     scope?: Field;
     name: string;
     argument?: Field;

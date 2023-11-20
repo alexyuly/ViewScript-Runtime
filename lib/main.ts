@@ -20,8 +20,12 @@ import {
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Member = Stream | Field | Abstract.Method | Action | ((argument: unknown) => unknown);
-type Scope = Record<string, Member>;
+type PrimitiveMethod = {
+  store: Store;
+  getResultValue: (argument: unknown) => unknown;
+};
+
+type Scope = Record<string, Stream | Field | Method | Action>;
 
 /* Tier I */
 
@@ -169,42 +173,95 @@ class Field extends Pubsubber {
   }
 }
 
-class Action implements Subscriber<Abstract.Field> {
-  private readonly source: Abstract.Action;
+class Method {
+  private readonly source: Abstract.Method | PrimitiveMethod;
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
-  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Method["source"], domain: Abstract.App["domain"], scope: Scope) {
+    this.source = source;
+    this.domain = domain;
+    this.scope = scope;
+  }
+
+  getResult(argument?: Field): Field {
+    if (isMethod(this.source)) {
+      const resultScope = { ...this.scope };
+
+      if (this.source.parameter && argument) {
+        resultScope[this.source.parameter.name] = argument;
+      }
+
+      const result = new Field(this.source.result, this.domain, resultScope);
+      return result;
+    }
+
+    const { store, getResultValue } = this.source;
+    const value = getResultValue(argument?.getValue());
+    const result = new Field(
+      {
+        kind: "field",
+        publisher: {
+          kind: "store",
+          content: {
+            kind: "primitive",
+            value,
+          },
+        },
+      },
+      this.domain,
+      this.scope,
+    );
+
+    store.sendTo(() => {
+      const resultValue = getResultValue(argument?.getValue());
+      result.handleEvent(resultValue);
+    });
+
+    return result;
+  }
+}
+
+class Action implements Subscriber<Abstract.Field> {
+  private readonly source: Abstract.Action | Subscriber;
+  private readonly domain: Abstract.App["domain"];
+  private readonly scope: Scope;
+
+  constructor(source: Action["source"], domain: Abstract.App["domain"], scope: Scope) {
     this.source = source;
     this.domain = domain;
     this.scope = scope;
   }
 
   handleEvent(argumentValue?: Abstract.Field): void {
-    const stepScope = { ...this.scope };
-    const argument = argumentValue && new Field(argumentValue, this.domain, this.scope);
+    if (isAction(this.source)) {
+      const stepScope = { ...this.scope };
+      const argument = argumentValue && new Field(argumentValue, this.domain, this.scope);
 
-    if (this.source.parameter && argument) {
-      stepScope[this.source.parameter.name] = argument;
-    }
+      if (this.source.parameter && argument) {
+        stepScope[this.source.parameter.name] = argument;
+      }
 
-    for (const abstractStep of this.source.steps) {
-      let step: ActionCall | StreamCall | Exception;
-      if (isActionCall(abstractStep)) {
-        step = new ActionCall(abstractStep, this.domain, this.scope);
-      } else if (isStreamCall(abstractStep)) {
-        step = new StreamCall(abstractStep, this.domain, this.scope);
-      } else if (isException(abstractStep)) {
-        step = new Exception(abstractStep, this.domain, this.scope);
-      } else {
-        throw new Error(`Invalid step: ${JSON.stringify(abstractStep)}`);
+      for (const abstractStep of this.source.steps) {
+        let step: ActionCall | StreamCall | Exception;
+        if (isActionCall(abstractStep)) {
+          step = new ActionCall(abstractStep, this.domain, this.scope);
+        } else if (isStreamCall(abstractStep)) {
+          step = new StreamCall(abstractStep, this.domain, this.scope);
+        } else if (isException(abstractStep)) {
+          step = new Exception(abstractStep, this.domain, this.scope);
+        } else {
+          throw new Error(`Invalid step: ${JSON.stringify(abstractStep)}`);
+        }
+        if (!(step instanceof Exception) || step.getConditionalValue()) {
+          step.handleEvent();
+        }
+        if (step instanceof Exception) {
+          break;
+        }
       }
-      if (!(step instanceof Exception) || step.getConditionalValue()) {
-        step.handleEvent();
-      }
-      if (step instanceof Exception) {
-        break;
-      }
+    } else {
+      this.source.handleEvent(argumentValue);
     }
   }
 }
@@ -300,7 +357,7 @@ class FieldCall extends Pubsubber {
 }
 
 class MethodCall extends Pubsubber {
-  private readonly result: Field | Store;
+  private readonly result: Field;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -308,35 +365,13 @@ class MethodCall extends Pubsubber {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
     const method = callScope[source.name];
 
-    if (typeof method === "function") {
-      const argument = source.argument && new Field(source.argument, domain, scope);
-      const resultValue = method(argument?.getValue());
-      this.result = new Field(
-        {
-          kind: "field",
-          publisher: {
-            kind: "store",
-            modelName: source.modelName,
-            content: {
-              kind: "primitive",
-              value: resultValue,
-            },
-          },
-        },
-        domain,
-        scope,
-      );
-      // TODO Keep this.result up to date with method calls. ???
-    } else if (isMethod(method)) {
-      const resultScope = { ...callScope };
-      if (method.parameter && source.argument) {
-        resultScope[method.parameter.name] = new Field(source.argument, domain, scope);
-      }
-      this.result = new Field(method.result, domain, resultScope);
-      this.result.sendTo(this);
-    } else {
+    if (!(method instanceof Method)) {
       throw new Error(`Invalid method at \`${source.name}\`: ${JSON.stringify(method)}`);
     }
+
+    const argument = source.argument && new Field(source.argument, domain, scope);
+    this.result = method.getResult(argument);
+    this.result.sendTo(this);
   }
 
   getScope(): Scope {
@@ -345,36 +380,23 @@ class MethodCall extends Pubsubber {
 }
 
 class ActionCall implements Subscriber<void> {
-  private readonly action: Action | ((argument: unknown) => void);
-  private readonly argument?: Abstract.Field | Field;
+  private readonly action: Action;
+  private readonly argument?: Abstract.Field;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
     const action = callScope[source.name];
 
-    if (typeof action === "function") {
-      this.argument = source.argument && new Field(source.argument, domain, scope);
-    } else if (action instanceof Action) {
-      this.argument = source.argument;
-    } else {
+    if (!(action instanceof Action)) {
       throw new Error(`Invalid action at \`${source.name}\`: ${JSON.stringify(action)}`);
     }
 
     this.action = action;
+    this.argument = source.argument;
   }
 
   handleEvent(): void {
-    if (
-      typeof this.action === "function" &&
-      (this.argument === undefined || this.argument instanceof Field)
-    ) {
-      this.action(this.argument?.getValue());
-    } else if (
-      this.action instanceof Action &&
-      (this.argument === undefined || isField(this.argument))
-    ) {
-      this.action.handleEvent(this.argument);
-    }
+    this.action.handleEvent(this.argument);
   }
 }
 
@@ -428,60 +450,84 @@ class Primitive extends Publisher {
   ) {
     super();
 
-    // TODO Create a mechanism to publish the result of functional method calls to MethodCall instances.
+    // TODO Update all methods and actions to use classes....
 
     if (source.value instanceof Array) {
-      scope.push = (argumentValue) => {
-        if (isField(argumentValue)) {
-          const storedValue = store.getValue();
-          const nextValue = [
-            ...(storedValue instanceof Array ? storedValue : []),
-            new Field(argumentValue, domain, scope),
-          ];
-          store.handleEvent(nextValue);
-        }
-      };
-      scope.setTo = (argumentValue) => {
-        store.handleEvent(argumentValue);
-      };
+      // scope.map = (argumentValue) => {
+      //   if (isMethod(argumentValue)) {
+      //     // TODO
+      //   }
+      // };
+      scope.push = new Action(
+        {
+          handleEvent(argumentValue) {
+            if (isField(argumentValue)) {
+              const storedValue = store.getValue();
+              const nextValue = [
+                ...(storedValue instanceof Array ? storedValue : []),
+                new Field(argumentValue, domain, scope),
+              ];
+              store.handleEvent(nextValue);
+            }
+          },
+        },
+        domain,
+        scope,
+      );
+      scope.setTo = new Action(store, domain, scope);
       // TODO More...?
     } else if (typeof source.value === "boolean") {
-      scope.not = () => {
-        const nextValue = !store.getValue();
-        return nextValue;
-      };
-      scope.setTo = (argumentValue) => {
-        store.handleEvent(argumentValue);
-      };
-      scope.toggle = () => {
-        const nextValue = !store.getValue();
-        store.handleEvent(nextValue);
-      };
+      scope.not = new Method(
+        {
+          store,
+          getResultValue() {
+            const nextValue = !store.getValue();
+            return nextValue;
+          },
+        },
+        domain,
+        scope,
+      );
+      scope.setTo = new Action(store, domain, scope);
+      scope.toggle = new Action(
+        {
+          handleEvent() {
+            const nextValue = !store.getValue();
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
       // TODO More...?
     } else if (typeof source.value === "number") {
-      scope.add = (argumentValue) => {
-        const storedValue = store.getValue();
-        const nextValue = (storedValue as number) + (argumentValue as number);
-        store.handleEvent(nextValue);
-      };
-      scope.is = (argumentValue) => {
-        const storedValue = store.getValue();
-        const nextValue = storedValue === argumentValue;
-        return nextValue;
-      };
-      scope.isAtLeast = (argumentValue) => {
-        const storedValue = store.getValue();
-        const nextValue = (storedValue as number) >= (argumentValue as number);
-        return nextValue;
-      };
-      scope.setTo = (argumentValue) => {
-        store.handleEvent(argumentValue);
-      };
+      scope.add = new Action(
+        {
+          // TODO Make sure the types passed into handleEvent are right -- think something is off
+          handleEvent(argumentValue) {
+            const storedValue = store.getValue();
+            const nextValue = (storedValue as number) + (argumentValue as number);
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
+      // TODO:
+      // scope.is = (argumentValue) => {
+      //   const storedValue = store.getValue();
+      //   const nextValue = storedValue === argumentValue;
+      //   return nextValue;
+      // };
+      // scope.isAtLeast = (argumentValue) => {
+      //   const storedValue = store.getValue();
+      //   const nextValue = (storedValue as number) >= (argumentValue as number);
+      //   return nextValue;
+      // };
+      scope.setTo = new Action(store, domain, scope);
       // TODO More...?
     } else if (typeof source.value === "string") {
-      scope.setTo = (argumentValue) => {
-        store.handleEvent(argumentValue);
-      };
+      scope.setTo = new Action(store, domain, scope);
       // TODO More...?
     } else {
       // TODO More...?
@@ -513,12 +559,15 @@ class Structure extends Publisher<Abstract.Structure> {
     this.scope = Object.entries(model.scope).reduce<Scope>((accumulator, [name, member]) => {
       if (isField(member)) {
         const property = source.properties[name];
-        const propertyOrMember = isField(property) ? property : member;
-        accumulator[name] = new Field(propertyOrMember, domain, { ...scope, ...accumulator });
+        const field = isField(property)
+          ? new Field(property, domain, scope)
+          : new Field(member, domain, accumulator);
+
+        accumulator[name] = field;
       } else if (isMethod(member)) {
-        accumulator[name] = member;
+        accumulator[name] = new Method(member, domain, accumulator);
       } else if (isAction(member)) {
-        accumulator[name] = new Action(member, domain, { ...scope, ...accumulator });
+        accumulator[name] = new Action(member, domain, accumulator);
       } else {
         throw new Error(`Invalid member at \`${name}\`: ${JSON.stringify(member)}`);
       }
