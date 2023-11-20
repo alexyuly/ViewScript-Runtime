@@ -22,7 +22,7 @@ import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
 type PrimitiveMethod = {
   store: Store;
-  getResultValue: (argument: unknown) => unknown;
+  getResultValue: (argument?: Field) => unknown;
 };
 
 type Scope = Record<string, Stream | Field | Method | Action>;
@@ -200,7 +200,7 @@ class Method {
     const result = new Pubsubber();
 
     store.sendTo(() => {
-      const resultValue = getResultValue(argument?.getValue());
+      const resultValue = getResultValue(argument);
       result.handleEvent(resultValue);
     });
 
