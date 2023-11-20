@@ -515,17 +515,32 @@ class Primitive extends Publisher {
         domain,
         scope,
       );
-      // TODO:
-      // scope.is = (argumentValue) => {
-      //   const storedValue = store.getValue();
-      //   const nextValue = storedValue === argumentValue;
-      //   return nextValue;
-      // };
-      // scope.isAtLeast = (argumentValue) => {
-      //   const storedValue = store.getValue();
-      //   const nextValue = (storedValue as number) >= (argumentValue as number);
-      //   return nextValue;
-      // };
+      scope.is = new Method(
+        {
+          store,
+          getResultValue(argument) {
+            const storedValue = store.getValue();
+            const argumentValue = argument?.getValue();
+            const nextValue = storedValue === argumentValue;
+            return nextValue;
+          },
+        },
+        domain,
+        scope,
+      );
+      scope.isAtLeast = new Method(
+        {
+          store,
+          getResultValue(argument) {
+            const storedValue = store.getValue() as number;
+            const argumentValue = argument?.getValue() as number;
+            const nextValue = storedValue >= argumentValue;
+            return nextValue;
+          },
+        },
+        domain,
+        scope,
+      );
       scope.setTo = new Action(
         {
           handleEvent(argument) {
