@@ -198,6 +198,7 @@ class Method {
 
     const { store, getResultValue } = this.source;
     const value = getResultValue(argument?.getValue());
+
     const result = new Field(
       {
         kind: "field",
@@ -222,8 +223,8 @@ class Method {
   }
 }
 
-class Action implements Subscriber<Abstract.Field> {
-  private readonly source: Abstract.Action | Subscriber;
+class Action implements Subscriber<Field | undefined> {
+  private readonly source: Abstract.Action | Subscriber<Field | undefined>;
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
@@ -233,10 +234,9 @@ class Action implements Subscriber<Abstract.Field> {
     this.scope = scope;
   }
 
-  handleEvent(argumentValue?: Abstract.Field): void {
+  handleEvent(argument?: Field): void {
     if (isAction(this.source)) {
       const stepScope = { ...this.scope };
-      const argument = argumentValue && new Field(argumentValue, this.domain, this.scope);
 
       if (this.source.parameter && argument) {
         stepScope[this.source.parameter.name] = argument;
@@ -261,7 +261,7 @@ class Action implements Subscriber<Abstract.Field> {
         }
       }
     } else {
-      this.source.handleEvent(argumentValue);
+      this.source.handleEvent(argument);
     }
   }
 }
@@ -381,7 +381,7 @@ class MethodCall extends Pubsubber {
 
 class ActionCall implements Subscriber<void> {
   private readonly action: Action;
-  private readonly argument?: Abstract.Field;
+  private readonly argument?: Field;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
     const callScope = source.scope ? new Field(source.scope, domain, scope).getScope() : scope;
@@ -392,7 +392,7 @@ class ActionCall implements Subscriber<void> {
     }
 
     this.action = action;
-    this.argument = source.argument;
+    this.argument = source.argument && new Field(source.argument, domain, scope);
   }
 
   handleEvent(): void {
@@ -450,8 +450,6 @@ class Primitive extends Publisher {
   ) {
     super();
 
-    // TODO Update all methods and actions to use classes....
-
     if (source.value instanceof Array) {
       // scope.map = (argumentValue) => {
       //   if (isMethod(argumentValue)) {
@@ -460,13 +458,10 @@ class Primitive extends Publisher {
       // };
       scope.push = new Action(
         {
-          handleEvent(argumentValue) {
-            if (isField(argumentValue)) {
+          handleEvent(argument) {
+            if (argument instanceof Field) {
               const storedValue = store.getValue();
-              const nextValue = [
-                ...(storedValue instanceof Array ? storedValue : []),
-                new Field(argumentValue, domain, scope),
-              ];
+              const nextValue = [...(storedValue instanceof Array ? storedValue : []), argument];
               store.handleEvent(nextValue);
             }
           },
@@ -474,7 +469,16 @@ class Primitive extends Publisher {
         domain,
         scope,
       );
-      scope.setTo = new Action(store, domain, scope);
+      scope.setTo = new Action(
+        {
+          handleEvent(argument) {
+            const nextValue = argument?.getValue();
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
       // TODO More...?
     } else if (typeof source.value === "boolean") {
       scope.not = new Method(
@@ -488,7 +492,16 @@ class Primitive extends Publisher {
         domain,
         scope,
       );
-      scope.setTo = new Action(store, domain, scope);
+      scope.setTo = new Action(
+        {
+          handleEvent(argument) {
+            const nextValue = argument?.getValue();
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
       scope.toggle = new Action(
         {
           handleEvent() {
@@ -503,10 +516,10 @@ class Primitive extends Publisher {
     } else if (typeof source.value === "number") {
       scope.add = new Action(
         {
-          // TODO Make sure the types passed into handleEvent are right -- think something is off
-          handleEvent(argumentValue) {
-            const storedValue = store.getValue();
-            const nextValue = (storedValue as number) + (argumentValue as number);
+          handleEvent(argument) {
+            const storedValue = store.getValue() as number;
+            const argumentValue = argument?.getValue() as number;
+            const nextValue = storedValue + argumentValue;
             store.handleEvent(nextValue);
           },
         },
@@ -524,10 +537,28 @@ class Primitive extends Publisher {
       //   const nextValue = (storedValue as number) >= (argumentValue as number);
       //   return nextValue;
       // };
-      scope.setTo = new Action(store, domain, scope);
+      scope.setTo = new Action(
+        {
+          handleEvent(argument) {
+            const nextValue = argument?.getValue();
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
       // TODO More...?
     } else if (typeof source.value === "string") {
-      scope.setTo = new Action(store, domain, scope);
+      scope.setTo = new Action(
+        {
+          handleEvent(argument) {
+            const nextValue = argument?.getValue();
+            store.handleEvent(nextValue);
+          },
+        },
+        domain,
+        scope,
+      );
       // TODO More...?
     } else {
       // TODO More...?
