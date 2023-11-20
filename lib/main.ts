@@ -184,7 +184,7 @@ class Method {
     this.scope = scope;
   }
 
-  getResult(argument?: Field): Field {
+  getResult(argument?: Field): Pubsubber {
     if (isMethod(this.source)) {
       const resultScope = { ...this.scope };
 
@@ -197,22 +197,7 @@ class Method {
     }
 
     const { store, getResultValue } = this.source;
-    const value = getResultValue(argument?.getValue());
-
-    const result = new Field(
-      {
-        kind: "field",
-        publisher: {
-          kind: "store",
-          content: {
-            kind: "primitive",
-            value,
-          },
-        },
-      },
-      this.domain,
-      this.scope,
-    );
+    const result = new Pubsubber();
 
     store.sendTo(() => {
       const resultValue = getResultValue(argument?.getValue());
@@ -357,7 +342,7 @@ class FieldCall extends Pubsubber {
 }
 
 class MethodCall extends Pubsubber {
-  private readonly result: Field;
+  private readonly result: Pubsubber;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -375,6 +360,10 @@ class MethodCall extends Pubsubber {
   }
 
   getScope(): Scope {
+    if (!(this.result instanceof Field)) {
+      return {};
+    }
+
     return this.result.getScope();
   }
 }

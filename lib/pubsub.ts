@@ -29,7 +29,7 @@ export abstract class Publisher<T = unknown> {
   }
 }
 
-export abstract class Pubsubber<T = unknown> extends Publisher<T> implements Subscriber<T> {
+export class Pubsubber<T = unknown> extends Publisher<T> implements Subscriber<T> {
   handleEvent(value: T): void {
     this.publish(value);
   }
