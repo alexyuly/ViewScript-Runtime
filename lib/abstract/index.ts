@@ -50,9 +50,9 @@ export namespace Abstract {
   /**
    * Publishes content from a single store, directly or indirectly.
    */
-  export type Field<T extends string = string> = {
+  export type Field = {
     kind: "field";
-    publisher: Parameter<T> | Store<T> | Switch<T> | FieldCall<T> | MethodCall<T>;
+    publisher?: Store | Switch | FieldCall | MethodCall;
   };
 
   /**
@@ -60,8 +60,8 @@ export namespace Abstract {
    */
   export type Method = {
     kind: "method";
-    parameter?: Parameter & { name: string };
-    result: Field;
+    result: Field; // Each MethodCall creates a new Field.
+    parameter?: string;
   };
 
   /**
@@ -69,8 +69,8 @@ export namespace Abstract {
    */
   export type Action = {
     kind: "action";
-    parameter?: Parameter & { name: string };
     steps: Array<ActionCall | StreamCall | Exception>;
+    parameter?: string;
   };
 
   /**
@@ -78,41 +78,32 @@ export namespace Abstract {
    */
   export type Stream = {
     kind: "stream";
-    parameter?: Parameter;
   };
 
   /* Tier IV */
 
   /**
-   * Represents a placeholder for a value.
-   */
-  export type Parameter<T extends string = string> = {
-    kind: "parameter";
-    modelName: T;
-  };
-
-  /**
    * Maintains a value while the app is running.
    */
-  export type Store<T extends string = string> = {
+  export type Store = {
     kind: "store";
-    content: Feature | Landscape | Primitive | Structure<T>;
+    content: Feature | Landscape | Primitive | Structure;
   };
 
   /**
    * Conditionally selects from two fields.
    */
-  export type Switch<T extends string = string> = {
+  export type Switch = {
     kind: "switch";
     condition: Field;
-    positive: Field<T>;
-    negative: Field<T>;
+    positive: Field;
+    negative: Field;
   };
 
   /**
    * Forwards content from a field.
    */
-  export type FieldCall<T extends string = string> = {
+  export type FieldCall = {
     kind: "fieldCall";
     scope?: Field;
     name: string;
@@ -121,7 +112,7 @@ export namespace Abstract {
   /**
    * Forwards content from a method.
    */
-  export type MethodCall<T extends string = string> = {
+  export type MethodCall = {
     kind: "methodCall";
     scope?: Field;
     name: string;
@@ -144,7 +135,7 @@ export namespace Abstract {
   export type StreamCall = {
     kind: "streamCall";
     name: string;
-    argument?: Field;
+    output?: MethodCall;
   };
 
   /**
@@ -169,9 +160,9 @@ export namespace Abstract {
   /**
    * Represents an instance of a model.
    */
-  export type Structure<T extends string = string> = {
+  export type Structure = {
     kind: "structure";
-    modelName: T;
+    modelName: string;
     properties: Record<string, Field>;
   };
 }

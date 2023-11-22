@@ -58,6 +58,7 @@ class Feature extends Publisher<HTMLElement> {
         const field = new Field(property, domain, scope);
         field.sendTo((value) => {
           if (name === "content") {
+            // TODO Manage the persistence of array elements between renders?
             htmlElement.replaceChildren(
               ...(function r(nextValue = value) {
                 const result: Array<HTMLElement | string> = [];
@@ -84,12 +85,9 @@ class Feature extends Publisher<HTMLElement> {
             htmlElement.removeAttribute(name);
           }
         });
-      } else if (isActionCall(property)) {
-        const actionCall = new ActionCall(property, domain, scope);
-        htmlElement.addEventListener(name, actionCall);
-      } else if (isStreamCall(property)) {
-        const streamCall = new StreamCall(property, domain, scope);
-        htmlElement.addEventListener(name, streamCall);
+      } else if (isAction(property)) {
+        const action = new Action(property, domain, scope);
+        htmlElement.addEventListener(name, action);
       } else {
         throw new Error(`Invalid property at \`${name}\`: ${JSON.stringify(property)}`);
       }
@@ -208,8 +206,8 @@ class Method {
   }
 }
 
-class Action implements Subscriber<Field | undefined> {
-  private readonly source: Abstract.Action | Subscriber<Field | undefined>;
+class Action implements Subscriber<undefined> {
+  private readonly source: Abstract.Action | Subscriber;
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
@@ -219,22 +217,32 @@ class Action implements Subscriber<Field | undefined> {
     this.scope = scope;
   }
 
-  handleEvent(argument?: Field): void {
+  handleEvent(value?: unknown) {
     if (isAction(this.source)) {
       const stepScope = { ...this.scope };
 
-      if (this.source.parameter && argument) {
-        stepScope[this.source.parameter.name] = argument;
+      if (this.source.parameter && value !== undefined) {
+        stepScope[this.source.parameter.name] = new Field(
+          {
+            kind: "field",
+            publisher: {
+              kind: "store",
+              content: isStructure(value) ? value : { kind: "primitive", value },
+            },
+          },
+          this.domain,
+          this.scope,
+        );
       }
 
       for (const abstractStep of this.source.steps) {
         let step: ActionCall | StreamCall | Exception;
         if (isActionCall(abstractStep)) {
-          step = new ActionCall(abstractStep, this.domain, this.scope);
+          step = new ActionCall(abstractStep, this.domain, stepScope);
         } else if (isStreamCall(abstractStep)) {
-          step = new StreamCall(abstractStep, this.domain, this.scope);
+          step = new StreamCall(abstractStep, this.domain, stepScope);
         } else if (isException(abstractStep)) {
-          step = new Exception(abstractStep, this.domain, this.scope);
+          step = new Exception(abstractStep, this.domain, stepScope);
         } else {
           throw new Error(`Invalid step: ${JSON.stringify(abstractStep)}`);
         }
@@ -246,7 +254,7 @@ class Action implements Subscriber<Field | undefined> {
         }
       }
     } else {
-      this.source.handleEvent(argument);
+      this.source.handleEvent(value);
     }
   }
 }
@@ -265,6 +273,7 @@ class Store extends Pubsubber {
   constructor(source: Abstract.Store, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
+    // TODO Evaluate what exactly we publish from each type of content:
     if (isFeature(source.content)) {
       const feature = new Feature(source.content, domain, scope);
       feature.sendTo(this);
@@ -368,7 +377,7 @@ class MethodCall extends Pubsubber {
   }
 }
 
-class ActionCall implements Subscriber<void> {
+class ActionCall implements Subscriber<undefined> {
   private readonly action: Action;
   private readonly argument?: Field;
 
@@ -389,7 +398,7 @@ class ActionCall implements Subscriber<void> {
   }
 }
 
-class StreamCall implements Subscriber<void> {
+class StreamCall implements Subscriber<undefined> {
   private readonly source: Abstract.StreamCall;
   private readonly scope: Scope;
   private readonly argument?: Field;
@@ -411,7 +420,8 @@ class StreamCall implements Subscriber<void> {
   }
 }
 
-class Exception implements Subscriber<void> {
+class Exception implements Subscriber<undefined> {
+  // private readonly condition: Field;
   constructor(source: Abstract.Exception, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
@@ -440,6 +450,7 @@ class Primitive extends Publisher {
     super();
 
     if (source.value instanceof Array) {
+      // TODO Construct a new Field for each element in the array.
       // scope.map = (argumentValue) => {
       //   if (isMethod(argumentValue)) {
       //     // TODO
@@ -571,6 +582,7 @@ class Primitive extends Publisher {
     // TODO Handle bigints?
     // TODO Handle symbols?
 
+    // TODO What do we actually publish for arrays?
     this.publish(source.value);
   }
 
