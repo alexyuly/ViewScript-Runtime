@@ -20,6 +20,8 @@ import {
 } from "./abstract/guards";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
+// TODO fixup
+
 type PrimitiveMethod = {
   store: Store;
   getResultValue: (argument?: Field) => unknown;

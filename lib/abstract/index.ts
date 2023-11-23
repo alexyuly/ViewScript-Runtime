@@ -33,7 +33,7 @@ export namespace Abstract {
   export type Feature = {
     kind: "feature";
     tagName: string;
-    properties: Record<string, Field | Action>;
+    properties: Record<string, Argument | Handler>;
   };
 
   /**
@@ -42,127 +42,103 @@ export namespace Abstract {
   export type Landscape = {
     kind: "landscape";
     viewName: string;
-    properties: Record<string, Field | Action>;
+    properties: Record<string, Argument | Handler>;
   };
 
   /* Tier III */
 
-  /**
-   * Publishes content from a single store, directly or indirectly.
-   */
   export type Field = {
     kind: "field";
-    publisher?: Store | Switch | FieldCall | MethodCall;
+    publisher: Feature | Landscape | Primitive | Structure;
   };
 
-  /**
-   * Publishes content from a new field to each subscriber.
-   */
   export type Method = {
     kind: "method";
-    result: Field; // Each MethodCall creates a new Field.
+    yield: Field | MethodCall;
     parameter?: string;
   };
 
-  /**
-   * Subscribes to events and handles them.
-   */
   export type Action = {
     kind: "action";
-    steps: Array<ActionCall | StreamCall | Exception>;
+    steps: Array<Step>;
     parameter?: string;
   };
 
-  /**
-   * Subscribes to events and forwards them.
-   */
   export type Stream = {
     kind: "stream";
   };
 
-  /* Tier IV */
+  export type Argument = Source | Switch;
 
-  /**
-   * Maintains a value while the app is running.
-   */
-  export type Store = {
-    kind: "store";
-    content: Feature | Landscape | Primitive | Structure;
-  };
+  export type Handler = ActionCall | StreamCall;
 
-  /**
-   * Conditionally selects from two fields.
-   */
-  export type Switch = {
-    kind: "switch";
-    condition: Field;
-    positive: Field;
-    negative: Field;
-  };
+  /* Tier IV and above */
 
-  /**
-   * Forwards content from a field.
-   */
-  export type FieldCall = {
-    kind: "fieldCall";
-    scope?: Field;
-    name: string;
-  };
-
-  /**
-   * Forwards content from a method.
-   */
-  export type MethodCall = {
-    kind: "methodCall";
-    scope?: Field;
-    name: string;
-    argument?: Field;
-  };
-
-  /**
-   * Forwards events to an action.
-   */
-  export type ActionCall = {
-    kind: "actionCall";
-    scope?: Field;
-    name: string;
-    argument?: Field;
-  };
-
-  /**
-   * Forwards events to a stream.
-   */
-  export type StreamCall = {
-    kind: "streamCall";
-    name: string;
-    output?: MethodCall;
-  };
-
-  /**
-   * Conditionally performs steps and exits the current action.
-   */
-  export type Exception = {
-    kind: "exception";
-    condition: Field;
-    steps?: Array<ActionCall | StreamCall | Exception>;
-  };
-
-  /* Tier V */
-
-  /**
-   * Represents a value that is not associated with a model.
-   */
   export type Primitive = {
     kind: "primitive";
     value: unknown;
   };
 
-  /**
-   * Represents an instance of a model.
-   */
   export type Structure = {
     kind: "structure";
     modelName: string;
-    properties: Record<string, Field>;
+    properties: Record<string, Argument>;
+  };
+
+  export type Step = Handler | Exception;
+
+  export type Source = FieldCall | MethodCall;
+
+  export type Switch = {
+    kind: "switch";
+    condition: Source;
+    publisherIfTrue: Argument;
+    publisherIfFalse?: Argument;
+  };
+
+  export type Exception = {
+    kind: "exception";
+    condition: Source;
+    steps?: Array<Step>;
+  };
+
+  export type FieldCall = {
+    kind: "fieldCall";
+    publisher: Field | FieldPointer;
+  };
+
+  export type MethodCall = {
+    kind: "methodCall";
+    publisher: Method | MethodPointer;
+  };
+
+  export type ActionCall = {
+    kind: "actionCall";
+    subscriber: Action | ActionPointer;
+  };
+
+  export type StreamCall = {
+    kind: "streamCall";
+    name: string;
+    argument?: Argument;
+  };
+
+  export type FieldPointer = {
+    kind: "fieldPointer";
+    scope?: Source;
+    name: string;
+  };
+
+  export type MethodPointer = {
+    kind: "methodPointer";
+    scope?: Source;
+    name: string;
+    argument?: Argument;
+  };
+
+  export type ActionPointer = {
+    kind: "actionPointer";
+    address: Array<string>;
+    argument?: Argument;
   };
 }

@@ -36,10 +36,6 @@ export function isStream(value: unknown): value is Abstract.Stream {
   return isAbstractNode(value) && value.kind === "stream";
 }
 
-export function isStore(value: unknown): value is Abstract.Store {
-  return isAbstractNode(value) && value.kind === "store";
-}
-
 export function isSwitch(value: unknown): value is Abstract.Switch {
   return isAbstractNode(value) && value.kind === "switch";
 }
