@@ -60,7 +60,7 @@ export namespace Abstract {
 
   export type Action = {
     kind: "action";
-    steps: Array<Step>;
+    steps: Array<Handler | Exception>;
     parameter?: string;
   };
 
@@ -68,11 +68,13 @@ export namespace Abstract {
     kind: "stream";
   };
 
-  export type Argument = Source | Switch;
+  export type Argument = FieldCall | MethodCall | Switch;
 
   export type Handler = ActionCall | StreamCall;
 
   /* Tier IV and above */
+
+  // Data
 
   export type Primitive = {
     kind: "primitive";
@@ -85,22 +87,7 @@ export namespace Abstract {
     properties: Record<string, Argument>;
   };
 
-  export type Step = Handler | Exception;
-
-  export type Source = FieldCall | MethodCall;
-
-  export type Switch = {
-    kind: "switch";
-    condition: Source;
-    publisherIfTrue: Argument;
-    publisherIfFalse?: Argument;
-  };
-
-  export type Exception = {
-    kind: "exception";
-    condition: Source;
-    steps?: Array<Step>;
-  };
+  // Calls
 
   export type FieldCall = {
     kind: "fieldCall";
@@ -123,15 +110,17 @@ export namespace Abstract {
     argument?: Argument;
   };
 
+  // Pointers
+
   export type FieldPointer = {
     kind: "fieldPointer";
-    scope?: Source;
+    scope?: FieldCall | MethodCall;
     name: string;
   };
 
   export type MethodPointer = {
     kind: "methodPointer";
-    scope?: Source;
+    scope?: FieldCall | MethodCall;
     name: string;
     argument?: Argument;
   };
@@ -140,5 +129,20 @@ export namespace Abstract {
     kind: "actionPointer";
     address: Array<string>;
     argument?: Argument;
+  };
+
+  // Conditionals
+
+  export type Switch = {
+    kind: "switch";
+    condition: FieldCall | MethodCall;
+    publisherIfTrue: Argument;
+    publisherIfFalse?: Argument;
+  };
+
+  export type Exception = {
+    kind: "exception";
+    condition: FieldCall | MethodCall;
+    steps?: Array<Handler | Exception>;
   };
 }
