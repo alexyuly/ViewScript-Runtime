@@ -45,6 +45,14 @@ export namespace Guard {
     return isAbstractNode(value) && value.kind === "structure";
   }
 
+  export function isFieldAlias(value: unknown): value is Abstract.FieldAlias {
+    return isAbstractNode(value) && value.kind === "fieldAlias";
+  }
+
+  export function isActionAlias(value: unknown): value is Abstract.ActionAlias {
+    return isAbstractNode(value) && value.kind === "actionAlias";
+  }
+
   export function isFieldCall(value: unknown): value is Abstract.FieldCall {
     return isAbstractNode(value) && value.kind === "fieldCall";
   }
@@ -57,8 +65,8 @@ export namespace Guard {
     return isAbstractNode(value) && value.kind === "actionCall";
   }
 
-  export function isStreamPointer(value: unknown): value is Abstract.StreamPointer {
-    return isAbstractNode(value) && value.kind === "streamPointer";
+  export function isStreamCall(value: unknown): value is Abstract.StreamCall {
+    return isAbstractNode(value) && value.kind === "streamCall";
   }
 
   export function isSwitch(value: unknown): value is Abstract.Switch {

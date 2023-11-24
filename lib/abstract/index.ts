@@ -83,16 +83,14 @@ export namespace Abstract {
   /**
    * Represents a publisher of values.
    */
-  export type Argument = FieldCall | MethodCall | Switch;
+  export type Argument = Field | FieldCall | MethodCall | Switch;
 
   /**
    * Represents a subscriber of values.
    */
-  export type Handler = ActionCall | StreamPointer;
+  export type Handler = Action | ActionCall | StreamCall;
 
   /* Tier IV and above */
-
-  // Data
 
   export type Primitive = {
     kind: "primitive";
@@ -105,62 +103,41 @@ export namespace Abstract {
     properties: Record<string, Argument>;
   };
 
-  // Calls
-
   export type FieldCall = {
     kind: "fieldCall";
-    publisher: Field | FieldPointer;
+    scope?: Field | FieldCall | MethodCall;
+    name: string;
   };
 
   export type MethodCall = {
     kind: "methodCall";
-    publisher: Method | MethodPointer;
+    scope?: Field | FieldCall | MethodCall;
+    name: string;
+    argument?: Argument;
   };
 
   export type ActionCall = {
     kind: "actionCall";
-    subscriber: Action | ActionPointer;
-  };
-
-  // Pointers
-
-  export type FieldPointer = {
-    kind: "fieldPointer";
-    scope?: FieldCall | MethodCall;
-    name: string;
-  };
-
-  export type MethodPointer = {
-    kind: "methodPointer";
-    scope?: FieldCall | MethodCall;
-    name: string;
-    argument?: Argument;
-  };
-
-  export type ActionPointer = {
-    kind: "actionPointer";
     address: Array<string>;
     argument?: Argument;
   };
 
-  export type StreamPointer = {
-    kind: "streamPointer";
+  export type StreamCall = {
+    kind: "streamCall";
     name: string;
     argument?: Argument;
   };
 
-  // Conditionals
-
   export type Switch = {
     kind: "switch";
-    condition: FieldCall | MethodCall;
+    condition: Field | FieldCall | MethodCall;
     publisherIfTrue: Argument;
     publisherIfFalse?: Argument;
   };
 
   export type Exception = {
     kind: "exception";
-    condition: FieldCall | MethodCall;
+    condition: Field | FieldCall | MethodCall;
     steps?: Array<Handler | Exception>;
   };
 }
