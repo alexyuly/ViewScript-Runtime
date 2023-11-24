@@ -47,30 +47,48 @@ export namespace Abstract {
 
   /* Tier III */
 
+  /**
+   * Stores and publishes values.
+   */
   export type Field = {
     kind: "field";
     publisher: Feature | Landscape | Primitive | Structure;
   };
 
+  /**
+   * Produces new fields.
+   */
   export type Method = {
     kind: "method";
     yield: Field | MethodCall;
     parameter?: string;
   };
 
+  /**
+   * Updates fields and performs side effects.
+   */
   export type Action = {
     kind: "action";
     steps: Array<Handler | Exception>;
     parameter?: string;
   };
 
+  /**
+   * Publishes fields.
+   */
   export type Stream = {
     kind: "stream";
   };
 
+  /**
+   * Represents a publisher of values.
+   */
   export type Argument = FieldCall | MethodCall | Switch;
 
-  export type Handler = ActionCall | StreamCall;
+  /**
+   * Represents a subscriber of values.
+   */
+  export type Handler = ActionCall | StreamPointer;
 
   /* Tier IV and above */
 
@@ -104,12 +122,6 @@ export namespace Abstract {
     subscriber: Action | ActionPointer;
   };
 
-  export type StreamCall = {
-    kind: "streamCall";
-    name: string;
-    argument?: Argument;
-  };
-
   // Pointers
 
   export type FieldPointer = {
@@ -128,6 +140,12 @@ export namespace Abstract {
   export type ActionPointer = {
     kind: "actionPointer";
     address: Array<string>;
+    argument?: Argument;
+  };
+
+  export type StreamPointer = {
+    kind: "streamPointer";
+    name: string;
     argument?: Argument;
   };
 
