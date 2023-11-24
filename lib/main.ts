@@ -2,7 +2,7 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Scope = Field | Method | Action | Stream;
+type Scope = Record<string, Field | Method | Action | Stream>;
 
 export class App {
   constructor(source: Abstract.App) {
@@ -24,38 +24,38 @@ class Feature extends Publisher<HTMLElement> {
   constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    const element = document.createElement(source.tagName);
+    const htmlElement = document.createElement(source.tagName);
 
     const argumentListener = (name: string) => (value: unknown) => {
       if (name === "content") {
-        const result: Array<HTMLElement | string> = [];
+        const result: Array<any> = [];
         if (value instanceof Array) {
-          for (const [index, element] of Object.entries(value)) {
-            if (element instanceof Publisher) {
-              element.sendTo((elementValue) => {
-                result[index as unknown as number] =
-                  elementValue instanceof HTMLElement ? elementValue : String(elementValue);
+          value.forEach((arrayElement, index) => {
+            if (arrayElement instanceof Publisher) {
+              arrayElement.sendTo((arrayElementValue) => {
+                if (result[index] === undefined) {
+                  result[index] = arrayElementValue;
+                } else {
+                  htmlElement.replaceChild(arrayElementValue, result[index]);
+                }
               });
             } else {
-              result[index as unknown as number] =
-                element instanceof HTMLElement ? element : String(element);
+              result[index] = htmlElement;
             }
-          }
-        } else if (value instanceof HTMLElement) {
-          result.push(value);
+          });
         } else {
-          result.push(String(value));
+          result.push(value);
         }
-        element.replaceChildren(...result);
-      } else if (CSS.supports(name, String(value))) {
-        element.style.setProperty(name, String(value));
+        htmlElement.replaceChildren(...result);
+      } else if (CSS.supports(name, value as string)) {
+        htmlElement.style.setProperty(name, value as string);
       } else if (value === true) {
-        element.setAttribute(name, name);
+        htmlElement.setAttribute(name, name);
       } else if (value === false || value === null || value === undefined) {
-        element.style.removeProperty(name);
-        element.removeAttribute(name);
+        htmlElement.style.removeProperty(name);
+        htmlElement.removeAttribute(name);
       } else {
-        element.setAttribute(name, String(value));
+        htmlElement.setAttribute(name, value as string);
       }
     };
 
@@ -74,19 +74,19 @@ class Feature extends Publisher<HTMLElement> {
         publisher.sendTo(argumentListener(name));
       } else if (Guard.isAction(property)) {
         const subscriber = new Action(property, domain, scope);
-        element.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber.handleEvent);
       } else if (Guard.isActionCall(property)) {
         const subscriber = new ActionCall(property, domain, scope);
-        element.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber.handleEvent);
       } else if (Guard.isStreamCall(property)) {
         const subscriber = new StreamCall(property, domain, scope);
-        element.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber.handleEvent);
       } else {
         throw new Error(`Feature property "${name}" is not valid.`);
       }
     }
 
-    this.publish(element);
+    this.publish(htmlElement);
   }
 }
 
@@ -106,7 +106,7 @@ class Landscape extends Pubsubber<HTMLElement> {
       if (Guard.isField(member)) {
         innerScope[name] = new Field(member, domain, innerScope);
       } else if (Guard.isStream(member)) {
-        innerScope[name] = new Stream(member, domain, innerScope);
+        innerScope[name] = new Stream();
       } else {
         throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
       }
@@ -200,7 +200,7 @@ class Action implements Subscriber {
               {
                 kind: "field",
                 publisher: {
-                  kind: "primitive",
+                  kind: "data",
                   value: event,
                 },
               },
@@ -223,5 +223,11 @@ class Action implements Subscriber {
         throw new Error(`Action step is not valid.`);
       }
     }
+  }
+}
+
+class Stream extends Pubsubber {
+  constructor() {
+    super();
   }
 }
