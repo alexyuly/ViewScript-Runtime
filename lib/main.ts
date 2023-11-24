@@ -31,7 +31,7 @@ class Feature extends Publisher<HTMLElement> {
         const result: Array<HTMLElement | string> = [];
         if (value instanceof Array) {
           for (const [index, element] of Object.entries(value)) {
-            if (element instanceof FieldAlias) {
+            if (element instanceof Publisher) {
               element.sendTo((elementValue) => {
                 result[index as unknown as number] =
                   elementValue instanceof HTMLElement ? elementValue : String(elementValue);
@@ -60,8 +60,11 @@ class Feature extends Publisher<HTMLElement> {
     };
 
     for (const [name, property] of Object.entries(source.properties)) {
-      if (Guard.isFieldAlias(property)) {
-        const publisher = new FieldAlias(property, domain, scope);
+      if (Guard.isField(property)) {
+        const publisher = new Field(property, domain, scope);
+        publisher.sendTo(argumentListener(name));
+      } else if (Guard.isFieldCall(property)) {
+        const publisher = new FieldCall(property, domain, scope);
         publisher.sendTo(argumentListener(name));
       } else if (Guard.isMethodCall(property)) {
         const publisher = new MethodCall(property, domain, scope);
@@ -69,8 +72,11 @@ class Feature extends Publisher<HTMLElement> {
       } else if (Guard.isSwitch(property)) {
         const publisher = new Switch(property, domain, scope);
         publisher.sendTo(argumentListener(name));
-      } else if (Guard.isActionAlias(property)) {
-        const subscriber = new ActionAlias(property, domain, scope);
+      } else if (Guard.isAction(property)) {
+        const subscriber = new Action(property, domain, scope);
+        element.addEventListener(name, subscriber.handleEvent);
+      } else if (Guard.isActionCall(property)) {
+        const subscriber = new ActionCall(property, domain, scope);
         element.addEventListener(name, subscriber.handleEvent);
       } else if (Guard.isStreamCall(property)) {
         const subscriber = new StreamCall(property, domain, scope);
@@ -107,14 +113,18 @@ class Landscape extends Pubsubber<HTMLElement> {
     }
 
     for (const [name, property] of Object.entries(source.properties)) {
-      if (Guard.isFieldAlias(property)) {
-        innerScope[name] = new FieldAlias(property, domain, scope);
+      if (Guard.isField(property)) {
+        innerScope[name] = new Field(property, domain, scope);
+      } else if (Guard.isFieldCall(property)) {
+        innerScope[name] = new FieldCall(property, domain, scope);
       } else if (Guard.isMethodCall(property)) {
         innerScope[name] = new MethodCall(property, domain, scope);
       } else if (Guard.isSwitch(property)) {
         innerScope[name] = new Switch(property, domain, scope);
-      } else if (Guard.isActionAlias(property)) {
-        innerScope[name] = new ActionAlias(property, domain, scope);
+      } else if (Guard.isAction(property)) {
+        innerScope[name] = new Action(property, domain, scope);
+      } else if (Guard.isActionCall(property)) {
+        innerScope[name] = new ActionCall(property, domain, scope);
       } else if (Guard.isStreamCall(property)) {
         innerScope[name] = new StreamCall(property, domain, scope);
       } else {
@@ -163,7 +173,55 @@ class Method {
     this.scope = scope;
   }
 
-  getYield() {
+  generate() {
     // TODO
+  }
+}
+
+class Action implements Subscriber {
+  private readonly source: Abstract.Action;
+  private readonly domain: Abstract.App["domain"];
+  private readonly scope: Scope;
+
+  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
+    this.source = source;
+    this.domain = domain;
+    this.scope = scope;
+  }
+
+  handleEvent(event: unknown) {
+    const innerScope: Scope = { ...this.scope };
+
+    if (this.source.parameter) {
+      innerScope[this.source.parameter] =
+        event instanceof Field
+          ? event
+          : new Field(
+              {
+                kind: "field",
+                publisher: {
+                  kind: "primitive",
+                  value: event,
+                },
+              },
+              this.domain,
+              innerScope,
+            );
+    }
+
+    for (const step of this.source.steps) {
+      if (Guard.isActionCall(step)) {
+        const subscriber = new ActionCall(step, this.domain, innerScope);
+        subscriber.handleEvent(event);
+      } else if (Guard.isStreamCall(step)) {
+        const subscriber = new StreamCall(step, this.domain, innerScope);
+        subscriber.handleEvent(event);
+      } else if (Guard.isException(step)) {
+        const subscriber = new Exception(step, this.domain, innerScope);
+        subscriber.handleEvent(event);
+      } else {
+        throw new Error(`Action step is not valid.`);
+      }
+    }
   }
 }

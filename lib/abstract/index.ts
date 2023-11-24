@@ -69,7 +69,7 @@ export namespace Abstract {
    */
   export type Action = {
     kind: "action";
-    steps: Array<Handler | Exception>;
+    steps: Array<ActionCall | StreamCall | Exception>;
     parameter?: string;
   };
 
@@ -138,6 +138,6 @@ export namespace Abstract {
   export type Exception = {
     kind: "exception";
     condition: Field | FieldCall | MethodCall;
-    steps?: Array<Handler | Exception>;
+    steps?: Array<ActionCall | StreamCall | Exception>;
   };
 }
