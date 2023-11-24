@@ -2,7 +2,7 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Publisher, Pubsubber, Subscriber } from "./pubsub";
 
-type Scope = {}; // TODO
+type Scope = Field | Method | Action | Stream;
 
 export class App {
   constructor(source: Abstract.App) {
@@ -28,13 +28,25 @@ class Feature extends Publisher<HTMLElement> {
 
     const argumentListener = (name: string) => (value: unknown) => {
       if (name === "content") {
+        const result: Array<HTMLElement | string> = [];
         if (value instanceof Array) {
-          // TODO
+          for (const [index, element] of Object.entries(value)) {
+            if (element instanceof FieldCall) {
+              element.sendTo((elementValue) => {
+                result[index as unknown as number] =
+                  elementValue instanceof HTMLElement ? elementValue : String(elementValue);
+              });
+            } else {
+              result[index as unknown as number] =
+                element instanceof HTMLElement ? element : String(element);
+            }
+          }
         } else if (value instanceof HTMLElement) {
-          // TODO
+          result.push(value);
         } else {
-          // TODO
+          result.push(String(value));
         }
+        element.replaceChildren(...result);
       } else if (CSS.supports(name, String(value))) {
         element.style.setProperty(name, String(value));
       } else if (value === true) {
@@ -64,10 +76,54 @@ class Feature extends Publisher<HTMLElement> {
         const subscriber = new StreamPointer(property, domain, scope);
         element.addEventListener(name, subscriber.handleEvent);
       } else {
-        throw new Error(`Property ${name} is not valid.`);
+        throw new Error(`Feature property "${name}" is not valid.`);
       }
     }
 
     this.publish(element);
+  }
+}
+
+class Landscape extends Publisher<HTMLElement> {
+  constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
+    const view = domain[source.viewName];
+
+    if (!Guard.isView(view)) {
+      throw new Error(`View "${source.viewName}" is not valid.`);
+    }
+
+    const innerScope: Scope = {};
+
+    for (const [name, member] of Object.entries(view.scope)) {
+      if (Guard.isField(member)) {
+        innerScope[name] = new Field(member, domain, innerScope);
+      } else if (Guard.isStream(member)) {
+        innerScope[name] = new Stream(member, domain, innerScope);
+      } else {
+        throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
+      }
+    }
+
+    for (const [name, property] of Object.entries(source.properties)) {
+      if (Guard.isFieldCall(property)) {
+        innerScope[name] = new FieldCall(property, domain, scope);
+      } else if (Guard.isMethodCall(property)) {
+        innerScope[name] = new MethodCall(property, domain, scope);
+      } else if (Guard.isSwitch(property)) {
+        innerScope[name] = new Switch(property, domain, scope);
+      } else if (Guard.isActionCall(property)) {
+        innerScope[name] = new ActionCall(property, domain, scope);
+      } else if (Guard.isStreamPointer(property)) {
+        innerScope[name] = new StreamPointer(property, domain, scope);
+      } else {
+        throw new Error(`Landscape property "${name}" is not valid.`);
+      }
+    }
+
+    Guard.isFeature(view.render)
+      ? new Feature(view.render, domain, innerScope)
+      : new Landscape(view.render, domain, innerScope);
   }
 }
