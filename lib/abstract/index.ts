@@ -17,22 +17,27 @@ export namespace Abstract {
     render: Feature | Landscape;
   };
 
+  export type Primitive = {
+    kind: "primitive";
+    value: unknown;
+  };
+
+  export type Structure = {
+    kind: "structure";
+    modelName: string;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch>;
+  };
+
   export type Feature = {
     kind: "feature";
     tagName: string;
-    properties: Record<
-      string,
-      Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall
-    >;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall>;
   };
 
   export type Landscape = {
     kind: "landscape";
     viewName: string;
-    properties: Record<
-      string,
-      Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall
-    >;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall>;
   };
 
   export type Field = {
@@ -40,31 +45,21 @@ export namespace Abstract {
     publisher: Primitive | Structure | Feature | Landscape;
   };
 
-  export type Method = {
-    kind: "method";
-    yield: Field | MethodCall;
-    parameter?: string;
-  };
-
-  export type Action = {
-    kind: "action";
-    steps: Array<ActionCall | StreamCall | Exception>;
-    parameter?: string;
-  };
-
-  export type Stream = {
-    kind: "stream";
-  };
-
   export type FieldCall = {
     kind: "fieldCall";
-    scope?: Field | FieldCall | MethodCall;
+    context?: Field | FieldCall | MethodCall;
     name: string;
+  };
+
+  export type Method = {
+    kind: "method";
+    result: Field | MethodCall;
+    parameter?: string;
   };
 
   export type MethodCall = {
     kind: "methodCall";
-    scope?: Field | FieldCall | MethodCall;
+    context?: Field | FieldCall | MethodCall;
     name: string;
     argument?: Field | FieldCall | MethodCall | Switch;
   };
@@ -76,10 +71,20 @@ export namespace Abstract {
     publisherIfFalse?: Field | FieldCall | MethodCall | Switch;
   };
 
+  export type Action = {
+    kind: "action";
+    steps: Array<ActionCall | StreamCall | Exception>;
+    parameter?: string;
+  };
+
   export type ActionCall = {
     kind: "actionCall";
     address: Array<string>;
     argument?: Field | FieldCall | MethodCall | Switch;
+  };
+
+  export type Stream = {
+    kind: "stream";
   };
 
   export type StreamCall = {
@@ -92,16 +97,5 @@ export namespace Abstract {
     kind: "exception";
     condition: Field | FieldCall | MethodCall;
     steps?: Array<ActionCall | StreamCall | Exception>;
-  };
-
-  export type Primitive = {
-    kind: "primitive";
-    value: unknown;
-  };
-
-  export type Structure = {
-    kind: "structure";
-    modelName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch>;
   };
 }

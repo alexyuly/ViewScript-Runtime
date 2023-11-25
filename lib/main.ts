@@ -1,6 +1,6 @@
 import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
-import { Exchange, Publisher, Subscriber } from "./pubsub";
+import { Channel, Publisher, Subscriber } from "./pubsub";
 
 type Scope = Record<string, Field | Method | Action | Stream | ((argument: unknown) => unknown)>;
 
@@ -16,7 +16,62 @@ export class App {
       throw new Error(`App render is not valid.`);
     }
 
-    render.sendTo(document.body.append);
+    render.connect(document.body.append);
+  }
+}
+
+class FeatureDataSource implements Subscriber {
+  private readonly cleanupTasks: Array<() => void> = [];
+  private readonly htmlElement: HTMLElement;
+  private readonly name: string;
+
+  constructor(htmlElement: HTMLElement, name: string) {
+    this.htmlElement = htmlElement;
+    this.name = name;
+  }
+
+  handleEvent(value: unknown): void {
+    this.cleanupTasks.forEach((cleanupTask) => {
+      cleanupTask();
+    });
+
+    if (this.name === "content") {
+      const result: Array<any> = [];
+
+      if (value instanceof Array) {
+        value.forEach((arrayElement, index) => {
+          if (arrayElement instanceof Publisher) {
+            const target = (arrayElementValue: any) => {
+              if (result[index] === undefined) {
+                result[index] = arrayElementValue;
+              } else {
+                this.htmlElement.replaceChild(arrayElementValue, result[index]);
+              }
+            };
+            arrayElement.connect(target);
+            const cleanupTask = () => {
+              arrayElement.disconnect(target);
+            };
+            this.cleanupTasks.push(cleanupTask);
+          } else {
+            result[index] = this.htmlElement;
+          }
+        });
+      } else {
+        result.push(value);
+      }
+
+      this.htmlElement.replaceChildren(...result);
+    } else if (CSS.supports(this.name, value as string)) {
+      this.htmlElement.style.setProperty(this.name, value as string);
+    } else if (value === true) {
+      this.htmlElement.setAttribute(this.name, this.name);
+    } else if (value === false || value === null || value === undefined) {
+      this.htmlElement.style.removeProperty(this.name);
+      this.htmlElement.removeAttribute(this.name);
+    } else {
+      this.htmlElement.setAttribute(this.name, value as string);
+    }
   }
 }
 
@@ -26,72 +81,42 @@ class Feature extends Publisher<HTMLElement> {
 
     const htmlElement = document.createElement(source.tagName);
 
-    const argumentListener = (name: string) => (value: unknown) => {
-      if (name === "content") {
-        const result: Array<any> = [];
-        if (value instanceof Array) {
-          value.forEach((arrayElement, index) => {
-            if (arrayElement instanceof Publisher) {
-              // TODO Unsubscribe these listeners when a new value is received:
-              arrayElement.sendTo((arrayElementValue) => {
-                if (result[index] === undefined) {
-                  result[index] = arrayElementValue;
-                } else {
-                  htmlElement.replaceChild(arrayElementValue, result[index]);
-                }
-              });
-            } else {
-              result[index] = htmlElement;
-            }
-          });
-        } else {
-          result.push(value);
-        }
-        htmlElement.replaceChildren(...result);
-      } else if (CSS.supports(name, value as string)) {
-        htmlElement.style.setProperty(name, value as string);
-      } else if (value === true) {
-        htmlElement.setAttribute(name, name);
-      } else if (value === false || value === null || value === undefined) {
-        htmlElement.style.removeProperty(name);
-        htmlElement.removeAttribute(name);
-      } else {
-        htmlElement.setAttribute(name, value as string);
-      }
-    };
-
-    for (const [name, property] of Object.entries(source.properties)) {
+    Object.entries(source.properties).forEach(([name, property]) => {
       if (Guard.isField(property)) {
         const publisher = new Field(property, domain, scope);
-        publisher.sendTo(argumentListener(name));
+        const subscriber = new FeatureDataSource(htmlElement, name);
+        publisher.connect(subscriber);
       } else if (Guard.isFieldCall(property)) {
         const publisher = new FieldCall(property, domain, scope);
-        publisher.sendTo(argumentListener(name));
+        const subscriber = new FeatureDataSource(htmlElement, name);
+        publisher.connect(subscriber);
       } else if (Guard.isMethodCall(property)) {
         const publisher = new MethodCall(property, domain, scope);
-        publisher.sendTo(argumentListener(name));
+        const subscriber = new FeatureDataSource(htmlElement, name);
+        publisher.connect(subscriber);
       } else if (Guard.isSwitch(property)) {
         const publisher = new Switch(property, domain, scope);
-        publisher.sendTo(argumentListener(name));
+        const subscriber = new FeatureDataSource(htmlElement, name);
+        publisher.connect(subscriber);
       } else if (Guard.isAction(property)) {
         const subscriber = new Action(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber);
       } else if (Guard.isActionCall(property)) {
         const subscriber = new ActionCall(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber);
       } else if (Guard.isStreamCall(property)) {
         const subscriber = new StreamCall(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber.handleEvent);
+        htmlElement.addEventListener(name, subscriber);
       } else {
         throw new Error(`Feature property "${name}" is not valid.`);
       }
-    }
+    });
 
     this.publish(htmlElement);
   }
 }
 
-class Landscape extends Exchange<HTMLElement> {
+class Landscape extends Channel<HTMLElement> {
   constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
@@ -137,11 +162,11 @@ class Landscape extends Exchange<HTMLElement> {
       ? new Feature(view.render, domain, innerScope)
       : new Landscape(view.render, domain, innerScope);
 
-    render.sendTo(this);
+    render.connect(this);
   }
 }
 
-class Field extends Exchange {
+class Field extends Channel {
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
@@ -159,7 +184,7 @@ class Field extends Exchange {
       throw new Error(`Field publisher is not valid.`);
     }
 
-    publisher.sendTo(this);
+    publisher.connect(this);
   }
 
   getScope(): Scope {
@@ -183,8 +208,18 @@ class Method {
     this.scope = scope;
   }
 
-  createYield(argument?: Field) {
-    // TODO
+  createResult(argument?: Field): Field | MethodCall {
+    const innerScope: Scope = { ...this.scope };
+
+    if (this.source.parameter && argument) {
+      innerScope[this.source.parameter] = argument;
+    }
+
+    const result = Guard.isField(this.source.result)
+      ? new Field(this.source.result, this.domain, innerScope)
+      : new MethodCall(this.source.result, this.domain, innerScope);
+
+    return result;
   }
 }
 
@@ -236,13 +271,17 @@ class Action implements Subscriber {
   }
 }
 
-class Stream extends Exchange {
+/**
+ * A stream is functionally equivalent to a channel, but with different semantics because of its usage.
+ * A stream is a member of a view which publishes to its parent view.
+ */
+class Stream extends Channel {
   constructor() {
     super();
   }
 }
 
-class FieldCall extends Exchange {
+class FieldCall extends Channel {
   private readonly field: Field;
 
   constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope) {
@@ -261,7 +300,7 @@ class FieldCall extends Exchange {
     const field = realScope[source.name];
 
     if (!(field instanceof Field)) {
-      throw new Error(`Field call "${source.name}" is not valid.`);
+      throw new Error(`Field call to "${source.name}" is not valid.`);
     }
 
     this.field = field;
@@ -276,8 +315,8 @@ class FieldCall extends Exchange {
   }
 }
 
-class MethodCall extends Exchange {
-  private readonly method: Method | ((argument: unknown) => unknown);
+class MethodCall extends Channel {
+  private readonly result: Field | MethodCall;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -292,16 +331,85 @@ class MethodCall extends Exchange {
       realScope = new MethodCall(source.scope, domain, scope).getScope();
     }
 
-    const method = realScope[source.name];
+    let argument: Field | undefined;
 
-    if (!(method instanceof Method)) {
-      throw new Error(`Method call "${source.name}" is not valid.`);
+    if (Guard.isField(source.argument)) {
+      argument = new Field(source.argument, domain, scope);
+    } else if (Guard.isFieldCall(source.argument)) {
+      argument = new FieldCall(source.argument, domain, scope).getField();
+    } else if (Guard.isMethodCall(source.argument)) {
+      argument = new MethodCall(source.argument, domain, scope).getField();
+    } else if (Guard.isSwitch(source.argument)) {
+      // argument = new Switch(source.argument, domain, scope).getField();
     }
 
-    this.method = method;
+    const method = realScope[source.name];
+
+    if (method instanceof Method) {
+      this.result = method.createResult(argument);
+    } else if (typeof method === "function") {
+      // TODO Publish a new result when the method's owner changes:
+      this.result = new Field(
+        {
+          kind: "field",
+          publisher: {
+            kind: "primitive",
+            value: method(argument),
+          },
+        },
+        domain,
+        scope,
+      );
+    } else {
+      throw new Error(`Method call to "${source.name}" is not valid.`);
+    }
   }
 
-  // getScope(): Scope {
-  //   return this.method.getScope();
-  // }
+  getField(): Field {
+    return this.result;
+  }
+
+  getScope(): Scope {
+    return this.result.getScope();
+  }
+}
+
+class Switch extends Channel {
+  constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
+    let condition: Publisher;
+
+    if (Guard.isField(source.condition)) {
+      condition = new Field(source.condition, domain, scope);
+    } else if (Guard.isFieldCall(source.condition)) {
+      condition = new FieldCall(source.condition, domain, scope).getField();
+    } else if (Guard.isMethodCall(source.condition)) {
+      condition = new MethodCall(source.condition, domain, scope).getField();
+    }
+
+    let publisherIfTrue: Publisher;
+
+    if (Guard.isField(source.publisherIfTrue)) {
+      publisherIfTrue = new Field(source.publisherIfTrue, domain, scope);
+    } else if (Guard.isFieldCall(source.publisherIfTrue)) {
+      publisherIfTrue = new FieldCall(source.publisherIfTrue, domain, scope).getField();
+    } else if (Guard.isMethodCall(source.publisherIfTrue)) {
+      publisherIfTrue = new MethodCall(source.publisherIfTrue, domain, scope).getField();
+    } else if (Guard.isSwitch(source.publisherIfTrue)) {
+      publisherIfTrue = new Switch(source.publisherIfTrue, domain, scope).getField();
+    }
+
+    let publisherIfFalse: Publisher;
+
+    if (Guard.isField(source.publisherIfFalse)) {
+      publisherIfFalse = new Field(source.publisherIfFalse, domain, scope);
+    } else if (Guard.isFieldCall(source.publisherIfFalse)) {
+      publisherIfFalse = new FieldCall(source.publisherIfFalse, domain, scope).getField();
+    } else if (Guard.isMethodCall(source.publisherIfFalse)) {
+      publisherIfFalse = new MethodCall(source.publisherIfFalse, domain, scope).getField();
+    } else if (Guard.isSwitch(source.publisherIfFalse)) {
+      publisherIfFalse = new Switch(source.publisherIfFalse, domain, scope).getField();
+    }
+  }
 }

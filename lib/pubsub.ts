@@ -6,19 +6,7 @@ export abstract class Publisher<T = unknown> {
   private eventHandlers: Array<Subscriber<T>["handleEvent"]> = [];
   private value?: T;
 
-  getValue() {
-    return this.value;
-  }
-
-  protected publish(value: T) {
-    this.value = value;
-
-    for (const handleEvent of this.eventHandlers) {
-      handleEvent(value);
-    }
-  }
-
-  sendTo(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
+  connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
     const handleEvent = typeof target === "function" ? target : target.handleEvent;
 
     if (this.value !== undefined) {
@@ -27,9 +15,29 @@ export abstract class Publisher<T = unknown> {
 
     this.eventHandlers.push(handleEvent);
   }
+
+  disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
+    const handleEvent = typeof target === "function" ? target : target.handleEvent;
+
+    this.eventHandlers = this.eventHandlers.filter((eventHandler) => {
+      return eventHandler !== handleEvent;
+    });
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  protected publish(value: T) {
+    this.value = value;
+
+    this.eventHandlers.forEach((handleEvent) => {
+      handleEvent(value);
+    });
+  }
 }
 
-export class Exchange<T = unknown> extends Publisher<T> implements Subscriber<T> {
+export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
   handleEvent(value: T): void {
     this.publish(value);
   }
