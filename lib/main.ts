@@ -1,8 +1,8 @@
 import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
-import { Publisher, Pubsubber, Subscriber } from "./pubsub";
+import { Exchange, Publisher, Subscriber } from "./pubsub";
 
-type Scope = Record<string, Field | Method | Action | Stream>;
+type Scope = Record<string, Field | Method | Action | Stream | ((argument: unknown) => unknown)>;
 
 export class App {
   constructor(source: Abstract.App) {
@@ -32,6 +32,7 @@ class Feature extends Publisher<HTMLElement> {
         if (value instanceof Array) {
           value.forEach((arrayElement, index) => {
             if (arrayElement instanceof Publisher) {
+              // TODO Unsubscribe these listeners when a new value is received:
               arrayElement.sendTo((arrayElementValue) => {
                 if (result[index] === undefined) {
                   result[index] = arrayElementValue;
@@ -90,7 +91,7 @@ class Feature extends Publisher<HTMLElement> {
   }
 }
 
-class Landscape extends Pubsubber<HTMLElement> {
+class Landscape extends Exchange<HTMLElement> {
   constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
@@ -140,25 +141,34 @@ class Landscape extends Pubsubber<HTMLElement> {
   }
 }
 
-class Field extends Pubsubber {
+class Field extends Exchange {
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
     let publisher: Publisher;
 
-    if (Guard.isFeature(source.publisher)) {
-      publisher = new Feature(source.publisher, domain, scope);
-    } else if (Guard.isLandscape(source.publisher)) {
-      publisher = new Landscape(source.publisher, domain, scope);
-    } else if (Guard.isPrimitive(source.publisher)) {
+    if (Guard.isPrimitive(source.publisher)) {
       publisher = new Primitive(source.publisher, domain, scope);
     } else if (Guard.isStructure(source.publisher)) {
       publisher = new Structure(source.publisher, domain, scope);
+    } else if (Guard.isFeature(source.publisher)) {
+      publisher = new Feature(source.publisher, domain, scope);
+    } else if (Guard.isLandscape(source.publisher)) {
+      publisher = new Landscape(source.publisher, domain, scope);
     } else {
       throw new Error(`Field publisher is not valid.`);
     }
 
     publisher.sendTo(this);
+  }
+
+  getScope(): Scope {
+    // TODO
+    return {};
+  }
+
+  getValue() {
+    // TODO
   }
 }
 
@@ -173,7 +183,7 @@ class Method {
     this.scope = scope;
   }
 
-  generate() {
+  createYield(argument?: Field) {
     // TODO
   }
 }
@@ -200,7 +210,7 @@ class Action implements Subscriber {
               {
                 kind: "field",
                 publisher: {
-                  kind: "data",
+                  kind: "primitive",
                   value: event,
                 },
               },
@@ -226,8 +236,72 @@ class Action implements Subscriber {
   }
 }
 
-class Stream extends Pubsubber {
+class Stream extends Exchange {
   constructor() {
     super();
   }
+}
+
+class FieldCall extends Exchange {
+  private readonly field: Field;
+
+  constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
+    let realScope = scope;
+
+    if (Guard.isField(source.scope)) {
+      realScope = new Field(source.scope, domain, scope).getScope();
+    } else if (Guard.isFieldCall(source.scope)) {
+      realScope = new FieldCall(source.scope, domain, scope).getScope();
+    } else if (Guard.isMethodCall(source.scope)) {
+      realScope = new MethodCall(source.scope, domain, scope).getScope();
+    }
+
+    const field = realScope[source.name];
+
+    if (!(field instanceof Field)) {
+      throw new Error(`Field call "${source.name}" is not valid.`);
+    }
+
+    this.field = field;
+  }
+
+  getField(): Field {
+    return this.field;
+  }
+
+  getScope(): Scope {
+    return this.field.getScope();
+  }
+}
+
+class MethodCall extends Exchange {
+  private readonly method: Method | ((argument: unknown) => unknown);
+
+  constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
+    let realScope = scope;
+
+    if (Guard.isField(source.scope)) {
+      realScope = new Field(source.scope, domain, scope).getScope();
+    } else if (Guard.isFieldCall(source.scope)) {
+      realScope = new FieldCall(source.scope, domain, scope).getScope();
+    } else if (Guard.isMethodCall(source.scope)) {
+      realScope = new MethodCall(source.scope, domain, scope).getScope();
+    }
+
+    const method = realScope[source.name];
+
+    if (!(method instanceof Method)) {
+      throw new Error(`Method call "${source.name}" is not valid.`);
+    }
+
+    this.method = method;
+  }
+
+  // getScope(): Scope {
+  //   return this.method.getScope();
+  // }
 }
