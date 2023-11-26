@@ -2,8 +2,8 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Channel, Publisher, Subscriber } from "./pubsub";
 
-type Mapping = (argument: unknown) => unknown;
-type Scope = Record<string, Mapping | Method | Publisher | Subscriber>;
+type Logic = (argument: unknown) => unknown;
+type Scope = Record<string, Logic | Method | Publisher | Subscriber>;
 
 export class App {
   constructor(source: Abstract.App) {
@@ -113,6 +113,10 @@ class Feature extends Publisher<HTMLElement> {
 
     this.publish(htmlElement);
   }
+
+  getOuterScope(): Scope {
+    return {};
+  }
 }
 
 class Landscape extends Channel<HTMLElement> {
@@ -163,34 +167,65 @@ class Landscape extends Channel<HTMLElement> {
 
     render.connect(this);
   }
+
+  getOuterScope(): Scope {
+    return {};
+  }
+}
+
+class Primitive extends Publisher {
+  constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
+    super();
+
+    // TODO Handle arrays...
+
+    this.publish(source.value);
+  }
+
+  getOuterScope(): Scope {
+    // TODO
+    return {};
+  }
+}
+
+class Structure {
+  constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
+    // TODO
+  }
+
+  getOuterScope(): Scope {
+    // TODO
+    return {};
+  }
 }
 
 class Field extends Channel {
-  private readonly scope: Scope = {};
+  private readonly delegate: { getOuterScope(): Scope };
 
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    let publisher: Publisher;
-
-    if (Guard.isPrimitive(source.publisher)) {
-      publisher = new Primitive(source.publisher, domain, scope);
-    } else if (Guard.isStructure(source.publisher)) {
-      // TODO Assign this.scope based on the given model's properties.
-      publisher = new Structure(source.publisher, domain, scope);
-    } else if (Guard.isFeature(source.publisher)) {
-      publisher = new Feature(source.publisher, domain, scope);
-    } else if (Guard.isLandscape(source.publisher)) {
-      publisher = new Landscape(source.publisher, domain, scope);
+    if (Guard.isFeature(source.delegate)) {
+      const delegate = new Feature(source.delegate, domain, scope);
+      delegate.connect(this);
+      this.delegate = delegate;
+    } else if (Guard.isLandscape(source.delegate)) {
+      const delegate = new Landscape(source.delegate, domain, scope);
+      delegate.connect(this);
+      this.delegate = delegate;
+    } else if (Guard.isPrimitive(source.delegate)) {
+      const delegate = new Primitive(source.delegate, domain, scope);
+      delegate.connect(this);
+      this.delegate = delegate;
+    } else if (Guard.isStructure(source.delegate)) {
+      this.delegate = new Structure(source.delegate, domain, scope);
     } else {
-      throw new Error(`Field publisher is not valid.`);
+      throw new Error(`Field delegate is not valid.`);
     }
-
-    publisher.connect(this);
   }
 
-  getScope(): Scope {
-    return this.scope;
+  getOuterScope(): Scope {
+    return this.delegate.getOuterScope();
   }
 }
 
@@ -203,11 +238,11 @@ class FieldCall extends Channel {
     let realScope = scope;
 
     if (Guard.isField(source.context)) {
-      realScope = new Field(source.context, domain, scope).getScope();
+      realScope = new Field(source.context, domain, scope).getOuterScope();
     } else if (Guard.isFieldCall(source.context)) {
-      realScope = new FieldCall(source.context, domain, scope).getScope();
+      realScope = new FieldCall(source.context, domain, scope).getOuterScope();
     } else if (Guard.isMethodCall(source.context)) {
-      realScope = new MethodCall(source.context, domain, scope).getScope();
+      realScope = new MethodCall(source.context, domain, scope).getOuterScope();
     }
 
     const field = realScope[source.name];
@@ -220,8 +255,8 @@ class FieldCall extends Channel {
     this.field.connect(this);
   }
 
-  getScope(): Scope {
-    return this.field.getScope();
+  getOuterScope(): Scope {
+    return this.field.getOuterScope();
   }
 }
 
@@ -260,11 +295,11 @@ class MethodCall extends Channel {
     let realScope = scope;
 
     if (Guard.isField(source.context)) {
-      realScope = new Field(source.context, domain, scope).getScope();
+      realScope = new Field(source.context, domain, scope).getOuterScope();
     } else if (Guard.isFieldCall(source.context)) {
-      realScope = new FieldCall(source.context, domain, scope).getScope();
+      realScope = new FieldCall(source.context, domain, scope).getOuterScope();
     } else if (Guard.isMethodCall(source.context)) {
-      realScope = new MethodCall(source.context, domain, scope).getScope();
+      realScope = new MethodCall(source.context, domain, scope).getOuterScope();
     }
 
     let argument: Publisher | undefined;
@@ -287,7 +322,7 @@ class MethodCall extends Channel {
       this.result = new Field(
         {
           kind: "field",
-          publisher: {
+          delegate: {
             kind: "primitive",
             value: method(argument), // TODO Keep this value up to date.
           },
@@ -300,48 +335,55 @@ class MethodCall extends Channel {
     }
   }
 
-  getScope(): Scope {
-    return this.result.getScope();
+  getOuterScope(): Scope {
+    return this.result.getOuterScope();
   }
 }
 
 class Switch extends Channel {
+  private readonly condition: Publisher;
+  private readonly publisher: Publisher;
+  private readonly alternative?: Publisher;
+
   constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    let condition: Publisher;
-
     if (Guard.isField(source.condition)) {
-      condition = new Field(source.condition, domain, scope);
+      this.condition = new Field(source.condition, domain, scope);
     } else if (Guard.isFieldCall(source.condition)) {
-      condition = new FieldCall(source.condition, domain, scope).getField();
+      this.condition = new FieldCall(source.condition, domain, scope);
     } else if (Guard.isMethodCall(source.condition)) {
-      condition = new MethodCall(source.condition, domain, scope).getField();
+      this.condition = new MethodCall(source.condition, domain, scope);
+    } else {
+      throw new Error(`Switch condition is not valid.`);
     }
 
-    let publisherIfTrue: Publisher;
-
-    if (Guard.isField(source.publisherIfTrue)) {
-      publisherIfTrue = new Field(source.publisherIfTrue, domain, scope);
-    } else if (Guard.isFieldCall(source.publisherIfTrue)) {
-      publisherIfTrue = new FieldCall(source.publisherIfTrue, domain, scope).getField();
-    } else if (Guard.isMethodCall(source.publisherIfTrue)) {
-      publisherIfTrue = new MethodCall(source.publisherIfTrue, domain, scope).getField();
-    } else if (Guard.isSwitch(source.publisherIfTrue)) {
-      publisherIfTrue = new Switch(source.publisherIfTrue, domain, scope).getField();
+    if (Guard.isField(source.publisher)) {
+      this.publisher = new Field(source.publisher, domain, scope);
+    } else if (Guard.isFieldCall(source.publisher)) {
+      this.publisher = new FieldCall(source.publisher, domain, scope);
+    } else if (Guard.isMethodCall(source.publisher)) {
+      this.publisher = new MethodCall(source.publisher, domain, scope);
+    } else if (Guard.isSwitch(source.publisher)) {
+      this.publisher = new Switch(source.publisher, domain, scope);
+    } else {
+      throw new Error(`Switch publisher is not valid.`);
     }
 
-    let publisherIfFalse: Publisher;
-
-    if (Guard.isField(source.publisherIfFalse)) {
-      publisherIfFalse = new Field(source.publisherIfFalse, domain, scope);
-    } else if (Guard.isFieldCall(source.publisherIfFalse)) {
-      publisherIfFalse = new FieldCall(source.publisherIfFalse, domain, scope).getField();
-    } else if (Guard.isMethodCall(source.publisherIfFalse)) {
-      publisherIfFalse = new MethodCall(source.publisherIfFalse, domain, scope).getField();
-    } else if (Guard.isSwitch(source.publisherIfFalse)) {
-      publisherIfFalse = new Switch(source.publisherIfFalse, domain, scope).getField();
+    if (Guard.isField(source.alternative)) {
+      this.alternative = new Field(source.alternative, domain, scope);
+    } else if (Guard.isFieldCall(source.alternative)) {
+      this.alternative = new FieldCall(source.alternative, domain, scope);
+    } else if (Guard.isMethodCall(source.alternative)) {
+      this.alternative = new MethodCall(source.alternative, domain, scope);
+    } else if (Guard.isSwitch(source.alternative)) {
+      this.alternative = new Switch(source.alternative, domain, scope);
     }
+
+    this.condition.connect((value) => {
+      const nextValue = value ? this.publisher.getValue() : this.alternative?.getValue();
+      this.publish(nextValue);
+    });
   }
 }
 
@@ -366,7 +408,7 @@ class Action implements Subscriber {
           : new Field(
               {
                 kind: "field",
-                publisher: {
+                delegate: {
                   kind: "primitive",
                   value: event,
                 },
@@ -411,6 +453,16 @@ class Stream extends Channel {
 
 class StreamCall implements Subscriber {
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
+    // TODO
+  }
+
+  handleEvent(value: unknown): void {
+    // TODO
+  }
+}
+
+class Exception implements Subscriber {
+  constructor(source: Abstract.Exception, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
 

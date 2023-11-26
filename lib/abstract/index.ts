@@ -2,30 +2,19 @@ export namespace Abstract {
   export type App = {
     kind: "app";
     version: "ViewScript v0.4.0";
-    domain: Record<string, Model | View>;
+    domain: Record<string, View | Model>;
+    render: Feature | Landscape;
+  };
+
+  export type View = {
+    kind: "view";
+    scope: Record<string, Stream | Field>;
     render: Feature | Landscape;
   };
 
   export type Model = {
     kind: "model";
     scope: Record<string, Field | Method | Action>;
-  };
-
-  export type View = {
-    kind: "view";
-    scope: Record<string, Field | Stream>;
-    render: Feature | Landscape;
-  };
-
-  export type Primitive = {
-    kind: "primitive";
-    value: unknown;
-  };
-
-  export type Structure = {
-    kind: "structure";
-    modelName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch>;
   };
 
   export type Feature = {
@@ -40,9 +29,20 @@ export namespace Abstract {
     properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall>;
   };
 
+  export type Primitive = {
+    kind: "primitive";
+    value: unknown;
+  };
+
+  export type Structure = {
+    kind: "structure";
+    modelName: string;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch>;
+  };
+
   export type Field = {
     kind: "field";
-    publisher: Primitive | Structure | Feature | Landscape;
+    delegate: Feature | Landscape | Primitive | Structure;
   };
 
   export type FieldCall = {
@@ -67,8 +67,8 @@ export namespace Abstract {
   export type Switch = {
     kind: "switch";
     condition: Field | FieldCall | MethodCall;
-    publisherIfTrue: Field | FieldCall | MethodCall | Switch;
-    publisherIfFalse?: Field | FieldCall | MethodCall | Switch;
+    publisher: Field | FieldCall | MethodCall | Switch;
+    alternative?: Field | FieldCall | MethodCall | Switch;
   };
 
   export type Action = {
