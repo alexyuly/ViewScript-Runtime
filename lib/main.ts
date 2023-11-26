@@ -174,28 +174,44 @@ class Landscape extends Channel<HTMLElement> {
 }
 
 class Primitive extends Publisher {
+  private readonly outerScope: Scope = {};
+
   constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    // TODO Handle arrays...
+    if (source.value instanceof Array) {
+      // TODO Assign this.outerScope
 
-    this.publish(source.value);
+      const value = source.value.map((element) => {
+        if (Guard.isField(element)) return new Field(element, domain, scope);
+        if (Guard.isFieldCall(element)) return new FieldCall(element, domain, scope);
+        if (Guard.isMethodCall(element)) return new MethodCall(element, domain, scope);
+        if (Guard.isSwitch(element)) return new Switch(element, domain, scope);
+        throw new Error(`Primitive array element is not valid.`);
+      });
+
+      this.publish(value);
+    } else {
+      // TODO Assign this.outerScope
+
+      this.publish(source.value);
+    }
   }
 
   getOuterScope(): Scope {
-    // TODO
-    return {};
+    return this.outerScope;
   }
 }
 
 class Structure {
+  private readonly outerScope: Scope = {};
+
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
 
   getOuterScope(): Scope {
-    // TODO
-    return {};
+    return this.outerScope;
   }
 }
 
