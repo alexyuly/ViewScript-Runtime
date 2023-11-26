@@ -394,6 +394,8 @@ class Switch extends Channel {
       this.alternative = new MethodCall(source.alternative, domain, scope);
     } else if (Guard.isSwitch(source.alternative)) {
       this.alternative = new Switch(source.alternative, domain, scope);
+    } else if (source.alternative !== undefined) {
+      throw new Error(`Switch alternative is not valid.`);
     }
 
     this.condition.connect((value) => {
@@ -437,13 +439,13 @@ class Action implements Subscriber {
     this.source.steps.forEach((step) => {
       if (Guard.isActionCall(step)) {
         const subscriber = new ActionCall(step, this.domain, innerScope);
-        subscriber.handleEvent(event);
+        subscriber.handleEvent();
       } else if (Guard.isStreamCall(step)) {
         const subscriber = new StreamCall(step, this.domain, innerScope);
-        subscriber.handleEvent(event);
+        subscriber.handleEvent();
       } else if (Guard.isException(step)) {
         const subscriber = new Exception(step, this.domain, innerScope);
-        subscriber.handleEvent(event);
+        subscriber.handleEvent();
       } else {
         throw new Error(`Action step is not valid.`);
       }
@@ -451,13 +453,56 @@ class Action implements Subscriber {
   }
 }
 
-class ActionCall implements Subscriber {
+class ActionCall implements Subscriber<undefined> {
+  private readonly action: Action | Logic;
+  private readonly argument?: Publisher;
+
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    // TODO
+    let action: Action | Logic | undefined;
+    let currentScope = scope;
+
+    const address = [...source.address];
+
+    if (address.length === 0) {
+      throw new Error(`Action call address is empty.`);
+    }
+
+    while (address.length > 0) {
+      const name = address.shift()!;
+      const member = currentScope[name];
+
+      if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
+        action = member;
+      }
+    }
+
+    if (action === undefined) {
+      throw new Error(`Action call address is not valid.`);
+    }
+
+    this.action = action;
+
+    if (Guard.isField(source.argument)) {
+      this.argument = new Field(source.argument, domain, scope);
+    } else if (Guard.isFieldCall(source.argument)) {
+      this.argument = new FieldCall(source.argument, domain, scope);
+    } else if (Guard.isMethodCall(source.argument)) {
+      this.argument = new MethodCall(source.argument, domain, scope);
+    } else if (Guard.isSwitch(source.argument)) {
+      this.argument = new Switch(source.argument, domain, scope);
+    } else if (source.argument !== undefined) {
+      throw new Error(`Action call argument is not valid.`);
+    }
   }
 
-  handleEvent(value: unknown): void {
-    // TODO
+  handleEvent(): void {
+    const argumentValue = this.argument?.getValue();
+
+    if (this.action instanceof Action) {
+      this.action.handleEvent(argumentValue);
+    } else {
+      this.action(argumentValue);
+    }
   }
 }
 
@@ -467,22 +512,22 @@ class Stream extends Channel {
   }
 }
 
-class StreamCall implements Subscriber {
+class StreamCall implements Subscriber<undefined> {
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
 
-  handleEvent(value: unknown): void {
+  handleEvent(): void {
     // TODO
   }
 }
 
-class Exception implements Subscriber {
+class Exception implements Subscriber<undefined> {
   constructor(source: Abstract.Exception, domain: Abstract.App["domain"], scope: Scope) {
     // TODO
   }
 
-  handleEvent(value: unknown): void {
+  handleEvent(): void {
     // TODO
   }
 }
