@@ -340,7 +340,7 @@ class MethodCall extends Channel {
           kind: "field",
           delegate: {
             kind: "primitive",
-            value: method(argument), // TODO Keep this value up to date.
+            value: method(argument), // TODO Keep this value up to date. (and make sure it uses a new field each time?)
           },
         },
         domain,
@@ -473,6 +473,10 @@ class ActionCall implements Subscriber<undefined> {
 
       if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
         action = member;
+      } else if (address.length > 0 && (member instanceof Field || member instanceof FieldCall)) {
+        currentScope = member.getOuterScope();
+      } else {
+        throw new Error(`Action call address is not valid.`);
       }
     }
 
@@ -513,12 +517,35 @@ class Stream extends Channel {
 }
 
 class StreamCall implements Subscriber<undefined> {
+  private readonly stream: Stream;
+  private readonly argument?: Publisher;
+
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
-    // TODO
+    let stream = scope[source.name];
+
+    if (!(stream instanceof Stream)) {
+      throw new Error(`Stream call to "${source.name}" is not valid.`);
+    }
+
+    this.stream = stream;
+
+    if (Guard.isField(source.argument)) {
+      this.argument = new Field(source.argument, domain, scope);
+    } else if (Guard.isFieldCall(source.argument)) {
+      this.argument = new FieldCall(source.argument, domain, scope);
+    } else if (Guard.isMethodCall(source.argument)) {
+      this.argument = new MethodCall(source.argument, domain, scope);
+    } else if (Guard.isSwitch(source.argument)) {
+      this.argument = new Switch(source.argument, domain, scope);
+    } else if (source.argument !== undefined) {
+      throw new Error(`Stream call argument is not valid.`);
+    }
   }
 
   handleEvent(): void {
-    // TODO
+    const argumentValue = this.argument?.getValue();
+
+    this.stream.handleEvent(argumentValue);
   }
 }
 
