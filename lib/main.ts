@@ -2,8 +2,8 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Channel, Publisher, Subscriber } from "./pubsub";
 
-type Logic = (argument: unknown) => unknown;
-type Scope = Record<string, Logic | Method | Publisher | Subscriber>;
+type Reducer = (argument: unknown) => unknown;
+type Scope = Record<string, Method | Publisher | Reducer | Subscriber>;
 
 export class App {
   constructor(source: Abstract.App) {
@@ -173,28 +173,33 @@ class Landscape extends Channel<HTMLElement> {
   }
 }
 
-class Primitive extends Publisher {
+class Primitive extends Channel {
   private readonly outerScope: Scope = {};
 
   constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    if (source.value instanceof Array) {
-      // TODO Assign this.outerScope
+    const sourceType = typeof source.value;
 
-      const value = source.value.map((element) => {
-        if (Guard.isField(element)) return new Field(element, domain, scope);
-        if (Guard.isFieldCall(element)) return new FieldCall(element, domain, scope);
-        if (Guard.isMethodCall(element)) return new MethodCall(element, domain, scope);
-        if (Guard.isSwitch(element)) return new Switch(element, domain, scope);
-        throw new Error(`Primitive array element is not valid.`);
-      });
-
-      this.publish(value);
+    if (sourceType === "boolean") {
+      // TODO
+    } else if (sourceType === "number") {
+      // TODO
+    } else if (sourceType === "object") {
+      // TODO
+      if (source.value instanceof Array) {
+        // TODO
+      } else {
+        // TODO
+      }
+    } else if (sourceType === "string") {
+      // TODO
+    } else if (sourceType === "undefined") {
+      // TODO
     } else {
-      // TODO Assign this.outerScope
-
-      this.publish(source.value);
+      // TODO Should we support bigints?
+      // TODO Should we support symbols?
+      throw new Error(`Primitive type "${sourceType}" is not valid.`);
     }
   }
 
@@ -277,33 +282,49 @@ class FieldCall extends Channel {
 }
 
 class Method {
-  private readonly source: Abstract.Method;
+  private readonly source: Abstract.Method | [Primitive, Reducer];
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
-  constructor(source: Abstract.Method, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Abstract.Method | [Primitive, Reducer], domain: Abstract.App["domain"], scope: Scope) {
     this.source = source;
     this.domain = domain;
     this.scope = scope;
   }
 
-  createResult(argument?: Publisher): Field | MethodCall {
-    const innerScope: Scope = { ...this.scope };
+  createResult(argument?: Publisher): Field | MethodCall | Primitive {
+    if (Guard.isMethod(this.source)) {
+      const innerScope: Scope = { ...this.scope };
 
-    if (this.source.parameter && argument) {
-      innerScope[this.source.parameter] = argument;
+      if (this.source.parameter && argument) {
+        innerScope[this.source.parameter] = argument;
+      }
+
+      const result = Guard.isField(this.source.result)
+        ? new Field(this.source.result, this.domain, innerScope)
+        : new MethodCall(this.source.result, this.domain, innerScope);
+
+      return result;
     }
 
-    const result = Guard.isField(this.source.result)
-      ? new Field(this.source.result, this.domain, innerScope)
-      : new MethodCall(this.source.result, this.domain, innerScope);
+    const [publisher, reducer] = this.source;
+    const value = reducer(argument?.getValue());
+    const result = new Primitive({ kind: "primitive", value }, this.domain, this.scope);
+
+    const handler = (value: unknown) => {
+      const nextValue = reducer(value);
+      result.handleEvent(nextValue);
+    };
+
+    publisher.connect(handler);
+    argument?.connect(handler);
 
     return result;
   }
 }
 
 class MethodCall extends Channel {
-  private readonly result: Field | MethodCall;
+  private readonly result: Field | MethodCall | Primitive;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -334,18 +355,6 @@ class MethodCall extends Channel {
 
     if (method instanceof Method) {
       this.result = method.createResult(argument);
-    } else if (typeof method === "function") {
-      this.result = new Field(
-        {
-          kind: "field",
-          delegate: {
-            kind: "primitive",
-            value: method(argument), // TODO Keep this value up to date. (and make sure it uses a new field each time?)
-          },
-        },
-        domain,
-        scope,
-      );
     } else {
       throw new Error(`Method call to "${source.name}" is not valid.`);
     }
@@ -454,11 +463,11 @@ class Action implements Subscriber {
 }
 
 class ActionCall implements Subscriber<undefined> {
-  private readonly action: Action | Logic;
+  private readonly action: Action | Reducer;
   private readonly argument?: Publisher;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    let action: Action | Logic | undefined;
+    let action: Action | Reducer | undefined;
     let currentScope = scope;
 
     const address = [...source.address];
