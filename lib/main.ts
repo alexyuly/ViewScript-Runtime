@@ -2,7 +2,7 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 
-type Data = Primitive | Field | FieldCall | MethodCall | Switch;
+type Data = Field | FieldCall | MethodCall | Primitive | Switch;
 type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
 type Reducer = (argument?: Data) => unknown;
 type Scope = Record<string, Method | Primitive | Property | Reducer>;
