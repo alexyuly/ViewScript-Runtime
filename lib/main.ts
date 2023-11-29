@@ -2,8 +2,14 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 
-type Reducer = (argument?: Publisher) => unknown;
-type Scope = Record<string, Method | Publisher | Reducer | Subscriber>;
+type Data = Primitive | Field | FieldCall | MethodCall | Switch;
+type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
+type Reducer = (argument?: Data) => unknown;
+type Scope = Record<string, Action | ActionCall | Data | Method | Reducer | StreamCall>;
+
+interface Scoped {
+  getScope(): Scope;
+}
 
 export class App {
   constructor(source: Abstract.App) {
@@ -21,8 +27,8 @@ export class App {
   }
 }
 
-class Feature extends Publisher<HTMLElement> {
-  private readonly properties: Record<string, Publisher | Subscriber> = {};
+class Feature extends Publisher<HTMLElement> implements Scoped {
+  private readonly properties: Record<string, Property> = {};
 
   constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -117,12 +123,12 @@ class Feature extends Publisher<HTMLElement> {
     this.publish(htmlElement);
   }
 
-  getOuterScope(): Scope {
+  getScope(): Scope {
     return {};
   }
 }
 
-class Landscape extends Channel<HTMLElement> {
+class Landscape extends Channel<HTMLElement> implements Scoped {
   private readonly innerScope: Scope = {};
 
   constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
@@ -169,12 +175,12 @@ class Landscape extends Channel<HTMLElement> {
     render.connect(this);
   }
 
-  getOuterScope(): Scope {
+  getScope(): Scope {
     return {};
   }
 }
 
-class Primitive extends Channel {
+class Primitive extends Channel implements Scoped {
   private readonly outerScope: Scope = {};
 
   constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
@@ -191,7 +197,7 @@ class Primitive extends Channel {
               throw new Error(`Array map method is not valid.`);
             }
             const innerMethod = new Method(argumentValue, domain, scope);
-            const outerResult = (this.getValue() as Array<Publisher>).map((innerValue) => {
+            const outerResult = (this.getValue() as Array<Data>).map((innerValue) => {
               const innerResult = innerMethod.createResult(innerValue);
               return innerResult;
             });
@@ -201,10 +207,10 @@ class Primitive extends Channel {
         domain,
         scope,
       );
-      this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Publisher>), argument]);
+      this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Data>), argument]);
       this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
 
-      const hydratedValue: Array<Publisher> = source.value.map((arrayElement) => {
+      const hydratedValue: Array<Data> = source.value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
         if (Guard.isFieldCall(arrayElement)) return new FieldCall(arrayElement, domain, scope);
         if (Guard.isMethodCall(arrayElement)) return new MethodCall(arrayElement, domain, scope);
@@ -219,8 +225,8 @@ class Primitive extends Channel {
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof source.value === "number") {
-        const addition = (argument?: Publisher) => (this.getValue() as number) + (argument?.getValue() as number);
-        const multiplication = (argument?: Publisher) => (this.getValue() as number) * (argument?.getValue() as number);
+        const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
+        const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.isAtLeast = new Method(
           [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
@@ -246,12 +252,12 @@ class Primitive extends Channel {
     }
   }
 
-  getOuterScope(): Scope {
+  getScope(): Scope {
     return this.outerScope;
   }
 }
 
-class Structure {
+class Structure implements Scoped {
   private readonly outerScope: Scope = {};
 
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
@@ -288,13 +294,13 @@ class Structure {
     });
   }
 
-  getOuterScope(): Scope {
+  getScope(): Scope {
     return this.outerScope;
   }
 }
 
-class Field extends Channel {
-  private readonly delegate: { getOuterScope(): Scope };
+class Field extends Channel implements Scoped {
+  private readonly delegate: Scoped;
 
   constructor(source: Abstract.Field, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -318,12 +324,12 @@ class Field extends Channel {
     }
   }
 
-  getOuterScope(): Scope {
-    return this.delegate.getOuterScope();
+  getScope(): Scope {
+    return this.delegate.getScope();
   }
 }
 
-class FieldCall extends Channel {
+class FieldCall extends Channel implements Scoped {
   private readonly field: Field;
 
   constructor(source: Abstract.FieldCall, domain: Abstract.App["domain"], scope: Scope) {
@@ -332,11 +338,11 @@ class FieldCall extends Channel {
     let realScope = scope;
 
     if (Guard.isField(source.context)) {
-      realScope = new Field(source.context, domain, scope).getOuterScope();
+      realScope = new Field(source.context, domain, scope).getScope();
     } else if (Guard.isFieldCall(source.context)) {
-      realScope = new FieldCall(source.context, domain, scope).getOuterScope();
+      realScope = new FieldCall(source.context, domain, scope).getScope();
     } else if (Guard.isMethodCall(source.context)) {
-      realScope = new MethodCall(source.context, domain, scope).getOuterScope();
+      realScope = new MethodCall(source.context, domain, scope).getScope();
     }
 
     const field = realScope[source.name];
@@ -349,8 +355,8 @@ class FieldCall extends Channel {
     this.field.connect(this);
   }
 
-  getOuterScope(): Scope {
-    return this.field.getOuterScope();
+  getScope(): Scope {
+    return this.field.getScope();
   }
 }
 
@@ -365,7 +371,7 @@ class Method {
     this.scope = scope;
   }
 
-  createResult(argument?: Publisher): Primitive | Field | MethodCall {
+  createResult(argument?: Data): Data {
     if (Guard.isMethod(this.source)) {
       const innerScope: Scope = { ...this.scope };
 
@@ -373,9 +379,19 @@ class Method {
         innerScope[this.source.parameter] = argument;
       }
 
-      const result = Guard.isField(this.source.result)
-        ? new Field(this.source.result, this.domain, innerScope)
-        : new MethodCall(this.source.result, this.domain, innerScope);
+      let result: Data | undefined;
+
+      if (Guard.isField(this.source.result)) {
+        result = new Field(this.source.result, this.domain, innerScope);
+      } else if (Guard.isFieldCall(this.source.result)) {
+        result = new FieldCall(this.source.result, this.domain, innerScope);
+      } else if (Guard.isMethodCall(this.source.result)) {
+        result = new MethodCall(this.source.result, this.domain, innerScope);
+      } else if (Guard.isSwitch(this.source.result)) {
+        result = new Switch(this.source.result, this.domain, innerScope);
+      } else {
+        throw new Error(`Method result is not valid.`);
+      }
 
       return result;
     }
@@ -396,8 +412,8 @@ class Method {
   }
 }
 
-class MethodCall extends Channel {
-  private readonly result: Primitive | Field | MethodCall;
+class MethodCall extends Channel implements Scoped {
+  private readonly result: Data;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -405,14 +421,14 @@ class MethodCall extends Channel {
     let realScope = scope;
 
     if (Guard.isField(source.context)) {
-      realScope = new Field(source.context, domain, scope).getOuterScope();
+      realScope = new Field(source.context, domain, scope).getScope();
     } else if (Guard.isFieldCall(source.context)) {
-      realScope = new FieldCall(source.context, domain, scope).getOuterScope();
+      realScope = new FieldCall(source.context, domain, scope).getScope();
     } else if (Guard.isMethodCall(source.context)) {
-      realScope = new MethodCall(source.context, domain, scope).getOuterScope();
+      realScope = new MethodCall(source.context, domain, scope).getScope();
     }
 
-    let argument: Publisher | undefined;
+    let argument: Field | FieldCall | MethodCall | Switch | undefined;
 
     if (Guard.isField(source.argument)) {
       argument = new Field(source.argument, domain, scope);
@@ -433,15 +449,15 @@ class MethodCall extends Channel {
     }
   }
 
-  getOuterScope(): Scope {
-    return this.result.getOuterScope();
+  getScope(): Scope {
+    return this.result.getScope();
   }
 }
 
-class Switch extends Channel {
-  private readonly condition: Publisher;
-  private readonly publisher: Publisher;
-  private readonly alternative?: Publisher;
+class Switch extends Channel implements Scoped {
+  private readonly condition: Field | FieldCall | MethodCall;
+  private readonly publisher: Field | FieldCall | MethodCall | Switch;
+  private readonly alternative?: Field | FieldCall | MethodCall | Switch;
 
   constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -485,6 +501,13 @@ class Switch extends Channel {
       this.publish(nextValue);
     });
   }
+
+  getScope(): Scope {
+    const conditionalValue = this.condition.getValue();
+    const nextPublisher = conditionalValue ? this.publisher : this.alternative;
+
+    return nextPublisher?.getScope() ?? {};
+  }
 }
 
 class Action implements Subscriber {
@@ -498,7 +521,7 @@ class Action implements Subscriber {
     this.scope = scope;
   }
 
-  handleEvent(argument?: Publisher): void {
+  handleEvent(argument?: Data): void {
     const innerScope: Scope = { ...this.scope };
 
     if (this.source.parameter && argument) {
@@ -524,7 +547,7 @@ class Action implements Subscriber {
 
 class ActionCall implements Subscriber<undefined> {
   private readonly action: Action | Reducer;
-  private readonly argument?: Publisher;
+  private readonly argument?: Data;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
     let action: Action | Reducer | undefined;
@@ -543,7 +566,7 @@ class ActionCall implements Subscriber<undefined> {
       if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
         action = member;
       } else if (address.length > 0 && (member instanceof Field || member instanceof FieldCall)) {
-        currentScope = member.getOuterScope();
+        currentScope = member.getScope();
       } else {
         throw new Error(`Action call address is not valid.`);
       }
@@ -579,7 +602,7 @@ class ActionCall implements Subscriber<undefined> {
 
 class StreamCall implements Subscriber<undefined> {
   private readonly stream: Subscriber;
-  private readonly argument?: Publisher;
+  private readonly argument?: Data;
 
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
     let stream = scope[source.name];

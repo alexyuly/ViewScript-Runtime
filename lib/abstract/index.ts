@@ -53,7 +53,7 @@ export namespace Abstract {
 
   export type Method = {
     kind: "method";
-    result: Field | MethodCall;
+    result: Field | FieldCall | MethodCall | Switch;
     parameter?: string;
   };
 

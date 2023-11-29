@@ -1,7 +1,6 @@
 export function isSubscriber<T>(value: unknown): value is Subscriber<T> {
-  return (
-    typeof value === "object" && value !== null && "handleEvent" in value && typeof value.handleEvent === "function"
-  );
+  const isObject = typeof value === "object" && value !== null;
+  return isObject && "handleEvent" in value && typeof value.handleEvent === "function";
 }
 
 export interface Subscriber<T = unknown> {
