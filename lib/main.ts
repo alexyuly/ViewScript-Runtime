@@ -187,14 +187,15 @@ class Primitive extends Channel {
       this.outerScope.map = new Method(
         [
           this,
-          (value) => {
-            if (!Guard.isMethod(value)) {
+          (argument) => {
+            const argumentValue = argument?.getValue();
+            if (!Guard.isMethod(argumentValue)) {
               throw new Error(`Array map method is not valid.`);
             }
-            const innerMethod = new Method(value, domain, scope);
-            const outerResult = (this.getValue() as Array<Publisher>).map((arrayElement) => {
-              const arrayElementResult = innerMethod.createResult(arrayElement);
-              return arrayElementResult;
+            const innerMethod = new Method(argumentValue, domain, scope);
+            const outerResult = (this.getValue() as Array<Publisher>).map((innerValue) => {
+              const innerResult = innerMethod.createResult(innerValue);
+              return innerResult;
             });
             return outerResult;
           },
@@ -366,7 +367,7 @@ class Method {
     this.scope = scope;
   }
 
-  createResult(argument?: Publisher): Field | MethodCall | Primitive {
+  createResult(argument?: Publisher): Primitive | Field | MethodCall {
     if (Guard.isMethod(this.source)) {
       const innerScope: Scope = { ...this.scope };
 
@@ -398,7 +399,7 @@ class Method {
 }
 
 class MethodCall extends Channel {
-  private readonly result: Field | MethodCall | Primitive;
+  private readonly result: Primitive | Field | MethodCall;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -499,7 +500,7 @@ class Action implements Subscriber {
     this.scope = scope;
   }
 
-  handleEvent(argument?: Publisher) {
+  handleEvent(argument?: Publisher): void {
     const innerScope: Scope = { ...this.scope };
 
     if (this.source.parameter && argument) {
