@@ -1,6 +1,6 @@
 import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
-import { Channel, Publisher, Subscriber } from "./pubsub";
+import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 
 type Reducer = (argument?: Publisher) => unknown;
 type Scope = Record<string, Method | Publisher | Reducer | Subscriber>;
@@ -137,8 +137,6 @@ class Landscape extends Channel<HTMLElement> {
     Object.entries(view.scope).forEach(([name, member]) => {
       if (Guard.isField(member)) {
         this.innerScope[name] = new Field(member, domain, this.innerScope);
-      } else if (Guard.isStream(member)) {
-        this.innerScope[name] = new Stream();
       } else {
         throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
       }
@@ -579,20 +577,14 @@ class ActionCall implements Subscriber<undefined> {
   }
 }
 
-class Stream extends Channel<Publisher | undefined> {
-  constructor() {
-    super();
-  }
-}
-
 class StreamCall implements Subscriber<undefined> {
-  private readonly stream: Stream;
+  private readonly stream: Subscriber;
   private readonly argument?: Publisher;
 
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
     let stream = scope[source.name];
 
-    if (!(stream instanceof Stream)) {
+    if (!isSubscriber(stream)) {
       throw new Error(`Stream call to "${source.name}" is not valid.`);
     }
 

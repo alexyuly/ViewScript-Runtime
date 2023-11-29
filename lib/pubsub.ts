@@ -1,3 +1,9 @@
+export function isSubscriber<T>(value: unknown): value is Subscriber<T> {
+  return (
+    typeof value === "object" && value !== null && "handleEvent" in value && typeof value.handleEvent === "function"
+  );
+}
+
 export interface Subscriber<T = unknown> {
   handleEvent(value: T): void;
 }

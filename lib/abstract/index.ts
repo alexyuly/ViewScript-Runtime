@@ -8,7 +8,7 @@ export namespace Abstract {
 
   export type View = {
     kind: "view";
-    scope: Record<string, Stream | Field>;
+    scope: Record<string, Field>;
     render: Feature | Landscape;
   };
 
@@ -81,10 +81,6 @@ export namespace Abstract {
     kind: "actionCall";
     address: Array<string>;
     argument?: Field | FieldCall | MethodCall | Switch;
-  };
-
-  export type Stream = {
-    kind: "stream";
   };
 
   export type StreamCall = {
