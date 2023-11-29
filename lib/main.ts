@@ -198,8 +198,6 @@ class Primitive extends Channel implements Scoped {
     });
 
     if (value instanceof Array) {
-      // TODO Cache array element results from unchanged elements. See Feature propertyListener for inspiration?
-
       Object.assign(this.outerScope, {
         map: new Method(
           [
@@ -211,7 +209,7 @@ class Primitive extends Channel implements Scoped {
               }
               const innerMethod = new Method(argumentValue, domain, scope);
               const outerResult = (this.getValue() as Array<Data>).map((innerValue) => {
-                const innerResult = innerMethod.createResult(innerValue);
+                const innerResult = innerMethod.getResult(innerValue);
                 return innerResult;
               });
               return outerResult;
@@ -375,6 +373,7 @@ class Method {
   private readonly source: Abstract.Method | [Primitive, Reducer];
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
+  private readonly memory: Map<Data | undefined, Data> = new Map();
 
   constructor(source: Abstract.Method | [Primitive, Reducer], domain: Abstract.App["domain"], scope: Scope) {
     this.source = source;
@@ -382,7 +381,11 @@ class Method {
     this.scope = scope;
   }
 
-  createResult(argument?: Data): Data {
+  getResult(argument?: Data): Data {
+    if (this.memory.has(argument)) {
+      return this.memory.get(argument)!;
+    }
+
     if (Guard.isMethod(this.source)) {
       const innerScope: Scope = { ...this.scope };
 
@@ -404,6 +407,8 @@ class Method {
         throw new Error(`Method result is not valid.`);
       }
 
+      this.memory.set(argument, result);
+
       return result;
     }
 
@@ -418,6 +423,8 @@ class Method {
 
     publisher.connect(handler);
     argument?.connect(handler);
+
+    this.memory.set(argument, result);
 
     return result;
   }
@@ -454,7 +461,7 @@ class MethodCall extends Channel implements Scoped {
     const method = realScope[source.name];
 
     if (method instanceof Method) {
-      this.result = method.createResult(argument);
+      this.result = method.getResult(argument);
     } else {
       throw new Error(`Method call to "${source.name}" is not valid.`);
     }
@@ -644,10 +651,10 @@ class StreamCall implements Subscriber<undefined> {
 
 class Exception implements Subscriber<undefined> {
   constructor(source: Abstract.Exception, domain: Abstract.App["domain"], scope: Scope) {
-    // TODO
+    // TODO: Implement for v0.5 (Espresso).
   }
 
   handleEvent(): void {
-    // TODO
+    // TODO: Implement for v0.5 (Espresso).
   }
 }
