@@ -249,7 +249,7 @@ class Primitive extends Channel implements Scoped {
           times: new Method([this, multiplication], domain, scope),
         });
       } else if (typeof value === "boolean") {
-        const inversion = (value: unknown) => !value;
+        const inversion = (argument?: Data) => !argument?.getValue();
 
         Object.assign(this.outerScope, {
           and: new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope),
