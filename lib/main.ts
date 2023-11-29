@@ -192,35 +192,36 @@ class Primitive extends Channel implements Scoped {
   constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
-    this.outerScope.setTo = new Action((argument) => this.publish(argument?.getValue()), domain, scope);
+    Object.assign(this.outerScope, {
+      is: new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope),
+      setTo: new Action((argument) => this.publish(argument?.getValue()), domain, scope),
+    });
 
     if (value instanceof Array) {
       // TODO Cache array element results from unchanged elements. See Feature propertyListener for inspiration?
-      this.outerScope.map = new Method(
-        [
-          this,
-          (argument) => {
-            const argumentValue = argument?.getValue();
-            if (!Guard.isMethod(argumentValue)) {
-              throw new Error(`Array map method is not valid.`);
-            }
-            const innerMethod = new Method(argumentValue, domain, scope);
-            const outerResult = (this.getValue() as Array<Data>).map((innerValue) => {
-              const innerResult = innerMethod.createResult(innerValue);
-              return innerResult;
-            });
-            return outerResult;
-          },
-        ],
-        domain,
-        scope,
-      );
-      this.outerScope.push = new Action(
-        (argument) => this.publish([...(this.getValue() as Array<Data>), argument]),
-        domain,
-        scope,
-      );
+
+      Object.assign(this.outerScope, {
+        map: new Method(
+          [
+            this,
+            (argument) => {
+              const argumentValue = argument?.getValue();
+              if (!Guard.isMethod(argumentValue)) {
+                throw new Error(`Array map method is not valid.`);
+              }
+              const innerMethod = new Method(argumentValue, domain, scope);
+              const outerResult = (this.getValue() as Array<Data>).map((innerValue) => {
+                const innerResult = innerMethod.createResult(innerValue);
+                return innerResult;
+              });
+              return outerResult;
+            },
+          ],
+          domain,
+          scope,
+        ),
+        push: new Action((argument) => this.publish([...(this.getValue() as Array<Data>), argument]), domain, scope),
+      });
 
       const hydratedValue: Array<Data> = value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
@@ -229,27 +230,33 @@ class Primitive extends Channel implements Scoped {
         if (Guard.isSwitch(arrayElement)) return new Switch(arrayElement, domain, scope);
         throw new Error(`Array element is not valid.`);
       });
+
       this.publish(hydratedValue);
     } else {
-      if (typeof value === "string") {
-      } else if (typeof value === "number") {
+      if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
-        this.outerScope.add = new Action((argument) => this.publish(addition(argument)), domain, scope);
-        this.outerScope.isAtLeast = new Method(
-          [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
-          domain,
-          scope,
-        );
-        this.outerScope.multiply = new Action((argument) => this.publish(multiplication(argument)), domain, scope);
-        this.outerScope.plus = new Method([this, addition], domain, scope);
-        this.outerScope.times = new Method([this, multiplication], domain, scope);
+
+        Object.assign(this.outerScope, {
+          add: new Action((argument) => this.publish(addition(argument)), domain, scope),
+          isAtLeast: new Method(
+            [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
+            domain,
+            scope,
+          ),
+          multiply: new Action((argument) => this.publish(multiplication(argument)), domain, scope),
+          plus: new Method([this, addition], domain, scope),
+          times: new Method([this, multiplication], domain, scope),
+        });
       } else if (typeof value === "boolean") {
         const inversion = (value: unknown) => !value;
-        this.outerScope.and = new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope);
-        this.outerScope.not = new Method([this, inversion], domain, scope);
-        this.outerScope.or = new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope);
-        this.outerScope.toggle = new Action((argument) => this.publish(inversion(argument)), domain, scope);
+
+        Object.assign(this.outerScope, {
+          and: new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope),
+          not: new Method([this, inversion], domain, scope),
+          or: new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope),
+          toggle: new Action((argument) => this.publish(inversion(argument)), domain, scope),
+        });
       }
 
       this.publish(value);
