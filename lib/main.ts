@@ -103,7 +103,7 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
       } else if (Guard.isAction(property)) {
         const subscriber = new Action(property, domain, scope);
         htmlElement.addEventListener(name, (value) => {
-          const event = new Primitive({ kind: "primitive", value }, domain, scope);
+          const event = new Primitive(value, domain, scope);
           subscriber.handleEvent(event);
         });
         this.properties[name] = subscriber;
@@ -183,10 +183,10 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 class Primitive extends Channel implements Scoped {
   private readonly outerScope: Scope = {};
 
-  constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    if (source.value instanceof Array) {
+    if (value instanceof Array) {
       // TODO Cache array element results from unchanged elements. See Feature propertyListener for inspiration?
       this.outerScope.map = new Method(
         [
@@ -210,7 +210,7 @@ class Primitive extends Channel implements Scoped {
       this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Data>), argument]);
       this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
 
-      const hydratedValue: Array<Data> = source.value.map((arrayElement) => {
+      const hydratedValue: Array<Data> = value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
         if (Guard.isFieldCall(arrayElement)) return new FieldCall(arrayElement, domain, scope);
         if (Guard.isMethodCall(arrayElement)) return new MethodCall(arrayElement, domain, scope);
@@ -219,12 +219,12 @@ class Primitive extends Channel implements Scoped {
       });
       this.publish(hydratedValue);
     } else {
-      if (typeof source.value === "object" && source.value !== null) {
+      if (typeof value === "object" && value !== null) {
         this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
-      } else if (typeof source.value === "string") {
+      } else if (typeof value === "string") {
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
-      } else if (typeof source.value === "number") {
+      } else if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
@@ -238,7 +238,7 @@ class Primitive extends Channel implements Scoped {
         this.outerScope.add = (argument) => this.publish(addition(argument));
         this.outerScope.multiply = (argument) => this.publish(multiplication(argument));
         this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
-      } else if (typeof source.value === "boolean") {
+      } else if (typeof value === "boolean") {
         const inversion = (value: unknown) => !value;
         this.outerScope.and = new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope);
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
@@ -248,7 +248,7 @@ class Primitive extends Channel implements Scoped {
         this.outerScope.toggle = (argument) => this.publish(inversion(argument));
       }
 
-      this.publish(source.value);
+      this.publish(value);
     }
   }
 
@@ -314,7 +314,7 @@ class Field extends Channel implements Scoped {
       delegate.connect(this);
       this.delegate = delegate;
     } else if (Guard.isPrimitive(source.delegate)) {
-      const delegate = new Primitive(source.delegate, domain, scope);
+      const delegate = new Primitive(source.delegate.value, domain, scope);
       delegate.connect(this);
       this.delegate = delegate;
     } else if (Guard.isStructure(source.delegate)) {
@@ -398,7 +398,7 @@ class Method {
 
     const [publisher, reducer] = this.source;
     const value = reducer(argument);
-    const result = new Primitive({ kind: "primitive", value }, this.domain, this.scope);
+    const result = new Primitive(value, this.domain, this.scope);
 
     const handler = () => {
       const nextValue = reducer(argument);
