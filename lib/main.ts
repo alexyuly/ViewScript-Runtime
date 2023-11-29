@@ -180,27 +180,60 @@ class Primitive extends Channel {
     super();
 
     if (source.value instanceof Array) {
+      // TODO fix issues with map...
+      this.outerScope.map = new Method(
+        [
+          this,
+          (value) => {
+            if (!Guard.isMethod(value)) {
+              throw new Error(`Array map method is not valid.`);
+            }
+            const innerMethod = new Method(value, domain, scope);
+            const outerResult = (this.getValue() as Array<unknown>).map((arrayElement) => {
+              const arrayElementResult = innerMethod.createResult(arrayElement as Publisher);
+              return arrayElementResult;
+            });
+            return outerResult;
+          },
+        ],
+        domain,
+        scope,
+      );
+      // TODO hydrate the value (how?)...
+      this.outerScope.push = (value) => this.publish([...(this.getValue() as Array<unknown>), value]);
       this.outerScope.setTo = (value) => this.publish(value);
-      // TODO ...
-    } else if (typeof source.value === "object" && source.value !== null) {
-      this.outerScope.setTo = (value) => this.publish(value);
-    } else if (typeof source.value === "string") {
-      this.outerScope.setTo = (value) => this.publish(value);
-    } else if (typeof source.value === "number") {
-      const addition = (value: unknown) => (this.getValue() as number) + (value as number);
-      const multiplication = (value: unknown) => (this.getValue() as number) * (value as number);
-      this.outerScope.plus = new Method([this, addition], domain, scope);
-      this.outerScope.times = new Method([this, multiplication], domain, scope);
-      this.outerScope.add = (value) => this.publish(addition(value));
-      this.outerScope.multiply = (value) => this.publish(multiplication(value));
-      this.outerScope.setTo = (value) => this.publish(value);
-    } else if (typeof source.value === "boolean") {
-      const inversion = (value: unknown) => !value;
-      this.outerScope.and = new Method([this, (value) => this.getValue() && value], domain, scope);
-      this.outerScope.not = new Method([this, inversion], domain, scope);
-      this.outerScope.or = new Method([this, (value) => this.getValue() || value], domain, scope);
-      this.outerScope.setTo = (value) => this.publish(value);
-      this.outerScope.toggle = (value) => this.publish(inversion(value));
+
+      const hydratedValue: Array<Publisher> = source.value.map((arrayElement) => {
+        if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
+        if (Guard.isFieldCall(arrayElement)) return new FieldCall(arrayElement, domain, scope);
+        if (Guard.isMethodCall(arrayElement)) return new MethodCall(arrayElement, domain, scope);
+        if (Guard.isSwitch(arrayElement)) return new Switch(arrayElement, domain, scope);
+        throw new Error(`Array element is not valid.`);
+      });
+      this.publish(hydratedValue);
+    } else {
+      if (typeof source.value === "object" && source.value !== null) {
+        this.outerScope.setTo = (value) => this.publish(value);
+      } else if (typeof source.value === "string") {
+        this.outerScope.setTo = (value) => this.publish(value);
+      } else if (typeof source.value === "number") {
+        const addition = (value: unknown) => (this.getValue() as number) + (value as number);
+        const multiplication = (value: unknown) => (this.getValue() as number) * (value as number);
+        this.outerScope.plus = new Method([this, addition], domain, scope);
+        this.outerScope.times = new Method([this, multiplication], domain, scope);
+        this.outerScope.add = (value) => this.publish(addition(value));
+        this.outerScope.multiply = (value) => this.publish(multiplication(value));
+        this.outerScope.setTo = (value) => this.publish(value);
+      } else if (typeof source.value === "boolean") {
+        const inversion = (value: unknown) => !value;
+        this.outerScope.and = new Method([this, (value) => this.getValue() && value], domain, scope);
+        this.outerScope.not = new Method([this, inversion], domain, scope);
+        this.outerScope.or = new Method([this, (value) => this.getValue() || value], domain, scope);
+        this.outerScope.setTo = (value) => this.publish(value);
+        this.outerScope.toggle = (value) => this.publish(inversion(value));
+      }
+
+      this.publish(source.value);
     }
   }
 
@@ -342,13 +375,15 @@ class Method {
     const value = reducer(argument?.getValue());
     const result = new Primitive({ kind: "primitive", value }, this.domain, this.scope);
 
-    const handler = (value: unknown) => {
-      const nextValue = reducer(value);
+    publisher.connect(() => {
+      const nextValue = reducer(argument?.getValue());
       result.handleEvent(nextValue);
-    };
+    });
 
-    publisher.connect(handler);
-    argument?.connect(handler);
+    argument?.connect((argumentValue) => {
+      const nextValue = reducer(argumentValue);
+      result.handleEvent(nextValue);
+    });
 
     return result;
   }
