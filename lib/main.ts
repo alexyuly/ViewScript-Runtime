@@ -2,7 +2,7 @@ import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
 import { Channel, Publisher, Subscriber } from "./pubsub";
 
-type Reducer = (argument: unknown) => unknown;
+type Reducer = (argument?: Publisher) => unknown;
 type Scope = Record<string, Method | Publisher | Reducer | Subscriber>;
 
 export class App {
@@ -96,7 +96,10 @@ class Feature extends Publisher<HTMLElement> {
         this.properties[name] = publisher;
       } else if (Guard.isAction(property)) {
         const subscriber = new Action(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber);
+        htmlElement.addEventListener(name, (value) => {
+          const event = new Primitive({ kind: "primitive", value }, domain, scope);
+          subscriber.handleEvent(event);
+        });
         this.properties[name] = subscriber;
       } else if (Guard.isActionCall(property)) {
         const subscriber = new ActionCall(property, domain, scope);
@@ -180,8 +183,7 @@ class Primitive extends Channel {
     super();
 
     if (source.value instanceof Array) {
-      // TODO Cache array element results from elements which don't change.
-      // See Feature propertyListener for inspiration?
+      // TODO Cache array element results from unchanged elements. See Feature propertyListener for inspiration?
       this.outerScope.map = new Method(
         [
           this,
@@ -190,8 +192,8 @@ class Primitive extends Channel {
               throw new Error(`Array map method is not valid.`);
             }
             const innerMethod = new Method(value, domain, scope);
-            const outerResult = (this.getValue() as Array<unknown>).map((arrayElement) => {
-              const arrayElementResult = innerMethod.createResult(arrayElement as Publisher);
+            const outerResult = (this.getValue() as Array<Publisher>).map((arrayElement) => {
+              const arrayElementResult = innerMethod.createResult(arrayElement);
               return arrayElementResult;
             });
             return outerResult;
@@ -200,9 +202,8 @@ class Primitive extends Channel {
         domain,
         scope,
       );
-      // TODO Ensure type of value passed to push (and map) makes sense.
-      this.outerScope.push = (value) => this.publish([...(this.getValue() as Array<unknown>), value]);
-      this.outerScope.setTo = (value) => this.publish(value);
+      this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Publisher>), argument]);
+      this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
 
       const hydratedValue: Array<Publisher> = source.value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
@@ -214,24 +215,32 @@ class Primitive extends Channel {
       this.publish(hydratedValue);
     } else {
       if (typeof source.value === "object" && source.value !== null) {
-        this.outerScope.setTo = (value) => this.publish(value);
+        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof source.value === "string") {
-        this.outerScope.setTo = (value) => this.publish(value);
+        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
+        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof source.value === "number") {
-        const addition = (value: unknown) => (this.getValue() as number) + (value as number);
-        const multiplication = (value: unknown) => (this.getValue() as number) * (value as number);
+        const addition = (argument?: Publisher) => (this.getValue() as number) + (argument?.getValue() as number);
+        const multiplication = (argument?: Publisher) => (this.getValue() as number) * (argument?.getValue() as number);
+        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
+        this.outerScope.isAtLeast = new Method(
+          [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
+          domain,
+          scope,
+        );
         this.outerScope.plus = new Method([this, addition], domain, scope);
         this.outerScope.times = new Method([this, multiplication], domain, scope);
-        this.outerScope.add = (value) => this.publish(addition(value));
-        this.outerScope.multiply = (value) => this.publish(multiplication(value));
-        this.outerScope.setTo = (value) => this.publish(value);
+        this.outerScope.add = (argument) => this.publish(addition(argument));
+        this.outerScope.multiply = (argument) => this.publish(multiplication(argument));
+        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof source.value === "boolean") {
         const inversion = (value: unknown) => !value;
-        this.outerScope.and = new Method([this, (value) => this.getValue() && value], domain, scope);
+        this.outerScope.and = new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope);
+        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.not = new Method([this, inversion], domain, scope);
-        this.outerScope.or = new Method([this, (value) => this.getValue() || value], domain, scope);
-        this.outerScope.setTo = (value) => this.publish(value);
-        this.outerScope.toggle = (value) => this.publish(inversion(value));
+        this.outerScope.or = new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope);
+        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
+        this.outerScope.toggle = (argument) => this.publish(inversion(argument));
       }
 
       this.publish(source.value);
@@ -373,20 +382,16 @@ class Method {
     }
 
     const [publisher, reducer] = this.source;
-    const argumentValue = publisher.getValue() instanceof Array ? argument : argument?.getValue();
-    const value = reducer(argumentValue);
+    const value = reducer(argument);
     const result = new Primitive({ kind: "primitive", value }, this.domain, this.scope);
 
-    publisher.connect(() => {
-      const argumentValue = publisher.getValue() instanceof Array ? argument : argument?.getValue();
-      const nextValue = reducer(argumentValue);
+    const handler = () => {
+      const nextValue = reducer(argument);
       result.handleEvent(nextValue);
-    });
+    };
 
-    argument?.connect((argumentValue) => {
-      const nextValue = reducer(argumentValue);
-      result.handleEvent(nextValue);
-    });
+    publisher.connect(handler);
+    argument?.connect(handler);
 
     return result;
   }
@@ -494,24 +499,11 @@ class Action implements Subscriber {
     this.scope = scope;
   }
 
-  handleEvent(event: unknown) {
+  handleEvent(argument?: Publisher) {
     const innerScope: Scope = { ...this.scope };
 
-    if (this.source.parameter) {
-      innerScope[this.source.parameter] =
-        event instanceof Field
-          ? event
-          : new Field(
-              {
-                kind: "field",
-                delegate: {
-                  kind: "primitive",
-                  value: event,
-                },
-              },
-              this.domain,
-              innerScope,
-            );
+    if (this.source.parameter && argument) {
+      innerScope[this.source.parameter] = argument;
     }
 
     this.source.steps.forEach((step) => {
@@ -578,17 +570,15 @@ class ActionCall implements Subscriber<undefined> {
   }
 
   handleEvent(): void {
-    const argumentValue = this.argument?.getValue();
-
     if (this.action instanceof Action) {
-      this.action.handleEvent(argumentValue);
+      this.action.handleEvent(this.argument);
     } else {
-      this.action(argumentValue);
+      this.action(this.argument);
     }
   }
 }
 
-class Stream extends Channel {
+class Stream extends Channel<Publisher | undefined> {
   constructor() {
     super();
   }
@@ -621,9 +611,7 @@ class StreamCall implements Subscriber<undefined> {
   }
 
   handleEvent(): void {
-    const argumentValue = this.argument?.getValue();
-
-    this.stream.handleEvent(argumentValue);
+    this.stream.handleEvent(this.argument);
   }
 }
 
