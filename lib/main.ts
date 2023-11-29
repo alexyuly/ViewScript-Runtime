@@ -187,7 +187,9 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 }
 
 class Primitive extends Channel implements Scoped {
-  private readonly outerScope: Scope = {};
+  private readonly outerScope: Scope = {
+    setTo: (argument) => this.publish(argument?.getValue()),
+  };
 
   constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -214,7 +216,6 @@ class Primitive extends Channel implements Scoped {
         scope,
       );
       this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Data>), argument]);
-      this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
 
       const hydratedValue: Array<Data> = value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
@@ -225,11 +226,8 @@ class Primitive extends Channel implements Scoped {
       });
       this.publish(hydratedValue);
     } else {
-      if (typeof value === "object" && value !== null) {
-        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
-      } else if (typeof value === "string") {
+      if (typeof value === "string") {
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
-        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
@@ -243,14 +241,12 @@ class Primitive extends Channel implements Scoped {
         this.outerScope.times = new Method([this, multiplication], domain, scope);
         this.outerScope.add = (argument) => this.publish(addition(argument));
         this.outerScope.multiply = (argument) => this.publish(multiplication(argument));
-        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
       } else if (typeof value === "boolean") {
         const inversion = (value: unknown) => !value;
         this.outerScope.and = new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope);
         this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.not = new Method([this, inversion], domain, scope);
         this.outerScope.or = new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope);
-        this.outerScope.setTo = (argument) => this.publish(argument?.getValue());
         this.outerScope.toggle = (argument) => this.publish(inversion(argument));
       }
 
