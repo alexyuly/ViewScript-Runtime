@@ -62,7 +62,7 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
                 };
                 cleanupTasks.push(cleanupTask);
               } else {
-                result[index] = htmlElement;
+                result[index] = arrayElement;
               }
             });
           } else {
@@ -168,9 +168,15 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
       }
     });
 
-    const render = Guard.isFeature(view.render)
-      ? new Feature(view.render, domain, this.innerScope)
-      : new Landscape(view.render, domain, this.innerScope);
+    let render: Feature | Landscape;
+
+    if (Guard.isFeature(view.render)) {
+      render = new Feature(view.render, domain, this.innerScope);
+    } else if (Guard.isLandscape(view.render)) {
+      render = new Landscape(view.render, domain, this.innerScope);
+    } else {
+      throw new Error(`Render of view "${source.viewName}" is not valid.`);
+    }
 
     render.connect(this);
   }
