@@ -180,7 +180,8 @@ class Primitive extends Channel {
     super();
 
     if (source.value instanceof Array) {
-      // TODO fix issues with map...
+      // TODO Cache array element results from elements which don't change.
+      // See Feature propertyListener for inspiration?
       this.outerScope.map = new Method(
         [
           this,
@@ -199,7 +200,7 @@ class Primitive extends Channel {
         domain,
         scope,
       );
-      // TODO hydrate the value (how?)...
+      // TODO Ensure type of value passed to push (and map) makes sense.
       this.outerScope.push = (value) => this.publish([...(this.getValue() as Array<unknown>), value]);
       this.outerScope.setTo = (value) => this.publish(value);
 
@@ -372,11 +373,13 @@ class Method {
     }
 
     const [publisher, reducer] = this.source;
-    const value = reducer(argument?.getValue());
+    const argumentValue = publisher.getValue() instanceof Array ? argument : argument?.getValue();
+    const value = reducer(argumentValue);
     const result = new Primitive({ kind: "primitive", value }, this.domain, this.scope);
 
     publisher.connect(() => {
-      const nextValue = reducer(argument?.getValue());
+      const argumentValue = publisher.getValue() instanceof Array ? argument : argument?.getValue();
+      const nextValue = reducer(argumentValue);
       result.handleEvent(nextValue);
     });
 
