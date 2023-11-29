@@ -5,7 +5,7 @@ import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 type Data = Primitive | Field | FieldCall | MethodCall | Switch;
 type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
 type Reducer = (argument?: Data) => unknown;
-type Scope = Record<string, Action | ActionCall | Data | Method | Reducer | StreamCall>;
+type Scope = Record<string, Method | Primitive | Property | Reducer>;
 
 interface Scoped {
   getScope(): Scope;
