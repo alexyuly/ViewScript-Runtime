@@ -5,7 +5,7 @@ import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 type Data = Field | FieldCall | MethodCall | Primitive | Switch;
 type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
 type Reducer = (argument?: Data) => unknown;
-type Scope = Record<string, Method | Primitive | Property | Reducer>;
+type Scope = Record<string, Method | Primitive | Property>;
 
 interface Scoped {
   getScope(): Scope;
@@ -187,12 +187,13 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 }
 
 class Primitive extends Channel implements Scoped {
-  private readonly outerScope: Scope = {
-    setTo: (argument) => this.publish(argument?.getValue()),
-  };
+  private readonly outerScope: Scope = {};
 
   constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope) {
     super();
+
+    this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
+    this.outerScope.setTo = new Action((argument) => this.publish(argument?.getValue()), domain, scope);
 
     if (value instanceof Array) {
       // TODO Cache array element results from unchanged elements. See Feature propertyListener for inspiration?
@@ -215,7 +216,11 @@ class Primitive extends Channel implements Scoped {
         domain,
         scope,
       );
-      this.outerScope.push = (argument) => this.publish([...(this.getValue() as Array<Data>), argument]);
+      this.outerScope.push = new Action(
+        (argument) => this.publish([...(this.getValue() as Array<Data>), argument]),
+        domain,
+        scope,
+      );
 
       const hydratedValue: Array<Data> = value.map((arrayElement) => {
         if (Guard.isField(arrayElement)) return new Field(arrayElement, domain, scope);
@@ -227,27 +232,24 @@ class Primitive extends Channel implements Scoped {
       this.publish(hydratedValue);
     } else {
       if (typeof value === "string") {
-        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
       } else if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
-        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
+        this.outerScope.add = new Action((argument) => this.publish(addition(argument)), domain, scope);
         this.outerScope.isAtLeast = new Method(
           [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
           domain,
           scope,
         );
+        this.outerScope.multiply = new Action((argument) => this.publish(multiplication(argument)), domain, scope);
         this.outerScope.plus = new Method([this, addition], domain, scope);
         this.outerScope.times = new Method([this, multiplication], domain, scope);
-        this.outerScope.add = (argument) => this.publish(addition(argument));
-        this.outerScope.multiply = (argument) => this.publish(multiplication(argument));
       } else if (typeof value === "boolean") {
         const inversion = (value: unknown) => !value;
         this.outerScope.and = new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope);
-        this.outerScope.is = new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope);
         this.outerScope.not = new Method([this, inversion], domain, scope);
         this.outerScope.or = new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope);
-        this.outerScope.toggle = (argument) => this.publish(inversion(argument));
+        this.outerScope.toggle = new Action((argument) => this.publish(inversion(argument)), domain, scope);
       }
 
       this.publish(value);
@@ -513,46 +515,50 @@ class Switch extends Channel implements Scoped {
 }
 
 class Action implements Subscriber {
-  private readonly source: Abstract.Action;
+  private readonly source: Abstract.Action | Reducer;
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
-  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Abstract.Action | Reducer, domain: Abstract.App["domain"], scope: Scope) {
     this.source = source;
     this.domain = domain;
     this.scope = scope;
   }
 
   handleEvent(argument?: Data): void {
-    const innerScope: Scope = { ...this.scope };
+    if (Guard.isAction(this.source)) {
+      const innerScope: Scope = { ...this.scope };
 
-    if (this.source.parameter && argument) {
-      innerScope[this.source.parameter] = argument;
-    }
-
-    this.source.steps.forEach((step) => {
-      if (Guard.isActionCall(step)) {
-        const subscriber = new ActionCall(step, this.domain, innerScope);
-        subscriber.handleEvent();
-      } else if (Guard.isStreamCall(step)) {
-        const subscriber = new StreamCall(step, this.domain, innerScope);
-        subscriber.handleEvent();
-      } else if (Guard.isException(step)) {
-        const subscriber = new Exception(step, this.domain, innerScope);
-        subscriber.handleEvent();
-      } else {
-        throw new Error(`Action step is not valid.`);
+      if (this.source.parameter && argument) {
+        innerScope[this.source.parameter] = argument;
       }
-    });
+
+      this.source.steps.forEach((step) => {
+        if (Guard.isActionCall(step)) {
+          const subscriber = new ActionCall(step, this.domain, innerScope);
+          subscriber.handleEvent();
+        } else if (Guard.isStreamCall(step)) {
+          const subscriber = new StreamCall(step, this.domain, innerScope);
+          subscriber.handleEvent();
+        } else if (Guard.isException(step)) {
+          const subscriber = new Exception(step, this.domain, innerScope);
+          subscriber.handleEvent();
+        } else {
+          throw new Error(`Action step is not valid.`);
+        }
+      });
+    } else {
+      this.source(argument);
+    }
   }
 }
 
 class ActionCall implements Subscriber<undefined> {
-  private readonly action: Action | Reducer;
+  private readonly action: Action;
   private readonly argument?: Data;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    let action: Action | Reducer | undefined;
+    let action: Action | undefined;
     let currentScope = scope;
 
     const address = [...source.address];
@@ -565,7 +571,7 @@ class ActionCall implements Subscriber<undefined> {
       const name = address.shift()!;
       const member = currentScope[name];
 
-      if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
+      if (address.length === 0 && member instanceof Action) {
         action = member;
       } else if (address.length > 0 && (member instanceof Field || member instanceof FieldCall)) {
         currentScope = member.getScope();
@@ -574,7 +580,7 @@ class ActionCall implements Subscriber<undefined> {
       }
     }
 
-    if (action === undefined) {
+    if (!(action instanceof Action)) {
       throw new Error(`Action call address is not valid.`);
     }
 
@@ -594,11 +600,7 @@ class ActionCall implements Subscriber<undefined> {
   }
 
   handleEvent(): void {
-    if (this.action instanceof Action) {
-      this.action.handleEvent(this.argument);
-    } else {
-      this.action(this.argument);
-    }
+    this.action.handleEvent(this.argument);
   }
 }
 
