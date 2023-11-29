@@ -179,27 +179,28 @@ class Primitive extends Channel {
   constructor(source: Abstract.Primitive, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    const sourceType = typeof source.value;
-
-    if (sourceType === "boolean") {
-      // TODO
-    } else if (sourceType === "number") {
-      // TODO
-    } else if (sourceType === "object") {
-      // TODO
-      if (source.value instanceof Array) {
-        // TODO
-      } else {
-        // TODO
-      }
-    } else if (sourceType === "string") {
-      // TODO
-    } else if (sourceType === "undefined") {
-      // TODO
-    } else {
-      // TODO Should we support bigints?
-      // TODO Should we support symbols?
-      throw new Error(`Primitive type "${sourceType}" is not valid.`);
+    if (source.value instanceof Array) {
+      this.outerScope.setTo = (value) => this.publish(value);
+      // TODO ...
+    } else if (typeof source.value === "object" && source.value !== null) {
+      this.outerScope.setTo = (value) => this.publish(value);
+    } else if (typeof source.value === "string") {
+      this.outerScope.setTo = (value) => this.publish(value);
+    } else if (typeof source.value === "number") {
+      const addition = (value: unknown) => (this.getValue() as number) + (value as number);
+      const multiplication = (value: unknown) => (this.getValue() as number) * (value as number);
+      this.outerScope.plus = new Method([this, addition], domain, scope);
+      this.outerScope.times = new Method([this, multiplication], domain, scope);
+      this.outerScope.add = (value) => this.publish(addition(value));
+      this.outerScope.multiply = (value) => this.publish(multiplication(value));
+      this.outerScope.setTo = (value) => this.publish(value);
+    } else if (typeof source.value === "boolean") {
+      const inversion = (value: unknown) => !value;
+      this.outerScope.and = new Method([this, (value) => this.getValue() && value], domain, scope);
+      this.outerScope.not = new Method([this, inversion], domain, scope);
+      this.outerScope.or = new Method([this, (value) => this.getValue() || value], domain, scope);
+      this.outerScope.setTo = (value) => this.publish(value);
+      this.outerScope.toggle = (value) => this.publish(inversion(value));
     }
   }
 
@@ -212,7 +213,37 @@ class Structure {
   private readonly outerScope: Scope = {};
 
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
-    // TODO
+    const model = domain[source.modelName];
+
+    if (!Guard.isModel(model)) {
+      throw new Error(`Model "${source.modelName}" is not valid.`);
+    }
+
+    Object.entries(model.scope).forEach(([name, member]) => {
+      if (Guard.isField(member)) {
+        this.outerScope[name] = new Field(member, domain, this.outerScope);
+      } else if (Guard.isMethod(member)) {
+        this.outerScope[name] = new Method(member, domain, this.outerScope);
+      } else if (Guard.isAction(member)) {
+        this.outerScope[name] = new Action(member, domain, this.outerScope);
+      } else {
+        throw new Error(`Member "${name}" of model "${source.modelName}" is not valid.`);
+      }
+    });
+
+    Object.entries(source.properties).forEach(([name, property]) => {
+      if (Guard.isField(property)) {
+        this.outerScope[name] = new Field(property, domain, scope);
+      } else if (Guard.isFieldCall(property)) {
+        this.outerScope[name] = new FieldCall(property, domain, scope);
+      } else if (Guard.isMethodCall(property)) {
+        this.outerScope[name] = new MethodCall(property, domain, scope);
+      } else if (Guard.isSwitch(property)) {
+        this.outerScope[name] = new Switch(property, domain, scope);
+      } else {
+        throw new Error(`Structure property "${name}" is not valid.`);
+      }
+    });
   }
 
   getOuterScope(): Scope {
