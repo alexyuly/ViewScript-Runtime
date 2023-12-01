@@ -4,21 +4,67 @@ import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 
 type Data = Field | FieldCall | MethodCall | Primitive | Switch;
 type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
+type RawScope = Record<string, Method | Primitive | Property>;
 type Reducer = (argument?: Data) => unknown;
-type Scope = Record<string, Method | Primitive | Property>;
+
+interface Scope {
+  getMember(name: string): RawScope[string];
+}
 
 interface Scoped {
   getScope(): Scope;
 }
 
+class StaticScope implements Scope {
+  private readonly scope: RawScope;
+  private readonly baseScope?: Scope;
+
+  constructor(scope: RawScope = {}, baseScope?: Scope) {
+    this.scope = scope;
+    this.baseScope = baseScope;
+  }
+
+  addMembers(members: RawScope) {
+    Object.assign(this.scope, members);
+  }
+
+  getMember(name: string): RawScope[string] {
+    if (name in this.scope) {
+      return this.scope[name];
+    }
+
+    if (this.baseScope) {
+      return this.baseScope.getMember(name);
+    }
+
+    throw new Error(`Member "${name}" is not found.`);
+  }
+}
+
+// class DynamicScope implements Scope {
+//   private readonly primitive: Primitive;
+
+//   constructor(primitive: Primitive) {
+//     this.primitive = primitive;
+//   }
+
+//   getMember(name: string): Primitive | Method | Action {
+//     // TODO
+//   }
+// }
+
 export class App {
   constructor(source: Abstract.App) {
     let render: Feature | Landscape;
 
+    const scope = new StaticScope({
+      window: new Primitive(window, source.domain),
+    });
+
     if (Guard.isFeature(source.render)) {
-      render = new Feature(source.render, source.domain, {});
+      render = new Feature(source.render, source.domain, scope);
     } else if (Guard.isLandscape(source.render)) {
-      render = new Landscape(source.render, source.domain, {});
+      render = new Landscape(source.render, source.domain, scope);
     } else {
       throw new Error(`App render is not valid.`);
     }
@@ -28,7 +74,8 @@ export class App {
 }
 
 class Feature extends Publisher<HTMLElement> implements Scoped {
-  private readonly properties: Record<string, Property> = {};
+  private readonly innerScope: Record<string, Property> = {};
+  private readonly outerScope = new StaticScope();
 
   constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -87,34 +134,34 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
       if (Guard.isField(property)) {
         const publisher = new Field(property, domain, scope);
         publisher.connect(propertyListener(name));
-        this.properties[name] = publisher;
+        this.innerScope[name] = publisher;
       } else if (Guard.isFieldCall(property)) {
         const publisher = new FieldCall(property, domain, scope);
         publisher.connect(propertyListener(name));
-        this.properties[name] = publisher;
+        this.innerScope[name] = publisher;
       } else if (Guard.isMethodCall(property)) {
         const publisher = new MethodCall(property, domain, scope);
         publisher.connect(propertyListener(name));
-        this.properties[name] = publisher;
+        this.innerScope[name] = publisher;
       } else if (Guard.isSwitch(property)) {
         const publisher = new Switch(property, domain, scope);
         publisher.connect(propertyListener(name));
-        this.properties[name] = publisher;
+        this.innerScope[name] = publisher;
       } else if (Guard.isAction(property)) {
         const subscriber = new Action(property, domain, scope);
         htmlElement.addEventListener(name, (value) => {
           const event = new Primitive(value, domain, scope);
           subscriber.handleEvent(event);
         });
-        this.properties[name] = subscriber;
+        this.innerScope[name] = subscriber;
       } else if (Guard.isActionCall(property)) {
         const subscriber = new ActionCall(property, domain, scope);
         htmlElement.addEventListener(name, subscriber);
-        this.properties[name] = subscriber;
+        this.innerScope[name] = subscriber;
       } else if (Guard.isStreamCall(property)) {
         const subscriber = new StreamCall(property, domain, scope);
         htmlElement.addEventListener(name, subscriber);
-        this.properties[name] = subscriber;
+        this.innerScope[name] = subscriber;
       } else {
         throw new Error(`Feature property "${name}" is not valid.`);
       }
@@ -124,12 +171,13 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
   }
 
   getScope(): Scope {
-    return {};
+    return this.outerScope;
   }
 }
 
 class Landscape extends Channel<HTMLElement> implements Scoped {
-  private readonly innerScope: Scope = {};
+  private readonly innerScope = new StaticScope();
+  private readonly outerScope = new StaticScope();
 
   constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -140,33 +188,39 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
       throw new Error(`View "${source.viewName}" is not valid.`);
     }
 
-    Object.entries(view.scope).forEach(([name, member]) => {
-      if (Guard.isField(member)) {
-        this.innerScope[name] = new Field(member, domain, this.innerScope);
-      } else {
-        throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
-      }
-    });
+    this.innerScope.addMembers(
+      Object.entries(view.scope).reduce((result, [name, member]) => {
+        if (Guard.isField(member)) {
+          result[name] = new Field(member, domain, scope);
+        } else {
+          throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
+        }
+        return result;
+      }, {} as RawScope),
+    );
 
-    Object.entries(source.properties).forEach(([name, property]) => {
-      if (Guard.isField(property)) {
-        this.innerScope[name] = new Field(property, domain, scope);
-      } else if (Guard.isFieldCall(property)) {
-        this.innerScope[name] = new FieldCall(property, domain, scope);
-      } else if (Guard.isMethodCall(property)) {
-        this.innerScope[name] = new MethodCall(property, domain, scope);
-      } else if (Guard.isSwitch(property)) {
-        this.innerScope[name] = new Switch(property, domain, scope);
-      } else if (Guard.isAction(property)) {
-        this.innerScope[name] = new Action(property, domain, scope);
-      } else if (Guard.isActionCall(property)) {
-        this.innerScope[name] = new ActionCall(property, domain, scope);
-      } else if (Guard.isStreamCall(property)) {
-        this.innerScope[name] = new StreamCall(property, domain, scope);
-      } else {
-        throw new Error(`Landscape property "${name}" is not valid.`);
-      }
-    });
+    this.innerScope.addMembers(
+      Object.entries(source.properties).reduce((result, [name, property]) => {
+        if (Guard.isField(property)) {
+          result[name] = new Field(property, domain, scope);
+        } else if (Guard.isFieldCall(property)) {
+          result[name] = new FieldCall(property, domain, scope);
+        } else if (Guard.isMethodCall(property)) {
+          result[name] = new MethodCall(property, domain, scope);
+        } else if (Guard.isSwitch(property)) {
+          result[name] = new Switch(property, domain, scope);
+        } else if (Guard.isAction(property)) {
+          result[name] = new Action(property, domain, scope);
+        } else if (Guard.isActionCall(property)) {
+          result[name] = new ActionCall(property, domain, scope);
+        } else if (Guard.isStreamCall(property)) {
+          result[name] = new StreamCall(property, domain, scope);
+        } else {
+          throw new Error(`Landscape property "${name}" is not valid.`);
+        }
+        return result;
+      }, {} as RawScope),
+    );
 
     let render: Feature | Landscape;
 
@@ -182,23 +236,23 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
   }
 
   getScope(): Scope {
-    return {};
+    return this.outerScope;
   }
 }
 
 class Primitive extends Channel implements Scoped {
-  private readonly outerScope: Scope = {};
+  private readonly outerScope = new StaticScope();
 
-  constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope = new StaticScope()) {
     super();
 
-    Object.assign(this.outerScope, {
+    this.outerScope.addMembers({
       is: new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope),
       setTo: new Action((argument) => this.publish(argument?.getValue()), domain, scope),
     });
 
     if (value instanceof Array) {
-      Object.assign(this.outerScope, {
+      this.outerScope.addMembers({
         map: new Method(
           [
             this,
@@ -231,11 +285,12 @@ class Primitive extends Channel implements Scoped {
 
       this.publish(hydratedValue);
     } else {
+      // TODO Handle scope for objects using DynamicScope.
       if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
 
-        Object.assign(this.outerScope, {
+        this.outerScope.addMembers({
           add: new Action((argument) => this.publish(addition(argument)), domain, scope),
           isAtLeast: new Method(
             [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
@@ -249,7 +304,7 @@ class Primitive extends Channel implements Scoped {
       } else if (typeof value === "boolean") {
         const inversion = (argument?: Data) => !argument?.getValue();
 
-        Object.assign(this.outerScope, {
+        this.outerScope.addMembers({
           and: new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope),
           not: new Method([this, inversion], domain, scope),
           or: new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope),
@@ -267,7 +322,7 @@ class Primitive extends Channel implements Scoped {
 }
 
 class Structure implements Scoped {
-  private readonly outerScope: Scope = {};
+  private readonly outerScope = new StaticScope();
 
   constructor(source: Abstract.Structure, domain: Abstract.App["domain"], scope: Scope) {
     const model = domain[source.modelName];
@@ -276,31 +331,37 @@ class Structure implements Scoped {
       throw new Error(`Model "${source.modelName}" is not valid.`);
     }
 
-    Object.entries(model.scope).forEach(([name, member]) => {
-      if (Guard.isField(member)) {
-        this.outerScope[name] = new Field(member, domain, this.outerScope);
-      } else if (Guard.isMethod(member)) {
-        this.outerScope[name] = new Method(member, domain, this.outerScope);
-      } else if (Guard.isAction(member)) {
-        this.outerScope[name] = new Action(member, domain, this.outerScope);
-      } else {
-        throw new Error(`Member "${name}" of model "${source.modelName}" is not valid.`);
-      }
-    });
+    this.outerScope.addMembers(
+      Object.entries(model.scope).reduce((result, [name, member]) => {
+        if (Guard.isField(member)) {
+          result[name] = new Field(member, domain, scope);
+        } else if (Guard.isMethod(member)) {
+          result[name] = new Method(member, domain, scope);
+        } else if (Guard.isAction(member)) {
+          result[name] = new Action(member, domain, scope);
+        } else {
+          throw new Error(`Member "${name}" of model "${source.modelName}" is not valid.`);
+        }
+        return result;
+      }, {} as RawScope),
+    );
 
-    Object.entries(source.properties).forEach(([name, property]) => {
-      if (Guard.isField(property)) {
-        this.outerScope[name] = new Field(property, domain, scope);
-      } else if (Guard.isFieldCall(property)) {
-        this.outerScope[name] = new FieldCall(property, domain, scope);
-      } else if (Guard.isMethodCall(property)) {
-        this.outerScope[name] = new MethodCall(property, domain, scope);
-      } else if (Guard.isSwitch(property)) {
-        this.outerScope[name] = new Switch(property, domain, scope);
-      } else {
-        throw new Error(`Structure property "${name}" is not valid.`);
-      }
-    });
+    this.outerScope.addMembers(
+      Object.entries(source.properties).reduce((result, [name, property]) => {
+        if (Guard.isField(property)) {
+          result[name] = new Field(property, domain, scope);
+        } else if (Guard.isFieldCall(property)) {
+          result[name] = new FieldCall(property, domain, scope);
+        } else if (Guard.isMethodCall(property)) {
+          result[name] = new MethodCall(property, domain, scope);
+        } else if (Guard.isSwitch(property)) {
+          result[name] = new Switch(property, domain, scope);
+        } else {
+          throw new Error(`Structure property "${name}" is not valid.`);
+        }
+        return result;
+      }, {} as RawScope),
+    );
   }
 
   getScope(): Scope {
@@ -354,7 +415,7 @@ class FieldCall extends Channel implements Scoped {
       realScope = new MethodCall(source.context, domain, scope).getScope();
     }
 
-    const field = realScope[source.name];
+    const field = realScope.getMember(source.name);
 
     if (!(field instanceof Field)) {
       throw new Error(`Field call to "${source.name}" is not valid.`);
@@ -387,10 +448,12 @@ class Method {
     }
 
     if (Guard.isMethod(this.source)) {
-      const innerScope: Scope = { ...this.scope };
+      const innerScope = new StaticScope({}, this.scope);
 
       if (this.source.parameter && argument) {
-        innerScope[this.source.parameter] = argument;
+        innerScope.addMembers({
+          [this.source.parameter]: argument,
+        });
       }
 
       let result: Data | undefined;
@@ -458,7 +521,7 @@ class MethodCall extends Channel implements Scoped {
       argument = new Switch(source.argument, domain, scope);
     }
 
-    const method = realScope[source.name];
+    const method = realScope.getMember(source.name);
 
     if (method instanceof Method) {
       this.result = method.getResult(argument);
@@ -524,7 +587,7 @@ class Switch extends Channel implements Scoped {
     const conditionalValue = this.condition.getValue();
     const nextPublisher = conditionalValue ? this.publisher : this.alternative;
 
-    return nextPublisher?.getScope() ?? {};
+    return nextPublisher?.getScope() ?? new StaticScope();
   }
 }
 
@@ -541,10 +604,12 @@ class Action implements Subscriber {
 
   handleEvent(argument?: Data): void {
     if (Guard.isAction(this.source)) {
-      const innerScope: Scope = { ...this.scope };
+      const innerScope = new StaticScope({}, this.scope);
 
       if (this.source.parameter && argument) {
-        innerScope[this.source.parameter] = argument;
+        innerScope.addMembers({
+          [this.source.parameter]: argument,
+        });
       }
 
       this.source.steps.forEach((step) => {
@@ -583,7 +648,7 @@ class ActionCall implements Subscriber<undefined> {
 
     while (address.length > 0) {
       const name = address.shift()!;
-      const member = currentScope[name];
+      const member = currentScope.getMember(name);
 
       if (address.length === 0 && member instanceof Action) {
         action = member;
@@ -623,7 +688,7 @@ class StreamCall implements Subscriber<undefined> {
   private readonly argument?: Data;
 
   constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
-    let stream = scope[source.name];
+    let stream = scope.getMember(source.name);
 
     if (!isSubscriber(stream)) {
       throw new Error(`Stream call to "${source.name}" is not valid.`);
