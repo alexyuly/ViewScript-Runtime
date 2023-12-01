@@ -8,25 +8,25 @@ export namespace Abstract {
 
   export type View = {
     kind: "view";
-    scope: Record<string, Field>;
+    scope: Record<string, Field | FieldCall | MethodCall | Switch>;
     render: Feature | Landscape;
   };
 
   export type Model = {
     kind: "model";
-    scope: Record<string, Field | Method | Action>;
+    scope: Record<string, Field | FieldCall | MethodCall | Switch | Method | Action>;
   };
 
   export type Feature = {
     kind: "feature";
     tagName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall>;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | Output>;
   };
 
   export type Landscape = {
     kind: "landscape";
     viewName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | StreamCall>;
+    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | Output>;
   };
 
   export type Primitive = {
@@ -47,7 +47,7 @@ export namespace Abstract {
 
   export type FieldCall = {
     kind: "fieldCall";
-    context?: Field | FieldCall | MethodCall;
+    context?: Field | FieldCall | MethodCall | Switch;
     name: string;
   };
 
@@ -59,7 +59,7 @@ export namespace Abstract {
 
   export type MethodCall = {
     kind: "methodCall";
-    context?: Field | FieldCall | MethodCall;
+    context?: Field | FieldCall | MethodCall | Switch;
     name: string;
     argument?: Field | FieldCall | MethodCall | Switch;
   };
@@ -73,7 +73,7 @@ export namespace Abstract {
 
   export type Action = {
     kind: "action";
-    steps: Array<ActionCall | StreamCall | Exception>;
+    steps: Array<ActionCall | Output | Exception>;
     parameter?: string;
   };
 
@@ -83,8 +83,8 @@ export namespace Abstract {
     argument?: Field | FieldCall | MethodCall | Switch;
   };
 
-  export type StreamCall = {
-    kind: "streamCall";
+  export type Output = {
+    kind: "output";
     name: string;
     argument?: Field | FieldCall | MethodCall | Switch;
   };
@@ -92,6 +92,6 @@ export namespace Abstract {
   export type Exception = {
     kind: "exception";
     condition: Field | FieldCall | MethodCall;
-    steps?: Array<ActionCall | StreamCall | Exception>;
+    steps?: Array<ActionCall | Output | Exception>;
   };
 }
