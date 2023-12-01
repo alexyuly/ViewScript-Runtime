@@ -50,7 +50,7 @@ class DynamicScope implements Scope {
 
   getMember(name: string): RawScope[string] {
     const value = this.primitive.getValue();
-    const memberValue = (value as any)[name];
+    const memberValue = Guard.isRawObject(value) ? (value as any)[name] : undefined;
 
     if (typeof memberValue === "function") {
       return memberValue;
