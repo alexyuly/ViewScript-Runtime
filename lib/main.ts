@@ -57,13 +57,13 @@ class DynamicScope implements Scope {
     }
 
     if (Guard.isRawObject(memberValue)) {
-      const rawObjectPrimitive = new Primitive(memberValue, {});
+      const rawObjectPrimitive = new Primitive(memberValue);
       const rawObjectScope = rawObjectPrimitive.getScope();
 
       return rawObjectScope.getMember(name);
     }
 
-    return new Primitive(memberValue, {});
+    return new Primitive(memberValue);
   }
 }
 
@@ -72,7 +72,7 @@ export class App {
     let render: Feature | Landscape;
 
     const scope = new StaticScope({
-      window: new Primitive(window, source.domain),
+      window: new Primitive(window),
     });
 
     if (Guard.isFeature(source.render)) {
@@ -165,7 +165,7 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
         } else if (Guard.isAction(property)) {
           const subscriber = new Action(property, domain, scope);
           htmlElement.addEventListener(name, (value) => {
-            const event = new Primitive(value, domain, scope);
+            const event = new Primitive(value);
             subscriber.handleEvent(event);
           });
           result[name] = subscriber;
@@ -260,7 +260,7 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 class Primitive extends Channel implements Scoped {
   private readonly outerScope: StaticScope;
 
-  constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope = new StaticScope()) {
+  constructor(value: unknown, domain: Abstract.App["domain"] = {}, scope: Scope = new StaticScope()) {
     super();
 
     this.outerScope = new StaticScope({}, Guard.isRawObject(value) ? new DynamicScope(this) : undefined);
@@ -298,7 +298,7 @@ class Primitive extends Channel implements Scoped {
         if (Guard.isFieldCall(arrayElement)) return new FieldCall(arrayElement, domain, scope);
         if (Guard.isMethodCall(arrayElement)) return new MethodCall(arrayElement, domain, scope);
         if (Guard.isSwitch(arrayElement)) return new Switch(arrayElement, domain, scope);
-        throw new Error(`Array element is not valid.`);
+        return new Primitive(arrayElement);
       });
 
       this.publish(hydratedValue);
@@ -494,7 +494,7 @@ class Method {
 
     const [publisher, reducer] = this.source;
     const value = reducer(argument);
-    const result = new Primitive(value, this.domain, this.scope);
+    const result = new Primitive(value);
 
     const handler = () => {
       const nextValue = reducer(argument);
@@ -512,6 +512,7 @@ class Method {
 
 class MethodCall extends Channel implements Scoped {
   private readonly result: Data;
+  private readonly argument?: Data;
 
   constructor(source: Abstract.MethodCall, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -526,24 +527,22 @@ class MethodCall extends Channel implements Scoped {
       realScope = new MethodCall(source.context, domain, scope).getScope();
     }
 
-    let argument: Field | FieldCall | MethodCall | Switch | undefined;
-
     if (Guard.isField(source.argument)) {
-      argument = new Field(source.argument, domain, scope);
+      this.argument = new Field(source.argument, domain, scope);
     } else if (Guard.isFieldCall(source.argument)) {
-      argument = new FieldCall(source.argument, domain, scope);
+      this.argument = new FieldCall(source.argument, domain, scope);
     } else if (Guard.isMethodCall(source.argument)) {
-      argument = new MethodCall(source.argument, domain, scope);
+      this.argument = new MethodCall(source.argument, domain, scope);
     } else if (Guard.isSwitch(source.argument)) {
-      argument = new Switch(source.argument, domain, scope);
+      this.argument = new Switch(source.argument, domain, scope);
     }
 
     const method = realScope.getMember(source.name);
 
     if (method instanceof Method) {
-      this.result = method.getResult(argument);
+      this.result = method.getResult(this.argument);
     } else if (typeof method === "function") {
-      this.result = new Primitive(method(argument), domain, scope);
+      this.result = new Primitive(method(this.argument));
     } else {
       throw new Error(`Method call to "${source.name}" is not valid.`);
     }
@@ -611,43 +610,39 @@ class Switch extends Channel implements Scoped {
 }
 
 class Action implements Subscriber {
-  private readonly source: Abstract.Action | Reducer;
+  private readonly source: Abstract.Action;
   private readonly domain: Abstract.App["domain"];
   private readonly scope: Scope;
 
-  constructor(source: Abstract.Action | Reducer, domain: Abstract.App["domain"], scope: Scope) {
+  constructor(source: Abstract.Action, domain: Abstract.App["domain"], scope: Scope) {
     this.source = source;
     this.domain = domain;
     this.scope = scope;
   }
 
   handleEvent(argument?: Data): void {
-    if (Guard.isAction(this.source)) {
-      const innerScope = new StaticScope({}, this.scope);
+    const innerScope = new StaticScope({}, this.scope);
 
-      if (this.source.parameter && argument) {
-        innerScope.addMembers({
-          [this.source.parameter]: argument,
-        });
-      }
-
-      this.source.steps.forEach((step) => {
-        if (Guard.isActionCall(step)) {
-          const subscriber = new ActionCall(step, this.domain, innerScope);
-          subscriber.handleEvent();
-        } else if (Guard.isStreamCall(step)) {
-          const subscriber = new StreamCall(step, this.domain, innerScope);
-          subscriber.handleEvent();
-        } else if (Guard.isException(step)) {
-          const subscriber = new Exception(step, this.domain, innerScope);
-          subscriber.handleEvent();
-        } else {
-          throw new Error(`Action step is not valid.`);
-        }
+    if (this.source.parameter && argument) {
+      innerScope.addMembers({
+        [this.source.parameter]: argument,
       });
-    } else {
-      this.source(argument);
     }
+
+    this.source.steps.forEach((step) => {
+      if (Guard.isActionCall(step)) {
+        const subscriber = new ActionCall(step, this.domain, innerScope);
+        subscriber.handleEvent();
+      } else if (Guard.isStreamCall(step)) {
+        const subscriber = new StreamCall(step, this.domain, innerScope);
+        subscriber.handleEvent();
+      } else if (Guard.isException(step)) {
+        const subscriber = new Exception(step, this.domain, innerScope);
+        subscriber.handleEvent();
+      } else {
+        throw new Error(`Action step is not valid.`);
+      }
+    });
   }
 }
 
