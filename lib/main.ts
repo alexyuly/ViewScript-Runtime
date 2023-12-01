@@ -74,7 +74,7 @@ export class App {
 }
 
 class Feature extends Publisher<HTMLElement> implements Scoped {
-  private readonly innerScope: Record<string, Property> = {};
+  private readonly innerScope = new StaticScope();
   private readonly outerScope = new StaticScope();
 
   constructor(source: Abstract.Feature, domain: Abstract.App["domain"], scope: Scope) {
@@ -130,42 +130,45 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
       };
     };
 
-    Object.entries(source.properties).forEach(([name, property]) => {
-      if (Guard.isField(property)) {
-        const publisher = new Field(property, domain, scope);
-        publisher.connect(propertyListener(name));
-        this.innerScope[name] = publisher;
-      } else if (Guard.isFieldCall(property)) {
-        const publisher = new FieldCall(property, domain, scope);
-        publisher.connect(propertyListener(name));
-        this.innerScope[name] = publisher;
-      } else if (Guard.isMethodCall(property)) {
-        const publisher = new MethodCall(property, domain, scope);
-        publisher.connect(propertyListener(name));
-        this.innerScope[name] = publisher;
-      } else if (Guard.isSwitch(property)) {
-        const publisher = new Switch(property, domain, scope);
-        publisher.connect(propertyListener(name));
-        this.innerScope[name] = publisher;
-      } else if (Guard.isAction(property)) {
-        const subscriber = new Action(property, domain, scope);
-        htmlElement.addEventListener(name, (value) => {
-          const event = new Primitive(value, domain, scope);
-          subscriber.handleEvent(event);
-        });
-        this.innerScope[name] = subscriber;
-      } else if (Guard.isActionCall(property)) {
-        const subscriber = new ActionCall(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber);
-        this.innerScope[name] = subscriber;
-      } else if (Guard.isStreamCall(property)) {
-        const subscriber = new StreamCall(property, domain, scope);
-        htmlElement.addEventListener(name, subscriber);
-        this.innerScope[name] = subscriber;
-      } else {
-        throw new Error(`Feature property "${name}" is not valid.`);
-      }
-    });
+    this.innerScope.addMembers(
+      Object.entries(source.properties).reduce((result, [name, property]) => {
+        if (Guard.isField(property)) {
+          const publisher = new Field(property, domain, scope);
+          publisher.connect(propertyListener(name));
+          result[name] = publisher;
+        } else if (Guard.isFieldCall(property)) {
+          const publisher = new FieldCall(property, domain, scope);
+          publisher.connect(propertyListener(name));
+          result[name] = publisher;
+        } else if (Guard.isMethodCall(property)) {
+          const publisher = new MethodCall(property, domain, scope);
+          publisher.connect(propertyListener(name));
+          result[name] = publisher;
+        } else if (Guard.isSwitch(property)) {
+          const publisher = new Switch(property, domain, scope);
+          publisher.connect(propertyListener(name));
+          result[name] = publisher;
+        } else if (Guard.isAction(property)) {
+          const subscriber = new Action(property, domain, scope);
+          htmlElement.addEventListener(name, (value) => {
+            const event = new Primitive(value, domain, scope);
+            subscriber.handleEvent(event);
+          });
+          result[name] = subscriber;
+        } else if (Guard.isActionCall(property)) {
+          const subscriber = new ActionCall(property, domain, scope);
+          htmlElement.addEventListener(name, subscriber);
+          result[name] = subscriber;
+        } else if (Guard.isStreamCall(property)) {
+          const subscriber = new StreamCall(property, domain, scope);
+          htmlElement.addEventListener(name, subscriber);
+          result[name] = subscriber;
+        } else {
+          throw new Error(`Feature property "${name}" is not valid.`);
+        }
+        return result;
+      }, {} as RawScope),
+    );
 
     this.publish(htmlElement);
   }
