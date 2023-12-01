@@ -570,9 +570,9 @@ class MethodCall extends Channel implements Scoped {
 }
 
 class Switch extends Channel implements Scoped {
-  private readonly condition: Field | FieldCall | MethodCall;
-  private readonly publisher: Field | FieldCall | MethodCall | Switch;
-  private readonly alternative?: Field | FieldCall | MethodCall | Switch;
+  private readonly condition: Data;
+  private readonly publisher: Data;
+  private readonly alternative?: Data;
 
   constructor(source: Abstract.Switch, domain: Abstract.App["domain"], scope: Scope) {
     super();
@@ -583,6 +583,8 @@ class Switch extends Channel implements Scoped {
       this.condition = new FieldCall(source.condition, domain, scope);
     } else if (Guard.isMethodCall(source.condition)) {
       this.condition = new MethodCall(source.condition, domain, scope);
+    } else if (Guard.isSwitch(source.condition)) {
+      this.condition = new Switch(source.condition, domain, scope);
     } else {
       throw new Error(`Switch condition is not valid.`);
     }

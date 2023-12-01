@@ -1,4 +1,8 @@
 export namespace Abstract {
+  export type Data = Field | FieldCall | MethodCall | Switch;
+  export type EventListener = Action | ActionCall | Output;
+  export type Step = ActionCall | Output | Exception;
+
   export type App = {
     kind: "app";
     version: "ViewScript v0.4.0";
@@ -8,25 +12,25 @@ export namespace Abstract {
 
   export type View = {
     kind: "view";
-    scope: Record<string, Field | FieldCall | MethodCall | Switch>;
+    scope: Record<string, Data>;
     render: Feature | Landscape;
   };
 
   export type Model = {
     kind: "model";
-    scope: Record<string, Field | FieldCall | MethodCall | Switch | Method | Action>;
+    scope: Record<string, Data | Method | Action>;
   };
 
   export type Feature = {
     kind: "feature";
     tagName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | Output>;
+    properties: Record<string, Data | EventListener>;
   };
 
   export type Landscape = {
     kind: "landscape";
     viewName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch | Action | ActionCall | Output>;
+    properties: Record<string, Data | EventListener>;
   };
 
   export type Primitive = {
@@ -37,7 +41,7 @@ export namespace Abstract {
   export type Structure = {
     kind: "structure";
     modelName: string;
-    properties: Record<string, Field | FieldCall | MethodCall | Switch>;
+    properties: Record<string, Data>;
   };
 
   export type Field = {
@@ -47,51 +51,51 @@ export namespace Abstract {
 
   export type FieldCall = {
     kind: "fieldCall";
-    context?: Field | FieldCall | MethodCall | Switch;
+    context?: Data;
     name: string;
   };
 
   export type Method = {
     kind: "method";
-    result: Field | FieldCall | MethodCall | Switch;
+    result: Data;
     parameter?: string;
   };
 
   export type MethodCall = {
     kind: "methodCall";
-    context?: Field | FieldCall | MethodCall | Switch;
+    context?: Data;
     name: string;
-    argument?: Field | FieldCall | MethodCall | Switch;
+    argument?: Data;
   };
 
   export type Switch = {
     kind: "switch";
-    condition: Field | FieldCall | MethodCall;
-    publisher: Field | FieldCall | MethodCall | Switch;
-    alternative?: Field | FieldCall | MethodCall | Switch;
+    condition: Data;
+    publisher: Data;
+    alternative?: Data;
   };
 
   export type Action = {
     kind: "action";
-    steps: Array<ActionCall | Output | Exception>;
+    steps: Array<Step>;
     parameter?: string;
   };
 
   export type ActionCall = {
     kind: "actionCall";
     address: Array<string>;
-    argument?: Field | FieldCall | MethodCall | Switch;
+    argument?: Data;
   };
 
   export type Output = {
     kind: "output";
     name: string;
-    argument?: Field | FieldCall | MethodCall | Switch;
+    argument?: Data;
   };
 
   export type Exception = {
     kind: "exception";
-    condition: Field | FieldCall | MethodCall;
-    steps?: Array<ActionCall | Output | Exception>;
+    condition: Data;
+    steps?: Array<Step>;
   };
 }
