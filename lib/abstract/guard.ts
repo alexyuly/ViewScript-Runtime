@@ -61,8 +61,8 @@ export namespace Guard {
     return isAbstractNode(value) && value.kind === "actionCall";
   }
 
-  export function isStreamCall(value: unknown): value is Abstract.StreamCall {
-    return isAbstractNode(value) && value.kind === "streamCall";
+  export function isOutput(value: unknown): value is Abstract.Output {
+    return isAbstractNode(value) && value.kind === "output";
   }
 
   export function isException(value: unknown): value is Abstract.Exception {

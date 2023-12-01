@@ -1,9 +1,9 @@
 import type { Abstract } from "./abstract";
 import { Guard } from "./abstract/guard";
-import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
+import { isSubscriber, Subscriber, Publisher, Channel } from "./pubsub";
 
 type Data = Field | FieldCall | MethodCall | Primitive | Switch;
-type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
+type Property = Action | ActionCall | Field | FieldCall | MethodCall | Output | Switch;
 type RawScope = Record<string, Method | Primitive | Property | Reducer>;
 type Reducer = (argument?: Data) => unknown;
 
@@ -173,8 +173,8 @@ class Feature extends Publisher<HTMLElement> implements Scoped {
           const subscriber = new ActionCall(property, domain, scope);
           htmlElement.addEventListener(name, subscriber);
           result[name] = subscriber;
-        } else if (Guard.isStreamCall(property)) {
-          const subscriber = new StreamCall(property, domain, scope);
+        } else if (Guard.isOutput(property)) {
+          const subscriber = new Output(property, domain, scope);
           htmlElement.addEventListener(name, subscriber);
           result[name] = subscriber;
         } else {
@@ -209,6 +209,12 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
       Object.entries(view.scope).reduce((result, [name, member]) => {
         if (Guard.isField(member)) {
           result[name] = new Field(member, domain, scope);
+        } else if (Guard.isFieldCall(member)) {
+          result[name] = new FieldCall(member, domain, scope);
+        } else if (Guard.isMethodCall(member)) {
+          result[name] = new MethodCall(member, domain, scope);
+        } else if (Guard.isSwitch(member)) {
+          result[name] = new Switch(member, domain, scope);
         } else {
           throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
         }
@@ -230,8 +236,8 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
           result[name] = new Action(property, domain, scope);
         } else if (Guard.isActionCall(property)) {
           result[name] = new ActionCall(property, domain, scope);
-        } else if (Guard.isStreamCall(property)) {
-          result[name] = new StreamCall(property, domain, scope);
+        } else if (Guard.isOutput(property)) {
+          result[name] = new Output(property, domain, scope);
         } else {
           throw new Error(`Landscape property "${name}" is not valid.`);
         }
@@ -352,6 +358,12 @@ class Structure implements Scoped {
       Object.entries(model.scope).reduce((result, [name, member]) => {
         if (Guard.isField(member)) {
           result[name] = new Field(member, domain, scope);
+        } else if (Guard.isFieldCall(member)) {
+          result[name] = new FieldCall(member, domain, scope);
+        } else if (Guard.isMethodCall(member)) {
+          result[name] = new MethodCall(member, domain, scope);
+        } else if (Guard.isSwitch(member)) {
+          result[name] = new Switch(member, domain, scope);
         } else if (Guard.isMethod(member)) {
           result[name] = new Method(member, domain, scope);
         } else if (Guard.isAction(member)) {
@@ -430,6 +442,8 @@ class FieldCall extends Channel implements Scoped {
       realScope = new FieldCall(source.context, domain, scope).getScope();
     } else if (Guard.isMethodCall(source.context)) {
       realScope = new MethodCall(source.context, domain, scope).getScope();
+    } else if (Guard.isSwitch(source.context)) {
+      realScope = new Switch(source.context, domain, scope).getScope();
     }
 
     const field = realScope.getMember(source.name);
@@ -525,6 +539,8 @@ class MethodCall extends Channel implements Scoped {
       realScope = new FieldCall(source.context, domain, scope).getScope();
     } else if (Guard.isMethodCall(source.context)) {
       realScope = new MethodCall(source.context, domain, scope).getScope();
+    } else if (Guard.isSwitch(source.context)) {
+      realScope = new Switch(source.context, domain, scope).getScope();
     }
 
     if (Guard.isField(source.argument)) {
@@ -633,8 +649,8 @@ class Action implements Subscriber {
       if (Guard.isActionCall(step)) {
         const subscriber = new ActionCall(step, this.domain, innerScope);
         subscriber.handleEvent();
-      } else if (Guard.isStreamCall(step)) {
-        const subscriber = new StreamCall(step, this.domain, innerScope);
+      } else if (Guard.isOutput(step)) {
+        const subscriber = new Output(step, this.domain, innerScope);
         subscriber.handleEvent();
       } else if (Guard.isException(step)) {
         const subscriber = new Exception(step, this.domain, innerScope);
@@ -699,18 +715,18 @@ class ActionCall implements Subscriber<undefined> {
   }
 }
 
-class StreamCall implements Subscriber<undefined> {
-  private readonly stream: Subscriber;
+class Output implements Subscriber<undefined> {
+  private readonly output: Subscriber;
   private readonly argument?: Data;
 
-  constructor(source: Abstract.StreamCall, domain: Abstract.App["domain"], scope: Scope) {
-    let stream = scope.getMember(source.name);
+  constructor(source: Abstract.Output, domain: Abstract.App["domain"], scope: Scope) {
+    let output = scope.getMember(source.name);
 
-    if (!isSubscriber(stream)) {
-      throw new Error(`Stream call to "${source.name}" is not valid.`);
+    if (!isSubscriber(output)) {
+      throw new Error(`Output to "${source.name}" is not valid.`);
     }
 
-    this.stream = stream;
+    this.output = output;
 
     if (Guard.isField(source.argument)) {
       this.argument = new Field(source.argument, domain, scope);
@@ -721,12 +737,12 @@ class StreamCall implements Subscriber<undefined> {
     } else if (Guard.isSwitch(source.argument)) {
       this.argument = new Switch(source.argument, domain, scope);
     } else if (source.argument !== undefined) {
-      throw new Error(`Stream call argument is not valid.`);
+      throw new Error(`Output argument is not valid.`);
     }
   }
 
   handleEvent(): void {
-    this.stream.handleEvent(this.argument);
+    this.output.handleEvent(this.argument);
   }
 }
 
