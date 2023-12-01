@@ -16,21 +16,21 @@ interface Scoped {
 }
 
 class StaticScope implements Scope {
-  private readonly scope: RawScope;
+  private readonly rawScope: RawScope;
   private readonly baseScope?: Scope;
 
-  constructor(scope: RawScope = {}, baseScope?: Scope) {
-    this.scope = scope;
+  constructor(rawScope: RawScope = {}, baseScope?: Scope) {
+    this.rawScope = rawScope;
     this.baseScope = baseScope;
   }
 
   addMembers(members: RawScope) {
-    Object.assign(this.scope, members);
+    Object.assign(this.rawScope, members);
   }
 
   getMember(name: string): RawScope[string] {
-    if (name in this.scope) {
-      return this.scope[name];
+    if (name in this.rawScope) {
+      return this.rawScope[name];
     }
 
     if (this.baseScope) {
