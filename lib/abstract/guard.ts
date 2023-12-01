@@ -1,9 +1,12 @@
 import type { Abstract } from ".";
 
 export namespace Guard {
-  function isAbstractNode(value: unknown): value is { kind: string } {
-    const isObject = typeof value === "object" && value !== null;
-    return isObject && "kind" in value && typeof value.kind === "string";
+  export function isRawObject(value: unknown): value is object {
+    return typeof value === "object" && value !== null && !(value instanceof Array);
+  }
+
+  export function isAbstractNode(value: unknown): value is { kind: string } {
+    return isRawObject(value) && "kind" in value && typeof value.kind === "string";
   }
 
   export function isView(value: unknown): value is Abstract.View {

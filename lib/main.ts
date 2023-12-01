@@ -50,19 +50,17 @@ class DynamicScope implements Scope {
 
   getMember(name: string): RawScope[string] {
     const value = this.primitive.getValue();
-
-    if (!(typeof value === "object" && value !== null && !(value instanceof Array))) {
-      throw new Error(`Dynamic scope is not valid for get member call.`);
-    }
-
     const memberValue = (value as any)[name];
 
     if (typeof memberValue === "function") {
       return memberValue;
     }
 
-    if (typeof value === "object" && value !== null && !(value instanceof Array)) {
-      return new Primitive(memberValue, {}).getScope().getMember(name);
+    if (Guard.isRawObject(memberValue)) {
+      const rawObjectPrimitive = new Primitive(memberValue, {});
+      const rawObjectScope = rawObjectPrimitive.getScope();
+
+      return rawObjectScope.getMember(name);
     }
 
     return new Primitive(memberValue, {});
@@ -260,17 +258,12 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 }
 
 class Primitive extends Channel implements Scoped {
-  private readonly outerScope;
+  private readonly outerScope: StaticScope;
 
   constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope = new StaticScope()) {
     super();
 
-    if (typeof value === "object" && value !== null && !(value instanceof Array)) {
-      this.outerScope = new StaticScope({}, new DynamicScope(this));
-    } else {
-      this.outerScope = new StaticScope();
-    }
-
+    this.outerScope = new StaticScope({}, Guard.isRawObject(value) ? new DynamicScope(this) : undefined);
     this.outerScope.addMembers({
       is: new Method([this, (argument) => Object.is(this.getValue(), argument?.getValue())], domain, scope),
       setTo: (argument) => this.publish(argument?.getValue()),
