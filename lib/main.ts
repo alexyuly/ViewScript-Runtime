@@ -4,7 +4,7 @@ import { Channel, Publisher, Subscriber, isSubscriber } from "./pubsub";
 
 type Data = Field | FieldCall | MethodCall | Primitive | Switch;
 type Property = Action | ActionCall | Field | FieldCall | MethodCall | StreamCall | Switch;
-type RawScope = Record<string, Method | Primitive | Property>;
+type RawScope = Record<string, Method | Primitive | Property | Reducer>;
 type Reducer = (argument?: Data) => unknown;
 
 interface Scope {
@@ -41,17 +41,34 @@ class StaticScope implements Scope {
   }
 }
 
-// class DynamicScope implements Scope {
-//   private readonly primitive: Primitive;
+class DynamicScope implements Scope {
+  private readonly primitive: Primitive;
 
-//   constructor(primitive: Primitive) {
-//     this.primitive = primitive;
-//   }
+  constructor(primitive: Primitive) {
+    this.primitive = primitive;
+  }
 
-//   getMember(name: string): Primitive | Method | Action {
-//     // TODO
-//   }
-// }
+  getMember(name: string): RawScope[string] {
+    // TODO Check this work...
+    const value = this.primitive.getValue();
+
+    if (!(typeof value === "object" && value !== null && !(value instanceof Array))) {
+      throw new Error(`Dynamic scope is not valid for get member call.`);
+    }
+
+    const memberValue = (value as any)[name];
+
+    if (typeof memberValue === "function") {
+      return memberValue;
+    }
+
+    if (typeof value === "object" && value !== null && !(value instanceof Array)) {
+      return new Primitive(memberValue, {}).getScope().getMember(name);
+    }
+
+    return new Primitive(memberValue, {});
+  }
+}
 
 export class App {
   constructor(source: Abstract.App) {
@@ -244,13 +261,19 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
 }
 
 class Primitive extends Channel implements Scoped {
-  private readonly outerScope = new StaticScope();
+  private readonly outerScope;
 
   constructor(value: unknown, domain: Abstract.App["domain"], scope: Scope = new StaticScope()) {
     super();
 
+    if (typeof value === "object" && value !== null && !(value instanceof Array)) {
+      this.outerScope = new StaticScope({}, new DynamicScope(this));
+    } else {
+      this.outerScope = new StaticScope();
+    }
+
     this.outerScope.addMembers({
-      is: new Method([this, (argument) => this.getValue() === argument?.getValue()], domain, scope),
+      is: new Method([this, (argument) => Object.is(this.getValue(), argument?.getValue())], domain, scope),
       setTo: new Action((argument) => this.publish(argument?.getValue()), domain, scope),
     });
 
@@ -288,7 +311,6 @@ class Primitive extends Channel implements Scoped {
 
       this.publish(hydratedValue);
     } else {
-      // TODO Handle scope for objects using DynamicScope.
       if (typeof value === "number") {
         const addition = (argument?: Data) => (this.getValue() as number) + (argument?.getValue() as number);
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
@@ -528,6 +550,8 @@ class MethodCall extends Channel implements Scoped {
 
     if (method instanceof Method) {
       this.result = method.getResult(argument);
+    } else if (typeof method === "function") {
+      // TODO Handle functions (Reducers) from primitive objects with DynamicScope...
     } else {
       throw new Error(`Method call to "${source.name}" is not valid.`);
     }
