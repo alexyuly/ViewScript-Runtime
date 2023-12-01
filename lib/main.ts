@@ -49,7 +49,6 @@ class DynamicScope implements Scope {
   }
 
   getMember(name: string): RawScope[string] {
-    // TODO Check this work...
     const value = this.primitive.getValue();
 
     if (!(typeof value === "object" && value !== null && !(value instanceof Array))) {
@@ -274,7 +273,7 @@ class Primitive extends Channel implements Scoped {
 
     this.outerScope.addMembers({
       is: new Method([this, (argument) => Object.is(this.getValue(), argument?.getValue())], domain, scope),
-      setTo: new Action((argument) => this.publish(argument?.getValue()), domain, scope),
+      setTo: (argument) => this.publish(argument?.getValue()),
     });
 
     if (value instanceof Array) {
@@ -298,7 +297,7 @@ class Primitive extends Channel implements Scoped {
           domain,
           scope,
         ),
-        push: new Action((argument) => this.publish([...(this.getValue() as Array<Data>), argument]), domain, scope),
+        push: (argument) => this.publish([...(this.getValue() as Array<Data>), argument]),
       });
 
       const hydratedValue: Array<Data> = value.map((arrayElement) => {
@@ -316,13 +315,13 @@ class Primitive extends Channel implements Scoped {
         const multiplication = (argument?: Data) => (this.getValue() as number) * (argument?.getValue() as number);
 
         this.outerScope.addMembers({
-          add: new Action((argument) => this.publish(addition(argument)), domain, scope),
+          add: (argument) => this.publish(addition(argument)),
           isAtLeast: new Method(
             [this, (argument) => (this.getValue() as number) >= (argument?.getValue() as number)],
             domain,
             scope,
           ),
-          multiply: new Action((argument) => this.publish(multiplication(argument)), domain, scope),
+          multiply: (argument) => this.publish(multiplication(argument)),
           plus: new Method([this, addition], domain, scope),
           times: new Method([this, multiplication], domain, scope),
         });
@@ -333,7 +332,7 @@ class Primitive extends Channel implements Scoped {
           and: new Method([this, (argument) => this.getValue() && argument?.getValue()], domain, scope),
           not: new Method([this, inversion], domain, scope),
           or: new Method([this, (argument) => this.getValue() || argument?.getValue()], domain, scope),
-          toggle: new Action((argument) => this.publish(inversion(argument)), domain, scope),
+          toggle: (argument) => this.publish(inversion(argument)),
         });
       }
 
@@ -551,7 +550,7 @@ class MethodCall extends Channel implements Scoped {
     if (method instanceof Method) {
       this.result = method.getResult(argument);
     } else if (typeof method === "function") {
-      // TODO Handle functions (Reducers) from primitive objects with DynamicScope...
+      this.result = new Primitive(method(argument), domain, scope);
     } else {
       throw new Error(`Method call to "${source.name}" is not valid.`);
     }
@@ -660,11 +659,11 @@ class Action implements Subscriber {
 }
 
 class ActionCall implements Subscriber<undefined> {
-  private readonly action: Action;
+  private readonly eventHandler: Reducer;
   private readonly argument?: Data;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    let action: Action | undefined;
+    let action: Action | Reducer | undefined;
     let currentScope = scope;
 
     const address = [...source.address];
@@ -677,7 +676,7 @@ class ActionCall implements Subscriber<undefined> {
       const name = address.shift()!;
       const member = currentScope.getMember(name);
 
-      if (address.length === 0 && member instanceof Action) {
+      if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
         action = member;
       } else if (address.length > 0 && (member instanceof Field || member instanceof FieldCall)) {
         currentScope = member.getScope();
@@ -686,11 +685,13 @@ class ActionCall implements Subscriber<undefined> {
       }
     }
 
-    if (!(action instanceof Action)) {
-      throw new Error(`Action call address is not valid.`);
+    if (action instanceof Action) {
+      this.eventHandler = action.handleEvent;
+    } else if (typeof action === "function") {
+      this.eventHandler = action;
+    } else {
+      throw new Error(`Action call to "${source.address.join(".")}" is not valid.`);
     }
-
-    this.action = action;
 
     if (Guard.isField(source.argument)) {
       this.argument = new Field(source.argument, domain, scope);
@@ -706,7 +707,7 @@ class ActionCall implements Subscriber<undefined> {
   }
 
   handleEvent(): void {
-    this.action.handleEvent(this.argument);
+    this.eventHandler(this.argument);
   }
 }
 

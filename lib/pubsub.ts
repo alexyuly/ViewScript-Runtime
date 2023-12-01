@@ -12,13 +12,13 @@ export abstract class Publisher<T = unknown> {
   private value?: T;
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
-    const handleEvent = typeof target === "function" ? target : target.handleEvent;
+    const eventHandler = typeof target === "function" ? target : target.handleEvent;
 
     if (this.value !== undefined) {
-      handleEvent(this.value);
+      eventHandler(this.value);
     }
 
-    this.eventHandlers.push(handleEvent);
+    this.eventHandlers.push(eventHandler);
   }
 
   disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
