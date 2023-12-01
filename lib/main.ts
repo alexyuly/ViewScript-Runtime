@@ -24,6 +24,10 @@ class StaticScope implements Scope {
     this.baseScope = baseScope;
   }
 
+  addMember(name: string, member: RawScope[string]) {
+    this.rawScope[name] = member;
+  }
+
   addMembers(members: RawScope) {
     Object.assign(this.rawScope, members);
   }
@@ -206,23 +210,6 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
     }
 
     this.innerScope.addMembers(
-      Object.entries(view.scope).reduce((result, [name, member]) => {
-        if (Guard.isField(member)) {
-          result[name] = new Field(member, domain, scope);
-        } else if (Guard.isFieldCall(member)) {
-          result[name] = new FieldCall(member, domain, scope);
-        } else if (Guard.isMethodCall(member)) {
-          result[name] = new MethodCall(member, domain, scope);
-        } else if (Guard.isSwitch(member)) {
-          result[name] = new Switch(member, domain, scope);
-        } else {
-          throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
-        }
-        return result;
-      }, {} as RawScope),
-    );
-
-    this.innerScope.addMembers(
       Object.entries(source.properties).reduce((result, [name, property]) => {
         if (Guard.isField(property)) {
           result[name] = new Field(property, domain, scope);
@@ -244,6 +231,20 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
         return result;
       }, {} as RawScope),
     );
+
+    Object.entries(view.scope).forEach(([name, member]) => {
+      if (Guard.isField(member)) {
+        this.innerScope.addMember(name, new Field(member, domain, this.innerScope));
+      } else if (Guard.isFieldCall(member)) {
+        this.innerScope.addMember(name, new FieldCall(member, domain, this.innerScope));
+      } else if (Guard.isMethodCall(member)) {
+        this.innerScope.addMember(name, new MethodCall(member, domain, this.innerScope));
+      } else if (Guard.isSwitch(member)) {
+        this.innerScope.addMember(name, new Switch(member, domain, this.innerScope));
+      } else {
+        throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
+      }
+    });
 
     let render: Feature | Landscape;
 
@@ -355,27 +356,6 @@ class Structure implements Scoped {
     }
 
     this.outerScope.addMembers(
-      Object.entries(model.scope).reduce((result, [name, member]) => {
-        if (Guard.isField(member)) {
-          result[name] = new Field(member, domain, scope);
-        } else if (Guard.isFieldCall(member)) {
-          result[name] = new FieldCall(member, domain, scope);
-        } else if (Guard.isMethodCall(member)) {
-          result[name] = new MethodCall(member, domain, scope);
-        } else if (Guard.isSwitch(member)) {
-          result[name] = new Switch(member, domain, scope);
-        } else if (Guard.isMethod(member)) {
-          result[name] = new Method(member, domain, scope);
-        } else if (Guard.isAction(member)) {
-          result[name] = new Action(member, domain, scope);
-        } else {
-          throw new Error(`Member "${name}" of model "${source.modelName}" is not valid.`);
-        }
-        return result;
-      }, {} as RawScope),
-    );
-
-    this.outerScope.addMembers(
       Object.entries(source.properties).reduce((result, [name, property]) => {
         if (Guard.isField(property)) {
           result[name] = new Field(property, domain, scope);
@@ -391,6 +371,24 @@ class Structure implements Scoped {
         return result;
       }, {} as RawScope),
     );
+
+    Object.entries(model.scope).forEach(([name, member]) => {
+      if (Guard.isField(member)) {
+        this.outerScope.addMember(name, new Field(member, domain, this.outerScope));
+      } else if (Guard.isFieldCall(member)) {
+        this.outerScope.addMember(name, new FieldCall(member, domain, this.outerScope));
+      } else if (Guard.isMethodCall(member)) {
+        this.outerScope.addMember(name, new MethodCall(member, domain, this.outerScope));
+      } else if (Guard.isSwitch(member)) {
+        this.outerScope.addMember(name, new Switch(member, domain, this.outerScope));
+      } else if (Guard.isMethod(member)) {
+        this.outerScope.addMember(name, new Method(member, domain, this.outerScope));
+      } else if (Guard.isAction(member)) {
+        this.outerScope.addMember(name, new Action(member, domain, this.outerScope));
+      } else {
+        throw new Error(`Member "${name}" of model "${source.modelName}" is not valid.`);
+      }
+    });
   }
 
   getScope(): Scope {
