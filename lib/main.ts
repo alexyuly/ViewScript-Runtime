@@ -73,7 +73,7 @@ class DynamicScope implements Scope {
 
 export class App {
   constructor(source: Abstract.App) {
-    let render: Feature | Landscape;
+    let render: Feature | Landscape | View;
 
     const scope = new StaticScope({
       window: new Primitive(window),
@@ -83,11 +83,49 @@ export class App {
       render = new Feature(source.render, source.domain, scope);
     } else if (Guard.isLandscape(source.render)) {
       render = new Landscape(source.render, source.domain, scope);
+    } else if (Guard.isView(source.render)) {
+      render = new View(source.render, source.domain, scope);
     } else {
       throw new Error(`App render is not valid.`);
     }
 
     render.connect(document.body.append);
+  }
+}
+
+class View extends Channel<HTMLElement> {
+  private readonly scope: StaticScope;
+
+  constructor(view: Abstract.View, domain: Abstract.App["domain"], scope: StaticScope) {
+    super();
+
+    this.scope = scope;
+
+    Object.entries(view.scope).forEach(([name, member]) => {
+      if (Guard.isField(member)) {
+        this.scope.addMember(name, new Field(member, domain, this.scope));
+      } else if (Guard.isFieldCall(member)) {
+        this.scope.addMember(name, new FieldCall(member, domain, this.scope));
+      } else if (Guard.isMethodCall(member)) {
+        this.scope.addMember(name, new MethodCall(member, domain, this.scope));
+      } else if (Guard.isSwitch(member)) {
+        this.scope.addMember(name, new Switch(member, domain, this.scope));
+      } else {
+        throw new Error(`Member "${name}" of view is not valid.`);
+      }
+    });
+
+    let render: Feature | Landscape;
+
+    if (Guard.isFeature(view.render)) {
+      render = new Feature(view.render, domain, this.scope);
+    } else if (Guard.isLandscape(view.render)) {
+      render = new Landscape(view.render, domain, this.scope);
+    } else {
+      throw new Error(`Render of view is not valid.`);
+    }
+
+    render.connect(this);
   }
 }
 
@@ -203,12 +241,6 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
   constructor(source: Abstract.Landscape, domain: Abstract.App["domain"], scope: Scope) {
     super();
 
-    const view = domain[source.viewName];
-
-    if (!Guard.isView(view)) {
-      throw new Error(`View "${source.viewName}" is not valid.`);
-    }
-
     this.innerScope.addMembers(
       Object.entries(source.properties).reduce((result, [name, property]) => {
         if (Guard.isField(property)) {
@@ -232,31 +264,14 @@ class Landscape extends Channel<HTMLElement> implements Scoped {
       }, {} as RawScope),
     );
 
-    Object.entries(view.scope).forEach(([name, member]) => {
-      if (Guard.isField(member)) {
-        this.innerScope.addMember(name, new Field(member, domain, this.innerScope));
-      } else if (Guard.isFieldCall(member)) {
-        this.innerScope.addMember(name, new FieldCall(member, domain, this.innerScope));
-      } else if (Guard.isMethodCall(member)) {
-        this.innerScope.addMember(name, new MethodCall(member, domain, this.innerScope));
-      } else if (Guard.isSwitch(member)) {
-        this.innerScope.addMember(name, new Switch(member, domain, this.innerScope));
-      } else {
-        throw new Error(`Member "${name}" of view "${source.viewName}" is not valid.`);
-      }
-    });
+    const view = domain[source.viewName];
 
-    let render: Feature | Landscape;
-
-    if (Guard.isFeature(view.render)) {
-      render = new Feature(view.render, domain, this.innerScope);
-    } else if (Guard.isLandscape(view.render)) {
-      render = new Landscape(view.render, domain, this.innerScope);
-    } else {
-      throw new Error(`Render of view "${source.viewName}" is not valid.`);
+    if (!Guard.isView(view)) {
+      throw new Error(`View "${source.viewName}" is not valid.`);
     }
 
-    render.connect(this);
+    const publisher = new View(view, domain, this.innerScope);
+    publisher.connect(this);
   }
 
   getScope(): Scope {
@@ -472,7 +487,7 @@ class Method {
   }
 
   getResult(argument?: Data): Data {
-    if (this.memory.has(argument)) {
+    if (argument && this.memory.has(argument)) {
       return this.memory.get(argument)!;
     }
 
@@ -499,7 +514,9 @@ class Method {
         throw new Error(`Method result is not valid.`);
       }
 
-      this.memory.set(argument, result);
+      if (argument) {
+        this.memory.set(argument, result);
+      }
 
       return result;
     }
@@ -516,7 +533,9 @@ class Method {
     publisher.connect(handler);
     argument?.connect(handler);
 
-    this.memory.set(argument, result);
+    if (argument) {
+      this.memory.set(argument, result);
+    }
 
     return result;
   }
@@ -667,34 +686,26 @@ class ActionCall implements Subscriber<undefined> {
   private readonly argument?: Data;
 
   constructor(source: Abstract.ActionCall, domain: Abstract.App["domain"], scope: Scope) {
-    let action: Action | Reducer | undefined;
-    let currentScope = scope;
+    let realScope = scope;
 
-    const address = [...source.address];
-
-    if (address.length === 0) {
-      throw new Error(`Action call address is empty.`);
+    if (Guard.isField(source.context)) {
+      realScope = new Field(source.context, domain, scope).getScope();
+    } else if (Guard.isFieldCall(source.context)) {
+      realScope = new FieldCall(source.context, domain, scope).getScope();
+    } else if (Guard.isMethodCall(source.context)) {
+      realScope = new MethodCall(source.context, domain, scope).getScope();
+    } else if (Guard.isSwitch(source.context)) {
+      realScope = new Switch(source.context, domain, scope).getScope();
     }
 
-    while (address.length > 0) {
-      const name = address.shift()!;
-      const member = currentScope.getMember(name);
-
-      if (address.length === 0 && (member instanceof Action || typeof member === "function")) {
-        action = member;
-      } else if (address.length > 0 && (member instanceof Field || member instanceof FieldCall)) {
-        currentScope = member.getScope();
-      } else {
-        throw new Error(`Action call address is not valid.`);
-      }
-    }
+    const action = realScope.getMember(source.name);
 
     if (action instanceof Action) {
       this.eventHandler = action.handleEvent;
     } else if (typeof action === "function") {
       this.eventHandler = action;
     } else {
-      throw new Error(`Action call to "${source.address.join(".")}" is not valid.`);
+      throw new Error(`Action call to "${source.name}" is not valid.`);
     }
 
     if (Guard.isField(source.argument)) {

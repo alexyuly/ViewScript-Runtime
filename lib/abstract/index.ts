@@ -7,7 +7,7 @@ export namespace Abstract {
     kind: "app";
     version: "ViewScript v0.4.0";
     domain: Record<string, View | Model>;
-    render: Feature | Landscape;
+    render: Feature | Landscape | View;
   };
 
   export type View = {
@@ -83,7 +83,8 @@ export namespace Abstract {
 
   export type ActionCall = {
     kind: "actionCall";
-    address: Array<string>;
+    context?: Data;
+    name: string;
     argument?: Data;
   };
 
