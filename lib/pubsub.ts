@@ -1,7 +1,9 @@
-import { Guard } from "./abstract/guard";
+export function isRawObject(value: unknown): value is object {
+  return typeof value === "object" && value !== null && !(value instanceof Array);
+}
 
 export function isSubscriber<T>(value: unknown): value is Subscriber<T> {
-  return Guard.isRawObject(value) && "handleEvent" in value && typeof value.handleEvent === "function";
+  return isRawObject(value) && "handleEvent" in value && typeof value.handleEvent === "function";
 }
 
 export interface Subscriber<T = unknown> {

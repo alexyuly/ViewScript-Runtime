@@ -7,7 +7,7 @@ export namespace Abstract {
   export type Application = {
     kind: "application";
     props: Record<string, Action | Field | Method | Model | Task | View>;
-    stage: Array<Task | View | AtomicElement>;
+    stage: Array<TaskInstance | ViewInstance | AtomicElement>;
   };
 
   export type AtomicElement = {
@@ -84,13 +84,13 @@ export namespace Abstract {
 
   export type Store = {
     kind: "store";
-    initialValue: Model | RawValue;
+    initialValue: ModelInstance | RawValue;
   };
 
   export type Task = {
     kind: "task";
     props: Record<string, Action | Field | Method>;
-    stage: Array<Task>;
+    stage: Array<TaskInstance>;
   };
 
   export type TaskInstance = {
@@ -102,7 +102,7 @@ export namespace Abstract {
   export type View = {
     kind: "view";
     props: Record<string, Action | Field | Method>;
-    stage: Array<Task | View | AtomicElement>;
+    stage: Array<TaskInstance | ViewInstance | AtomicElement>;
   };
 
   export type ViewInstance = {
