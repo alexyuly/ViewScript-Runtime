@@ -31,7 +31,7 @@ export namespace Abstract {
 
   export type Field = {
     kind: "field";
-    content: Store | Result | Reference | Implication;
+    content: Store | Invocation | Reference | Implication;
   };
 
   export type Implication = {
@@ -41,9 +41,16 @@ export namespace Abstract {
     fallback?: Field;
   };
 
+  export type Invocation = {
+    kind: "invocation";
+    context?: Field;
+    methodName: string;
+    argument?: Field;
+  };
+
   export type Method = {
     kind: "method";
-    invocation: Field;
+    invocationResult: Field;
     parameterName?: string;
   };
 
@@ -73,13 +80,6 @@ export namespace Abstract {
     kind: "reference";
     context?: Field;
     fieldName: string;
-  };
-
-  export type Result = {
-    kind: "result";
-    context?: Field;
-    methodName: string;
-    argument?: Field;
   };
 
   export type Store = {
