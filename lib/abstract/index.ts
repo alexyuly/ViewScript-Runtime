@@ -12,6 +12,7 @@ export namespace Abstract {
 
   export type AtomicElement = {
     kind: "atomicElement";
+    tagName: string;
     props: Record<string, Action | Field>;
   };
 
@@ -83,7 +84,7 @@ export namespace Abstract {
 
   export type Store = {
     kind: "store";
-    value: Model | RawValue;
+    initialValue: Model | RawValue;
   };
 
   export type Task = {
