@@ -1,102 +1,112 @@
 export namespace Abstract {
-  export type Data = Field | FieldCall | MethodCall | Switch;
-  export type EventListener = Action | ActionCall | Output;
-  export type Step = ActionCall | Output | Exception;
-
-  export type App = {
-    kind: "app";
-    version: "ViewScript v0.4.0";
-    domain: Record<string, View | Model>;
-    render: Feature | Landscape | View;
-  };
-
-  export type View = {
-    kind: "view";
-    scope: Record<string, Data>;
-    render: Feature | Landscape;
-  };
-
-  export type Model = {
-    kind: "model";
-    scope: Record<string, Data | Method | Action>;
-  };
-
-  export type Feature = {
-    kind: "feature";
-    tagName: string;
-    properties: Record<string, Data | EventListener>;
-  };
-
-  export type Landscape = {
-    kind: "landscape";
-    viewName: string;
-    properties: Record<string, Data | EventListener>;
-  };
-
-  export type Primitive = {
-    kind: "primitive";
-    value: unknown;
-  };
-
-  export type Structure = {
-    kind: "structure";
-    modelName: string;
-    properties: Record<string, Data>;
-  };
-
-  export type Field = {
-    kind: "field";
-    delegate: Feature | Landscape | Primitive | Structure;
-  };
-
-  export type FieldCall = {
-    kind: "fieldCall";
-    context?: Data;
-    name: string;
-  };
-
-  export type Method = {
-    kind: "method";
-    result: Data;
-    parameter?: string;
-  };
-
-  export type MethodCall = {
-    kind: "methodCall";
-    context?: Data;
-    name: string;
-    argument?: Data;
-  };
-
-  export type Switch = {
-    kind: "switch";
-    condition: Data;
-    publisher: Data;
-    alternative?: Data;
-  };
-
   export type Action = {
     kind: "action";
-    steps: Array<Step>;
-    parameter?: string;
+    target: Procedure | Call | Exception;
   };
 
-  export type ActionCall = {
-    kind: "actionCall";
-    context?: Data;
-    name: string;
-    argument?: Data;
+  export type Application = {
+    kind: "application";
+    props: Record<string, Action | Field | Method | Model | Task | View>;
+    stage: Array<Task | View | AtomicElement>;
   };
 
-  export type Output = {
-    kind: "output";
-    name: string;
-    argument?: Data;
+  export type AtomicElement = {
+    kind: "atomicElement";
+    props: Record<string, Action | Field>;
+  };
+
+  export type Call = {
+    kind: "call";
+    context?: Field;
+    actionName: string;
+    argument?: Field;
   };
 
   export type Exception = {
     kind: "exception";
-    condition: Data;
-    steps?: Array<Step>;
+    condition: Field;
+    steps?: Array<Action>;
+  };
+
+  export type Field = {
+    kind: "field";
+    content: Store | Result | Reference | Implication;
+  };
+
+  export type Implication = {
+    kind: "implication";
+    condition: Field;
+    consequence: Field;
+    fallback?: Field;
+  };
+
+  export type Method = {
+    kind: "method";
+    result: Field;
+    parameterName?: string;
+  };
+
+  export type Model = {
+    kind: "model";
+    props: Record<string, Action | Field | Method>;
+  };
+
+  export type ModelInstance = {
+    kind: "modelInstance";
+    modelName: string;
+    props: Record<string, Field>;
+  };
+
+  export type Procedure = {
+    kind: "procedure";
+    steps: Array<Action>;
+    parameterName?: string;
+  };
+
+  export type RawValue = {
+    kind: "rawValue";
+    value: unknown;
+  };
+
+  export type Reference = {
+    kind: "reference";
+    context?: Field;
+    fieldName: string;
+  };
+
+  export type Result = {
+    kind: "result";
+    context?: Field;
+    methodName: string;
+    argument?: Field;
+  };
+
+  export type Store = {
+    kind: "store";
+    value: Model | RawValue;
+  };
+
+  export type Task = {
+    kind: "task";
+    props: Record<string, Action | Field | Method>;
+    stage: Array<Task>;
+  };
+
+  export type TaskInstance = {
+    kind: "taskInstance";
+    taskName: string;
+    props: Record<string, Action | Field>;
+  };
+
+  export type View = {
+    kind: "view";
+    props: Record<string, Action | Field | Method>;
+    stage: Array<Task | View | AtomicElement>;
+  };
+
+  export type ViewInstance = {
+    kind: "viewInstance";
+    viewName: string;
+    props: Record<string, Action | Field>;
   };
 }
