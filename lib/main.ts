@@ -4,30 +4,56 @@ import { isSubscriber, Subscriber, Publisher, Channel } from "./pubsub";
 type Component = { kind: string };
 type Property = Action | Field | Method | Abstract.Model | Abstract.Task | Abstract.View;
 
+interface Props {
+  getMember(key: string): Property;
+}
+
+class StaticProps implements Props {
+  private readonly props: Record<string, Property>;
+  private readonly base?: Props;
+
+  constructor(props: Record<string, Property>, base?: Props) {
+    this.props = props;
+    this.base = base;
+  }
+
+  addMember(key: string, value: Property) {
+    this.props[key] = value;
+  }
+
+  getMember(key: string): Property {
+    if (key in this.props) {
+      return this.props[key];
+    }
+
+    if (this.base) {
+      return this.base.getMember(key);
+    }
+
+    throw new Error(`Prop ${key} not found`);
+  }
+}
+
 export class Application {
-  private readonly props: Record<string, Property> = {};
+  private readonly props = new StaticProps({});
   private readonly stage: Array<Task | View | AtomicElement> = [];
 
   constructor(source: Abstract.Application) {
     Object.entries(source.props).forEach(([key, value]) => {
       switch (value.kind) {
         case "action":
-          this.props[key] = new Action(value, this.props);
+          this.props.addMember(key, new Action(value, this.props));
           break;
         case "field":
-          this.props[key] = new Field(value, this.props);
+          this.props.addMember(key, new Field(value, this.props));
           break;
         case "method":
-          this.props[key] = new Method(value, this.props);
+          this.props.addMember(key, new Method(value, this.props));
           break;
         case "model":
-          this.props[key] = value;
-          break;
         case "task":
-          this.props[key] = value;
-          break;
         case "view":
-          this.props[key] = value;
+          this.props.addMember(key, value);
           break;
         default:
           throw new Error(`Application cannot construct prop ${key} of unknown kind: ${(value as Component).kind}`);
@@ -36,12 +62,18 @@ export class Application {
 
     this.stage = source.stage.map((component) => {
       switch (component.kind) {
-        case "task":
+        case "taskInstance":
           return new Task(component, this.props);
-        case "view":
-          return new View(component, this.props);
-        case "atomicElement":
-          return new AtomicElement(component, this.props);
+        case "viewInstance": {
+          const view = new View(component, this.props);
+          view.connect(window.document.body.append);
+          return view;
+        }
+        case "atomicElement": {
+          const atomicElement = new AtomicElement(component, this.props);
+          atomicElement.connect(window.document.body.append);
+          return atomicElement;
+        }
         default:
           throw new Error(`Application cannot stage a component of unknown kind: ${(component as Component).kind}`);
       }
@@ -52,7 +84,7 @@ export class Application {
 class Action implements Subscriber {
   private readonly target: Procedure | Call | Exception;
 
-  constructor(source: Abstract.Action, props: Record<string, Property>) {
+  constructor(source: Abstract.Action, props: Props) {
     switch (source.target.kind) {
       case "procedure":
         this.target = new Procedure(source.target, props);
@@ -76,7 +108,7 @@ class Action implements Subscriber {
 class Field extends Channel {
   private readonly content: Store | Result | Reference | Implication;
 
-  constructor(source: Abstract.Field, props: Record<string, Property>) {
+  constructor(source: Abstract.Field, props: Props) {
     super();
 
     switch (source.content.kind) {
@@ -102,16 +134,23 @@ class Field extends Channel {
 
 class Method {
   private readonly source: Abstract.Method;
-  private readonly props: Record<string, Property>;
+  private readonly props: Props;
 
-  constructor(source: Abstract.Method, props: Record<string, Property>) {
+  constructor(source: Abstract.Method, props: Props) {
     this.source = source;
     this.props = props;
   }
 
   invoke(argument?: Field): Field {
-    // TODO Add argument to props
-    // TODO Use a class for props
-    return new Field(this.source.result, this.props);
+    const invocationProps = new StaticProps(
+      argument
+        ? {
+            [this.source.parameterName ?? "it"]: argument,
+          }
+        : {},
+      this.props,
+    );
+    const invocation = new Field(this.source.invocation, invocationProps);
+    return invocation;
   }
 }

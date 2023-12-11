@@ -43,7 +43,7 @@ export namespace Abstract {
 
   export type Method = {
     kind: "method";
-    result: Field;
+    invocation: Field;
     parameterName?: string;
   };
 
