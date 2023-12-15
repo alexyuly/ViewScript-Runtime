@@ -1,17 +1,17 @@
 export namespace Abstract {
   export type Action = {
     kind: "action";
-    target: Procedure | Call | Exception;
+    target: Procedure | Exception | Call;
   };
 
   export type Application = {
     kind: "application";
     props: Record<string, Action | Field | Method | Model | Task | View>;
-    stage: Array<TaskInstance | ViewInstance | AtomicElement>;
+    stage: Array<TaskInstance | ViewInstance | Atom>;
   };
 
-  export type AtomicElement = {
-    kind: "atomicElement";
+  export type Atom = {
+    kind: "atom";
     tagName: string;
     props: Record<string, Action | Field>;
   };
@@ -23,6 +23,11 @@ export namespace Abstract {
     argument?: Field;
   };
 
+  export type Data = {
+    kind: "data";
+    value: unknown;
+  };
+
   export type Exception = {
     kind: "exception";
     condition: Field;
@@ -31,7 +36,7 @@ export namespace Abstract {
 
   export type Field = {
     kind: "field";
-    content: Store | Invocation | Reference | Implication;
+    content: Store | Invocation | Implication | Reference;
   };
 
   export type Implication = {
@@ -61,7 +66,7 @@ export namespace Abstract {
 
   export type ModelInstance = {
     kind: "modelInstance";
-    modelName: string;
+    model: string | Model;
     props: Record<string, Field>;
   };
 
@@ -69,11 +74,6 @@ export namespace Abstract {
     kind: "procedure";
     steps: Array<Action>;
     parameterName?: string;
-  };
-
-  export type RawValue = {
-    kind: "rawValue";
-    value: unknown;
   };
 
   export type Reference = {
@@ -84,7 +84,7 @@ export namespace Abstract {
 
   export type Store = {
     kind: "store";
-    initialValue: ModelInstance | RawValue;
+    initialValue: ModelInstance | Data;
   };
 
   export type Task = {
@@ -95,19 +95,19 @@ export namespace Abstract {
 
   export type TaskInstance = {
     kind: "taskInstance";
-    taskName: string;
+    task: string | Task;
     props: Record<string, Action | Field>;
   };
 
   export type View = {
     kind: "view";
     props: Record<string, Action | Field | Method>;
-    stage: Array<TaskInstance | ViewInstance | AtomicElement>;
+    stage: Array<TaskInstance | ViewInstance | Atom>;
   };
 
   export type ViewInstance = {
     kind: "viewInstance";
-    viewName: string;
+    view: string | View;
     props: Record<string, Action | Field>;
   };
 }

@@ -8,6 +8,10 @@ interface Props {
   getMember(key: string): Property;
 }
 
+interface Valuable {
+  getProps(): Props;
+}
+
 class StaticProps implements Props {
   private readonly props: Record<string, Property>;
   private readonly base?: Props;
@@ -36,7 +40,7 @@ class StaticProps implements Props {
 
 export class Application {
   private readonly props = new StaticProps({});
-  private readonly stage: Array<Task | View | AtomicElement> = [];
+  private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
   constructor(source: Abstract.Application) {
     Object.entries(source.props).forEach(([key, value]) => {
@@ -63,14 +67,14 @@ export class Application {
     this.stage = source.stage.map((component) => {
       switch (component.kind) {
         case "taskInstance":
-          return new Task(component, this.props);
+          return new TaskInstance(component, this.props);
         case "viewInstance": {
-          const view = new View(component, this.props);
+          const view = new ViewInstance(component, this.props);
           view.connect(window.document.body.append);
           return view;
         }
-        case "atomicElement": {
-          const atomicElement = new AtomicElement(component, this.props);
+        case "atom": {
+          const atomicElement = new Atom(component, this.props);
           atomicElement.connect(window.document.body.append);
           return atomicElement;
         }
@@ -82,31 +86,39 @@ export class Application {
 }
 
 class Action implements Subscriber {
-  private readonly target: Procedure | Call | Exception;
+  private readonly target: Subscriber["handleEvent"] | Procedure | Exception | Call;
 
-  constructor(source: Abstract.Action, props: Props) {
-    switch (source.target.kind) {
-      case "procedure":
-        this.target = new Procedure(source.target, props);
-        break;
-      case "call":
-        this.target = new Call(source.target, props);
-        break;
-      case "exception":
-        this.target = new Exception(source.target, props);
-        break;
-      default:
-        throw new Error(`Action cannot target a component of unknown kind: ${(source.target as Component).kind}`);
+  constructor(source: Subscriber["handleEvent"] | Abstract.Action, props: Props) {
+    if (typeof source === "function") {
+      this.target = source;
+    } else {
+      switch (source.target.kind) {
+        case "procedure":
+          this.target = new Procedure(source.target, props);
+          break;
+        case "exception":
+          this.target = new Exception(source.target, props);
+          break;
+        case "call":
+          this.target = new Call(source.target, props);
+          break;
+        default:
+          throw new Error(`Action cannot target a component of unknown kind: ${(source.target as Component).kind}`);
+      }
     }
   }
 
   handleEvent(value: unknown): void {
-    this.target.handleEvent(value);
+    if (typeof this.target === "function") {
+      this.target(value);
+    } else {
+      this.target.handleEvent(value);
+    }
   }
 }
 
-class Field extends Channel {
-  private readonly content: Store | Result | Reference | Implication;
+class Field extends Channel implements Valuable {
+  private readonly content: Store | Invocation | Implication | Reference;
 
   constructor(source: Abstract.Field, props: Props) {
     super();
@@ -115,20 +127,24 @@ class Field extends Channel {
       case "store":
         this.content = new Store(source.content, props);
         break;
-      case "result":
-        this.content = new Result(source.content, props);
-        break;
-      case "reference":
-        this.content = new Reference(source.content, props);
+      case "invocation":
+        this.content = new Invocation(source.content, props);
         break;
       case "implication":
         this.content = new Implication(source.content, props);
+        break;
+      case "reference":
+        this.content = new Reference(source.content, props);
         break;
       default:
         throw new Error(`Field cannot contain content of unknown kind: ${(source.content as Component).kind}`);
     }
 
     this.content.connect(this);
+  }
+
+  getProps(): Props {
+    return this.content.getProps();
   }
 }
 
@@ -150,7 +166,19 @@ class Method {
         : {},
       this.props,
     );
-    const invocation = new Field(this.source.invocation, invocationProps);
+    const invocation = new Field(this.source.invocationResult, invocationProps);
     return invocation;
+  }
+}
+
+class TaskInstance {
+  constructor(source: Abstract.TaskInstance, props: Props) {
+    // TODO
+  }
+}
+
+class ViewInstance {
+  constructor(source: Abstract.ViewInstance, props: Props) {
+    // TODO
   }
 }
