@@ -182,3 +182,9 @@ class ViewInstance {
     // TODO
   }
 }
+
+class Atom {
+  constructor(source: Abstract.Atom, props: Props) {
+    // TODO
+  }
+}

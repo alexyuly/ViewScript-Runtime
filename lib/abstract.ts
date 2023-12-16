@@ -1,49 +1,76 @@
 export namespace Abstract {
+  export type App = {
+    kind: "app";
+    innerProps: Record<string, View | Task | Model | Method | Field | Action>;
+    stage: Array<Atom | ViewInstance | TaskInstance>;
+  };
+
+  // Properties:
+
+  export type View = {
+    kind: "view";
+    innerProps: Record<string, Method | Field | Action>;
+    stage: Array<TaskInstance | ViewInstance | Atom>;
+  };
+
+  export type Task = {
+    kind: "task";
+    innerProps: Record<string, Method | Field | Action>;
+    stage: Array<TaskInstance>;
+  };
+
+  export type Model = {
+    kind: "model";
+    innerProps: Record<string, Method | Field | Action>;
+  };
+
+  export type Field = {
+    kind: "field";
+    content: ModelInstance | RawValue | Invocation | Implication | Reference;
+  };
+
+  export type Method = {
+    kind: "method";
+    result: Field;
+    parameterName?: string;
+  };
+
   export type Action = {
     kind: "action";
     target: Procedure | Exception | Call;
   };
 
-  export type Application = {
-    kind: "application";
-    props: Record<string, Action | Field | Method | Model | Task | View>;
-    stage: Array<TaskInstance | ViewInstance | Atom>;
-  };
+  // Stage actors:
 
   export type Atom = {
     kind: "atom";
     tagName: string;
-    props: Record<string, Action | Field>;
+    outerProps: Record<string, Field | Action>;
   };
 
-  export type Call = {
-    kind: "call";
-    context?: Field;
-    actionName: string;
-    argument?: Field;
+  export type ViewInstance = {
+    kind: "viewInstance";
+    view: string | View;
+    outerProps: Record<string, Field | Action>;
   };
 
-  export type Data = {
-    kind: "data";
+  export type TaskInstance = {
+    kind: "taskInstance";
+    task: string | Task;
+    outerProps: Record<string, Field | Action>;
+  };
+
+  // Field content:
+
+  export type ModelInstance = {
+    kind: "modelInstance";
+    model: string | Model;
+    outerProps: Record<string, Field>;
+  };
+
+  export type RawValue = {
+    kind: "rawValue";
     value: unknown;
-  };
-
-  export type Exception = {
-    kind: "exception";
-    condition: Field;
-    steps?: Array<Action>;
-  };
-
-  export type Field = {
-    kind: "field";
-    content: Store | Invocation | Implication | Reference;
-  };
-
-  export type Implication = {
-    kind: "implication";
-    condition: Field;
-    consequence: Field;
-    fallback?: Field;
   };
 
   export type Invocation = {
@@ -53,27 +80,11 @@ export namespace Abstract {
     argument?: Field;
   };
 
-  export type Method = {
-    kind: "method";
-    invocationResult: Field;
-    parameterName?: string;
-  };
-
-  export type Model = {
-    kind: "model";
-    props: Record<string, Action | Field | Method>;
-  };
-
-  export type ModelInstance = {
-    kind: "modelInstance";
-    model: string | Model;
-    props: Record<string, Field>;
-  };
-
-  export type Procedure = {
-    kind: "procedure";
-    steps: Array<Action>;
-    parameterName?: string;
+  export type Implication = {
+    kind: "implication";
+    condition: Field;
+    consequence: Field;
+    alternative?: Field;
   };
 
   export type Reference = {
@@ -82,32 +93,24 @@ export namespace Abstract {
     fieldName: string;
   };
 
-  export type Store = {
-    kind: "store";
-    initialValue: ModelInstance | Data;
+  // Action targets:
+
+  export type Procedure = {
+    kind: "procedure";
+    steps: Array<Action>;
+    parameterName?: string;
   };
 
-  export type Task = {
-    kind: "task";
-    props: Record<string, Action | Field | Method>;
-    stage: Array<TaskInstance>;
+  export type Exception = {
+    kind: "exception";
+    condition: Field;
+    steps?: Array<Action>;
   };
 
-  export type TaskInstance = {
-    kind: "taskInstance";
-    task: string | Task;
-    props: Record<string, Action | Field>;
-  };
-
-  export type View = {
-    kind: "view";
-    props: Record<string, Action | Field | Method>;
-    stage: Array<TaskInstance | ViewInstance | Atom>;
-  };
-
-  export type ViewInstance = {
-    kind: "viewInstance";
-    view: string | View;
-    props: Record<string, Action | Field>;
+  export type Call = {
+    kind: "call";
+    context?: Field;
+    actionName: string;
+    argument?: Field;
   };
 }
