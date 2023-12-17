@@ -118,28 +118,40 @@ class Field extends Channel implements Valuable {
     super();
 
     switch (source.content.kind) {
-      case "modelInstance":
-        this.content = new ModelInstance(source.content, scopeProps);
+      case "modelInstance": {
+        const modelInstance = new ModelInstance(source.content, scopeProps);
+        this.content = modelInstance;
         break;
-      case "rawValue":
-        this.content = new RawValue(source.content, scopeProps);
+      }
+      case "rawValue": {
+        const rawValue = new RawValue(source.content, scopeProps);
+        rawValue.connect(this);
+        this.content = rawValue;
         break;
-      case "invocation":
-        this.content = new Invocation(source.content, scopeProps);
+      }
+      case "invocation": {
+        const invocation = new Invocation(source.content, scopeProps);
+        invocation.connect(this);
+        this.content = invocation;
         break;
-      case "implication":
-        this.content = new Implication(source.content, scopeProps);
+      }
+      case "implication": {
+        const implication = new Implication(source.content, scopeProps);
+        implication.connect(this);
+        this.content = implication;
         break;
-      case "reference":
-        this.content = new Reference(source.content, scopeProps);
+      }
+      case "reference": {
+        const reference = new Reference(source.content, scopeProps);
+        reference.connect(this);
+        this.content = reference;
         break;
+      }
       default:
         throw new Error(
           `Field cannot contain a component of invalid kind: ${(source.content as Abstract.Component).kind}`,
         );
     }
-
-    this.content.connect(this);
   }
 
   getProps(): Props {
@@ -305,20 +317,63 @@ class TaskInstance {
   }
 }
 
-class ModelInstance {
+class ModelInstance implements Valuable {
+  private readonly props = new StaticProps({});
+
   constructor(source: Abstract.ModelInstance, scopeProps: Props) {
     // TODO: ViewScript v0.5
   }
+
+  getProps(): Props {
+    return this.props;
+  }
 }
 
-class RawValue extends Channel {
+class RawValue extends Channel implements Valuable {
+  private readonly props: Props;
+
   constructor(source: Abstract.RawValue, scopeProps: Props) {
     super();
 
+    // TODO Assign this.props based on typeof source.value
+    // Use StaticProps for everything except non-array objects
+    // For arrays we need a need type of props that is resolved dynamically
+
     if (source.value instanceof Array) {
-      // TODO
+      // TODO props for array values
+      const hydratedArray = source.value.map((value) => new RawValue(value, scopeProps));
+      this.publish(hydratedArray);
     } else {
+      // TODO props based on typeof source.value
       this.publish(source.value);
     }
   }
+
+  getProps(): Props {
+    return this.props;
+  }
+}
+
+class Invocation extends Publisher {
+  // TODO
+}
+
+class Implication extends Publisher {
+  // TODO
+}
+
+class Reference extends Publisher {
+  // TODO
+}
+
+class Procedure implements Subscriber {
+  // TODO
+}
+
+class Exception implements Subscriber {
+  // TODO
+}
+
+class Call implements Subscriber {
+  // TODO
 }
