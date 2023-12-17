@@ -24,15 +24,15 @@ export namespace Abstract {
     innerProps: Record<string, Method | Field | Action>;
   };
 
-  export type Field = {
-    kind: "field";
-    content: ModelInstance | RawValue | Invocation | Implication | Reference;
-  };
-
   export type Method = {
     kind: "method";
     result: Field;
     parameterName?: string;
+  };
+
+  export type Field = {
+    kind: "field";
+    content: ModelInstance | RawValue | Invocation | Implication | Reference;
   };
 
   export type Action = {
