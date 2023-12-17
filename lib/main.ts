@@ -1,7 +1,14 @@
 import { Abstract } from "./abstract";
 import { Subscriber, Publisher, Channel } from "./pubsub";
 
-type Property = Abstract.View | Abstract.Task | Abstract.Model | Abstract.Method | Field | Action;
+type Property =
+  | Abstract.View
+  | Abstract.Task
+  | Abstract.Model
+  | Abstract.Method
+  | Field
+  | Action
+  | ((argument: Field) => unknown);
 
 interface Props {
   getMember(key: string): Property;
@@ -34,14 +41,31 @@ class StoredProps implements Props {
 }
 
 class RawObjectProps implements Props {
-  // TODO
-  constructor(value: object) {
-    // TODO
+  private readonly value: any;
+
+  constructor(value: any) {
+    this.value = value;
   }
 
   getMember(key: string): Property {
-    // TODO
-    throw new Error(`Prop ${key} not found`);
+    if (!(key in this.value)) {
+      throw new Error(`Prop ${key} not found`);
+    }
+
+    if (typeof this.value[key] === "function") {
+      return this.value[key];
+    }
+
+    const abstractField: Abstract.Field = {
+      kind: "field",
+      content: {
+        kind: "rawValue",
+        value: this.value[key],
+      },
+    };
+
+    const field = new Field(abstractField, new StoredProps({}));
+    return field;
   }
 }
 
@@ -323,15 +347,45 @@ class RawValue extends Channel implements Valuable {
     super();
 
     if (source.value instanceof Array) {
-      this.props = new StoredProps({}); // TODO assign to this.props
-      const hydratedArray = source.value.map((value) => new RawValue(value, propsInScope));
+      const hydratedArray: Array<Field> = source.value.map((value) => {
+        if (!(Abstract.isComponent(value) && value.kind === "field")) {
+          throw new Error(`Cannot hydrate an array element which is not an abstract field: ${JSON.stringify(value)}`);
+        }
+        const hydratedField = new Field(value as Abstract.Field, propsInScope);
+        return hydratedField;
+      });
+
+      this.props = new StoredProps({
+        push: (value) => {
+          const nextValue = [...hydratedArray, value];
+          this.publish(nextValue);
+        },
+        setTo: (value) => {
+          this.publish(value);
+        },
+      });
+
       this.publish(hydratedArray);
     } else {
       if (Abstract.isRawObject(source.value)) {
         this.props = new RawObjectProps(source.value);
       } else {
-        this.props = new StoredProps({}); // TODO assign to this.props
+        const props = new StoredProps({
+          setTo: (value) => {
+            this.publish(value);
+          },
+        });
+
+        if (typeof source.value === "boolean") {
+          props.addMember("toggle", () => {
+            const nextValue = !this.getValue();
+            this.publish(nextValue);
+          });
+        }
+
+        this.props = props;
       }
+
       this.publish(source.value);
     }
   }
@@ -342,16 +396,13 @@ class RawValue extends Channel implements Valuable {
 }
 
 class Invocation extends Channel implements Valuable {
-  // TODO
-  // Finish RawValue first
   constructor(source: Abstract.Invocation, propsInScope: Props) {
     super();
 
-    // TODO
+    // TODO: ViewScript v0.5
   }
 
   getProps(): Props {
-    // TODO
     return new StoredProps({});
   }
 }
