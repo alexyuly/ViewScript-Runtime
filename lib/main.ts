@@ -7,17 +7,13 @@ interface Props {
   getMember(key: string): Property;
 }
 
-interface Valuable {
-  getProps(): Props;
-}
-
 class StoredProps implements Props {
   private readonly properties: Record<string, Property>;
-  private readonly scopeProps?: Props;
+  private readonly propsInScope?: Props;
 
-  constructor(properties: Record<string, Property>, scopeProps?: Props) {
+  constructor(properties: Record<string, Property>, propsInScope?: Props) {
     this.properties = properties;
-    this.scopeProps = scopeProps;
+    this.propsInScope = propsInScope;
   }
 
   addMember(key: string, value: Property) {
@@ -29,8 +25,8 @@ class StoredProps implements Props {
       return this.properties[key];
     }
 
-    if (this.scopeProps) {
-      return this.scopeProps.getMember(key);
+    if (this.propsInScope) {
+      return this.propsInScope.getMember(key);
     }
 
     throw new Error(`Prop ${key} not found`);
@@ -47,6 +43,10 @@ class RawObjectProps implements Props {
     // TODO
     throw new Error(`Prop ${key} not found`);
   }
+}
+
+interface Valuable {
+  getProps(): Props;
 }
 
 export class App {
@@ -101,35 +101,35 @@ export class App {
 class Field extends Channel implements Valuable {
   private readonly content: ModelInstance | RawValue | Invocation | Implication | Reference;
 
-  constructor(source: Abstract.Field, scopeProps: Props) {
+  constructor(source: Abstract.Field, propsInScope: Props) {
     super();
 
     switch (source.content.kind) {
       case "modelInstance": {
-        const modelInstance = new ModelInstance(source.content, scopeProps);
+        const modelInstance = new ModelInstance(source.content, propsInScope);
         this.content = modelInstance;
         break;
       }
       case "rawValue": {
-        const rawValue = new RawValue(source.content, scopeProps);
+        const rawValue = new RawValue(source.content, propsInScope);
         rawValue.connect(this);
         this.content = rawValue;
         break;
       }
       case "invocation": {
-        const invocation = new Invocation(source.content, scopeProps);
+        const invocation = new Invocation(source.content, propsInScope);
         invocation.connect(this);
         this.content = invocation;
         break;
       }
       case "implication": {
-        const implication = new Implication(source.content, scopeProps);
+        const implication = new Implication(source.content, propsInScope);
         implication.connect(this);
         this.content = implication;
         break;
       }
       case "reference": {
-        const reference = new Reference(source.content, scopeProps);
+        const reference = new Reference(source.content, propsInScope);
         reference.connect(this);
         this.content = reference;
         break;
@@ -149,16 +149,16 @@ class Field extends Channel implements Valuable {
 class Action implements Subscriber {
   private readonly target: Procedure | Exception | Call;
 
-  constructor(source: Abstract.Action, scopeProps: Props) {
+  constructor(source: Abstract.Action, propsInScope: Props) {
     switch (source.target.kind) {
       case "procedure":
-        this.target = new Procedure(source.target, scopeProps);
+        this.target = new Procedure(source.target, propsInScope);
         break;
       case "exception":
-        this.target = new Exception(source.target, scopeProps);
+        this.target = new Exception(source.target, propsInScope);
         break;
       case "call":
-        this.target = new Call(source.target, scopeProps);
+        this.target = new Call(source.target, propsInScope);
         break;
       default:
         throw new Error(
@@ -175,7 +175,7 @@ class Action implements Subscriber {
 class Atom extends Publisher<HTMLElement> {
   private readonly props = new StoredProps({});
 
-  constructor(source: Abstract.Atom, scopeProps: Props) {
+  constructor(source: Abstract.Atom, propsInScope: Props) {
     super();
 
     const element = window.document.createElement(source.tagName);
@@ -183,7 +183,7 @@ class Atom extends Publisher<HTMLElement> {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field": {
-          const field = new Field(value, scopeProps);
+          const field = new Field(value, propsInScope);
           field.connect((fieldValue) => {
             if (key === "content") {
               const content: Array<Node | string> = [];
@@ -211,7 +211,7 @@ class Atom extends Publisher<HTMLElement> {
           break;
         }
         case "action": {
-          const action = new Action(value, scopeProps);
+          const action = new Action(value, propsInScope);
           element.addEventListener(key, action);
           this.props.addMember(key, action);
           break;
@@ -231,10 +231,10 @@ class ViewInstance extends Channel<HTMLElement> {
   private readonly props = new StoredProps({});
   private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
-  constructor(source: Abstract.ViewInstance, scopeProps: Props) {
+  constructor(source: Abstract.ViewInstance, propsInScope: Props) {
     super();
 
-    const view = Abstract.isComponent(source.view) ? source.view : scopeProps.getMember(source.view);
+    const view = Abstract.isComponent(source.view) ? source.view : propsInScope.getMember(source.view);
 
     if (!(Abstract.isComponent(view) && view.kind === "view")) {
       throw new Error(`Cannot construct invalid view: ${JSON.stringify(source.view)}`);
@@ -243,10 +243,10 @@ class ViewInstance extends Channel<HTMLElement> {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
-          this.props.addMember(key, new Field(value, scopeProps));
+          this.props.addMember(key, new Field(value, propsInScope));
           break;
         case "action":
-          this.props.addMember(key, new Action(value, scopeProps));
+          this.props.addMember(key, new Action(value, propsInScope));
           break;
         default:
           throw new Error(
@@ -299,7 +299,7 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class TaskInstance {
-  constructor(source: Abstract.TaskInstance, scopeProps: Props) {
+  constructor(source: Abstract.TaskInstance, propsInScope: Props) {
     // TODO: ViewScript v0.5
   }
 }
@@ -307,7 +307,7 @@ class TaskInstance {
 class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
-  constructor(source: Abstract.ModelInstance, scopeProps: Props) {
+  constructor(source: Abstract.ModelInstance, propsInScope: Props) {
     // TODO: ViewScript v0.5
   }
 
@@ -319,12 +319,12 @@ class ModelInstance implements Valuable {
 class RawValue extends Channel implements Valuable {
   private readonly props: Props;
 
-  constructor(source: Abstract.RawValue, scopeProps: Props) {
+  constructor(source: Abstract.RawValue, propsInScope: Props) {
     super();
 
     if (source.value instanceof Array) {
       this.props = new StoredProps({}); // TODO assign to this.props
-      const hydratedArray = source.value.map((value) => new RawValue(value, scopeProps));
+      const hydratedArray = source.value.map((value) => new RawValue(value, propsInScope));
       this.publish(hydratedArray);
     } else {
       if (Abstract.isRawObject(source.value)) {
@@ -344,7 +344,7 @@ class RawValue extends Channel implements Valuable {
 class Invocation extends Channel implements Valuable {
   // TODO
   // Finish RawValue first
-  constructor(source: Abstract.Invocation, scopeProps: Props) {
+  constructor(source: Abstract.Invocation, propsInScope: Props) {
     super();
 
     // TODO
@@ -361,18 +361,18 @@ class Implication extends Channel implements Valuable {
   private readonly consequence: Field;
   private readonly alternative?: Field;
 
-  constructor(source: Abstract.Implication, scopeProps: Props) {
+  constructor(source: Abstract.Implication, propsInScope: Props) {
     super();
 
-    this.consequence = new Field(source.consequence, scopeProps);
+    this.consequence = new Field(source.consequence, propsInScope);
     this.consequence.connect(this);
 
     if (source.alternative) {
-      this.alternative = new Field(source.alternative, scopeProps);
+      this.alternative = new Field(source.alternative, propsInScope);
       this.alternative.connect(this);
     }
 
-    this.condition = new Field(source.condition, scopeProps);
+    this.condition = new Field(source.condition, propsInScope);
     this.condition.connect((conditionalValue) => {
       const impliedField = conditionalValue ? this.consequence : this.alternative;
       const impliedValue = impliedField?.getValue();
@@ -390,10 +390,10 @@ class Implication extends Channel implements Valuable {
 class Reference extends Channel implements Valuable {
   private readonly field: Field;
 
-  constructor(source: Abstract.Reference, scopeProps: Props) {
+  constructor(source: Abstract.Reference, propsInScope: Props) {
     super();
 
-    const context = source.context ? new Field(source.context, scopeProps).getProps() : scopeProps;
+    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
 
     const field = context.getMember(source.fieldName);
 
@@ -412,7 +412,7 @@ class Reference extends Channel implements Valuable {
 
 class Procedure implements Subscriber {
   // TODO
-  constructor(source: Abstract.Procedure, scopeProps: Props) {
+  constructor(source: Abstract.Procedure, propsInScope: Props) {
     // TODO
   }
 
@@ -423,7 +423,7 @@ class Procedure implements Subscriber {
 
 class Exception implements Subscriber {
   // TODO
-  constructor(source: Abstract.Exception, scopeProps: Props) {
+  constructor(source: Abstract.Exception, propsInScope: Props) {
     // TODO
   }
 
@@ -435,7 +435,7 @@ class Exception implements Subscriber {
 class Call implements Subscriber {
   // TODO
   // Finish RawValue first
-  constructor(source: Abstract.Call, scopeProps: Props) {
+  constructor(source: Abstract.Call, propsInScope: Props) {
     // TODO
   }
 
