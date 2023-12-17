@@ -1,5 +1,5 @@
 export interface Subscriber<T = unknown> {
-  handleEvent(value: T): void;
+  handleEvent(value: T): unknown;
 }
 
 export abstract class Publisher<T = unknown> {

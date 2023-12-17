@@ -191,8 +191,8 @@ class Action implements Subscriber {
     }
   }
 
-  handleEvent(value?: unknown): void {
-    this.target.handleEvent(value);
+  handleEvent(value?: unknown) {
+    return this.target.handleEvent(value);
   }
 }
 
@@ -484,7 +484,7 @@ class Procedure implements Subscriber {
             value,
           },
         },
-        this.props,
+        new StoredProps({}),
       );
 
       stepsProps = new StoredProps(
@@ -495,21 +495,38 @@ class Procedure implements Subscriber {
       );
     }
 
-    this.steps.forEach((step) => {
+    for (const step of this.steps) {
       const action = new Action(step, stepsProps);
-      action.handleEvent();
-    });
+      const conditionalValue = action.handleEvent();
+      if (conditionalValue) {
+        break;
+      }
+    }
   }
 }
 
 class Exception implements Subscriber {
-  // TODO
+  private readonly condition: Field;
+  private readonly steps: Array<Abstract.Action>;
+  private readonly props: Props;
+
   constructor(source: Abstract.Exception, propsInScope: Props) {
-    // TODO
+    this.condition = new Field(source.condition, propsInScope);
+    this.steps = source.steps ?? [];
+    this.props = propsInScope;
   }
 
-  handleEvent(value: unknown): void {
-    // TODO
+  handleEvent(): boolean {
+    const conditionalValue = Boolean(this.condition.getValue());
+
+    if (conditionalValue) {
+      for (const step of this.steps) {
+        const action = new Action(step, this.props);
+        action.handleEvent();
+      }
+    }
+
+    return conditionalValue;
   }
 }
 
