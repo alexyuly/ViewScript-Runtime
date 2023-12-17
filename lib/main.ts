@@ -1,77 +1,7 @@
 import { Abstract } from "./abstract";
 import { Subscriber, Publisher, Channel } from "./pubsub";
 
-type Property =
-  | Abstract.View
-  | Abstract.Task
-  | Abstract.Model
-  | Abstract.Method
-  | Field
-  | Action
-  | ((argument?: Field) => unknown);
-
-interface Props {
-  getMember(key: string): Property;
-}
-
-class StoredProps implements Props {
-  private readonly properties: Record<string, Property>;
-  private readonly propsInScope?: Props;
-
-  constructor(properties: Record<string, Property>, propsInScope?: Props) {
-    this.properties = properties;
-    this.propsInScope = propsInScope;
-  }
-
-  addMember(key: string, value: Property) {
-    this.properties[key] = value;
-  }
-
-  getMember(key: string): Property {
-    if (key in this.properties) {
-      return this.properties[key];
-    }
-
-    if (this.propsInScope) {
-      return this.propsInScope.getMember(key);
-    }
-
-    throw new Error(`Prop ${key} not found`);
-  }
-}
-
-class RawObjectProps implements Props {
-  private readonly value: any;
-
-  constructor(value: any) {
-    this.value = value;
-  }
-
-  getMember(key: string): Property {
-    if (!(key in this.value)) {
-      throw new Error(`Prop ${key} not found`);
-    }
-
-    if (typeof this.value[key] === "function") {
-      return this.value[key];
-    }
-
-    const abstractField: Abstract.Field = {
-      kind: "field",
-      content: {
-        kind: "rawValue",
-        value: this.value[key],
-      },
-    };
-
-    const field = new Field(abstractField, new StoredProps({}));
-    return field;
-  }
-}
-
-interface Valuable {
-  getProps(): Props;
-}
+// Root:
 
 export class App {
   private readonly props = new StoredProps({});
@@ -121,6 +51,8 @@ export class App {
     });
   }
 }
+
+// Properties:
 
 class Field extends Channel implements Valuable {
   private readonly content: ModelInstance | RawValue | Invocation | Implication | Reference;
@@ -195,6 +127,8 @@ class Action implements Subscriber<Field | undefined> {
     return this.target.handleEvent(argument);
   }
 }
+
+// Stage actors:
 
 class Atom extends Publisher<HTMLElement> {
   private readonly props = new StoredProps({});
@@ -338,6 +272,8 @@ class TaskInstance {
   }
 }
 
+// Field content:
+
 class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
@@ -472,6 +408,8 @@ class Reference extends Channel implements Valuable {
   }
 }
 
+// Action targets:
+
 class Procedure implements Subscriber<Field | undefined> {
   private readonly steps: Array<Abstract.Action>;
   private readonly parameterName?: string;
@@ -556,5 +494,79 @@ class Call implements Subscriber<void> {
 
   handleEvent(): void {
     this.action.handleEvent(this.argument);
+  }
+}
+
+// Base types:
+
+interface Valuable {
+  getProps(): Props;
+}
+
+interface Props {
+  getMember(key: string): Property;
+}
+
+type Property =
+  | Abstract.View
+  | Abstract.Task
+  | Abstract.Model
+  | Abstract.Method
+  | Field
+  | Action
+  | ((argument?: Field) => unknown);
+
+class StoredProps implements Props {
+  private readonly properties: Record<string, Property>;
+  private readonly propsInScope?: Props;
+
+  constructor(properties: Record<string, Property>, propsInScope?: Props) {
+    this.properties = properties;
+    this.propsInScope = propsInScope;
+  }
+
+  addMember(key: string, value: Property) {
+    this.properties[key] = value;
+  }
+
+  getMember(key: string): Property {
+    if (key in this.properties) {
+      return this.properties[key];
+    }
+
+    if (this.propsInScope) {
+      return this.propsInScope.getMember(key);
+    }
+
+    throw new Error(`Prop ${key} not found`);
+  }
+}
+
+class RawObjectProps implements Props {
+  private readonly value: any;
+
+  constructor(value: any) {
+    this.value = value;
+  }
+
+  getMember(key: string): Property {
+    if (!(key in this.value)) {
+      throw new Error(`Prop ${key} not found`);
+    }
+
+    if (typeof this.value[key] === "function") {
+      return this.value[key];
+    }
+
+    const abstractField: Abstract.Field = {
+      kind: "field",
+      content: {
+        kind: "rawValue",
+        value: this.value[key],
+      },
+    };
+
+    const field = new Field(abstractField, new StoredProps({}));
+    return field;
   }
 }
