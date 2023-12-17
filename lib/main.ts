@@ -191,7 +191,7 @@ class Action implements Subscriber {
     }
   }
 
-  handleEvent(value: unknown): void {
+  handleEvent(value?: unknown): void {
     this.target.handleEvent(value);
   }
 }
@@ -462,13 +462,43 @@ class Reference extends Channel implements Valuable {
 }
 
 class Procedure implements Subscriber {
-  // TODO
+  private readonly steps: Array<Abstract.Action>;
+  private readonly parameterName?: string;
+  private readonly props: Props;
+
   constructor(source: Abstract.Procedure, propsInScope: Props) {
-    // TODO
+    this.steps = source.steps;
+    this.parameterName = source.parameterName;
+    this.props = propsInScope;
   }
 
   handleEvent(value: unknown): void {
-    // TODO
+    let stepsProps = this.props;
+
+    if (this.parameterName) {
+      const parameterField = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value,
+          },
+        },
+        this.props,
+      );
+
+      stepsProps = new StoredProps(
+        {
+          [this.parameterName]: parameterField,
+        },
+        this.props,
+      );
+    }
+
+    this.steps.forEach((step) => {
+      const action = new Action(step, stepsProps);
+      action.handleEvent();
+    });
   }
 }
 
@@ -485,7 +515,6 @@ class Exception implements Subscriber {
 
 class Call implements Subscriber {
   // TODO
-  // Finish RawValue first
   constructor(source: Abstract.Call, propsInScope: Props) {
     // TODO
   }
