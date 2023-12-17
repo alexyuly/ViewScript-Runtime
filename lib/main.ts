@@ -505,7 +505,7 @@ class Procedure implements Subscriber<Field | undefined> {
   }
 }
 
-class Exception implements Subscriber {
+class Exception implements Subscriber<void> {
   private readonly condition: Field;
   private readonly steps: Array<Abstract.Action>;
   private readonly props: Props;
@@ -530,8 +530,8 @@ class Exception implements Subscriber {
   }
 }
 
-class Call implements Subscriber {
-  private readonly action: Subscriber;
+class Call implements Subscriber<void> {
+  private readonly action: Subscriber<Field | undefined>;
   private readonly argument?: Field;
 
   constructor(source: Abstract.Call, propsInScope: Props) {
