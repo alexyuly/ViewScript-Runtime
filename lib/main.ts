@@ -11,7 +11,7 @@ interface Valuable {
   getProps(): Props;
 }
 
-class StaticProps implements Props {
+class StoredProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly scopeProps?: Props;
 
@@ -37,8 +37,20 @@ class StaticProps implements Props {
   }
 }
 
+class RawObjectProps implements Props {
+  // TODO
+  constructor(value: object) {
+    // TODO
+  }
+
+  getMember(key: string): Property {
+    // TODO
+    throw new Error(`Prop ${key} not found`);
+  }
+}
+
 export class App {
-  private readonly props = new StaticProps({});
+  private readonly props = new StoredProps({});
   private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
   constructor(source: Abstract.App) {
@@ -161,7 +173,7 @@ class Action implements Subscriber {
 }
 
 class Atom extends Publisher<HTMLElement> {
-  private readonly props = new StaticProps({});
+  private readonly props = new StoredProps({});
 
   constructor(source: Abstract.Atom, scopeProps: Props) {
     super();
@@ -216,7 +228,7 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 class ViewInstance extends Channel<HTMLElement> {
-  private readonly props = new StaticProps({});
+  private readonly props = new StoredProps({});
   private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
   constructor(source: Abstract.ViewInstance, scopeProps: Props) {
@@ -293,7 +305,7 @@ class TaskInstance {
 }
 
 class ModelInstance implements Valuable {
-  private readonly props = new StaticProps({});
+  private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, scopeProps: Props) {
     // TODO: ViewScript v0.5
@@ -310,16 +322,16 @@ class RawValue extends Channel implements Valuable {
   constructor(source: Abstract.RawValue, scopeProps: Props) {
     super();
 
-    // TODO Assign this.props based on typeof source.value
-    // Use StaticProps for everything except non-array objects
-    // For arrays we need a need type of props that is resolved dynamically
-
     if (source.value instanceof Array) {
-      // TODO props for array values
+      this.props = new StoredProps({}); // TODO assign to this.props
       const hydratedArray = source.value.map((value) => new RawValue(value, scopeProps));
       this.publish(hydratedArray);
     } else {
-      // TODO props based on typeof source.value
+      if (Abstract.isRawObject(source.value)) {
+        this.props = new RawObjectProps(source.value);
+      } else {
+        this.props = new StoredProps({}); // TODO assign to this.props
+      }
       this.publish(source.value);
     }
   }
@@ -340,7 +352,7 @@ class Invocation extends Channel implements Valuable {
 
   getProps(): Props {
     // TODO
-    return new StaticProps({});
+    return new StoredProps({});
   }
 }
 
@@ -371,7 +383,7 @@ class Implication extends Channel implements Valuable {
   getProps(): Props {
     const conditionalValue = this.condition.getValue();
     const impliedField = conditionalValue ? this.consequence : this.alternative;
-    return impliedField?.getProps() ?? new StaticProps({});
+    return impliedField?.getProps() ?? new StoredProps({});
   }
 }
 
@@ -400,15 +412,32 @@ class Reference extends Channel implements Valuable {
 
 class Procedure implements Subscriber {
   // TODO
+  constructor(source: Abstract.Procedure, scopeProps: Props) {
+    // TODO
+  }
+
+  handleEvent(value: unknown): void {
+    // TODO
+  }
 }
 
 class Exception implements Subscriber {
   // TODO
+  constructor(source: Abstract.Exception, scopeProps: Props) {
+    // TODO
+  }
+
+  handleEvent(value: unknown): void {
+    // TODO
+  }
 }
 
 class Call implements Subscriber {
   // TODO
   // Finish RawValue first
+  constructor(source: Abstract.Call, scopeProps: Props) {
+    // TODO
+  }
 
   handleEvent(value: unknown): void {
     // TODO
