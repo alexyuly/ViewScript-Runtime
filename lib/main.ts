@@ -154,7 +154,7 @@ class Atom extends Publisher<HTMLElement> {
                   contentValue.forEach((field: Field) => {
                     field.connect(handleContentValue);
                   });
-                } else {
+                } else if (!(fieldValue === false || fieldValue === null || fieldValue === undefined)) {
                   content.push(contentValue as Node | string);
                 }
               };
@@ -167,6 +167,8 @@ class Atom extends Publisher<HTMLElement> {
             } else if (fieldValue === false || fieldValue === null || fieldValue === undefined) {
               element.removeAttribute(key);
               element.style.removeProperty(key);
+            } else {
+              element.setAttribute(key, fieldValue as string);
             }
           });
           this.props.addMember(key, field);
