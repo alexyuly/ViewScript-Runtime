@@ -1,11 +1,5 @@
-import type { Abstract } from "./abstract";
-import { isRawObject, isSubscriber, Subscriber, Publisher, Channel } from "./pubsub";
-
-type Component = { kind: string };
-
-export function isComponent(value: unknown): value is Component {
-  return isRawObject(value) && "kind" in value && typeof value.kind === "string";
-}
+import { Abstract } from "./abstract";
+import { Subscriber, Publisher, Channel } from "./pubsub";
 
 type Property = Abstract.View | Abstract.Task | Abstract.Model | Method | Field | Action;
 
@@ -65,7 +59,9 @@ export class App {
           this.props.addMember(key, new Action(value, this.props));
           break;
         default:
-          throw new Error(`App cannot construct inner prop ${key} of invalid kind: ${(value as Component).kind}`);
+          throw new Error(
+            `App cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+          );
       }
     });
 
@@ -86,7 +82,7 @@ export class App {
           return taskInstance;
         }
         default:
-          throw new Error(`App cannot stage a component of invalid kind: ${(component as Component).kind}`);
+          throw new Error(`App cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`);
       }
     });
   }
@@ -138,7 +134,9 @@ class Field extends Channel implements Valuable {
         this.content = new Reference(source.content, scopeProps);
         break;
       default:
-        throw new Error(`Field cannot contain a component of invalid kind: ${(source.content as Component).kind}`);
+        throw new Error(
+          `Field cannot contain a component of invalid kind: ${(source.content as Abstract.Component).kind}`,
+        );
     }
 
     this.content.connect(this);
@@ -164,7 +162,9 @@ class Action implements Subscriber {
         this.target = new Call(source.target, scopeProps);
         break;
       default:
-        throw new Error(`Action cannot target a component of invalid kind: ${(source.target as Component).kind}`);
+        throw new Error(
+          `Action cannot target a component of invalid kind: ${(source.target as Abstract.Component).kind}`,
+        );
     }
   }
 
@@ -218,7 +218,9 @@ class Atom extends Publisher<HTMLElement> {
           break;
         }
         default:
-          throw new Error(`Atom cannot construct outer prop ${key} of invalid kind: ${(value as Component).kind}`);
+          throw new Error(
+            `Atom cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+          );
       }
     });
 
@@ -226,16 +228,16 @@ class Atom extends Publisher<HTMLElement> {
   }
 }
 
-class ViewInstance extends Publisher<HTMLElement> {
+class ViewInstance extends Channel<HTMLElement> {
   private readonly props = new StaticProps({});
   private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
   constructor(source: Abstract.ViewInstance, scopeProps: Props) {
     super();
 
-    const view = isComponent(source.view) ? source.view : scopeProps.getMember(source.view);
+    const view = Abstract.isComponent(source.view) ? source.view : scopeProps.getMember(source.view);
 
-    if (!(isComponent(view) && view.kind === "view")) {
+    if (!(Abstract.isComponent(view) && view.kind === "view")) {
       throw new Error(`Cannot construct invalid view: ${JSON.stringify(source.view)}`);
     }
 
@@ -249,7 +251,7 @@ class ViewInstance extends Publisher<HTMLElement> {
           break;
         default:
           throw new Error(
-            `ViewInstance cannot construct outer prop ${key} of invalid kind: ${(value as Component).kind}`,
+            `ViewInstance cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
           );
       }
     });
@@ -267,7 +269,7 @@ class ViewInstance extends Publisher<HTMLElement> {
           break;
         default:
           throw new Error(
-            `ViewInstance cannot construct inner prop ${key} of invalid kind: ${(value as Component).kind}`,
+            `ViewInstance cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
           );
       }
     });
@@ -276,12 +278,12 @@ class ViewInstance extends Publisher<HTMLElement> {
       switch (component.kind) {
         case "atom": {
           const atom = new Atom(component, this.props);
-          atom.connect(window.document.body.append);
+          atom.connect(this);
           return atom;
         }
         case "viewInstance": {
           const viewInstance = new ViewInstance(component, this.props);
-          viewInstance.connect(window.document.body.append);
+          viewInstance.connect(this);
           return viewInstance;
         }
         case "taskInstance": {
@@ -289,7 +291,9 @@ class ViewInstance extends Publisher<HTMLElement> {
           return taskInstance;
         }
         default:
-          throw new Error(`ViewInstance cannot stage a component of invalid kind: ${(component as Component).kind}`);
+          throw new Error(
+            `ViewInstance cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`,
+          );
       }
     });
   }
@@ -298,5 +302,23 @@ class ViewInstance extends Publisher<HTMLElement> {
 class TaskInstance {
   constructor(source: Abstract.TaskInstance, scopeProps: Props) {
     // TODO: ViewScript v0.5
+  }
+}
+
+class ModelInstance {
+  constructor(source: Abstract.ModelInstance, scopeProps: Props) {
+    // TODO: ViewScript v0.5
+  }
+}
+
+class RawValue extends Channel {
+  constructor(source: Abstract.RawValue, scopeProps: Props) {
+    super();
+
+    if (source.value instanceof Array) {
+      // TODO
+    } else {
+      this.publish(source.value);
+    }
   }
 }

@@ -1,4 +1,6 @@
 export namespace Abstract {
+  // Root:
+
   export type App = {
     kind: "app";
     innerProps: Record<string, View | Task | Model | Method | Field | Action>;
@@ -113,4 +115,18 @@ export namespace Abstract {
     actionName: string;
     argument?: Field;
   };
+
+  // Base types:
+
+  export type Component = {
+    kind: string;
+  };
+
+  export function isComponent(value: unknown): value is Component {
+    return isRawObject(value) && "kind" in value && typeof value.kind === "string";
+  }
+
+  export function isRawObject(value: unknown): value is object {
+    return typeof value === "object" && value !== null && !(value instanceof Array);
+  }
 }
