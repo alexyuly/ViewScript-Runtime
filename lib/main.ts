@@ -174,7 +174,7 @@ class Atom extends Publisher<HTMLElement> {
         }
         case "action": {
           const action = new Action(value, propsInScope);
-          element.addEventListener(key, (event) => {
+          element.addEventListener(key.toLowerCase(), (event) => {
             const abstractArgument: Abstract.Field = {
               kind: "field",
               content: {
@@ -306,12 +306,13 @@ class RawValue extends Channel implements Valuable {
       });
 
       this.props = new StoredProps({
-        push: (value) => {
-          const nextValue = [...hydratedArray, value];
+        push: (field) => {
+          const nextValue = [...hydratedArray, field];
           this.publish(nextValue);
         },
-        setTo: (value) => {
-          this.publish(value);
+        set: (field) => {
+          const nextValue = field?.getValue();
+          this.publish(nextValue);
         },
       });
 
@@ -321,8 +322,9 @@ class RawValue extends Channel implements Valuable {
         this.props = new RawObjectProps(source.value);
       } else {
         const props = new StoredProps({
-          setTo: (value) => {
-            this.publish(value);
+          set: (field) => {
+            const nextValue = field?.getValue();
+            this.publish(nextValue);
           },
         });
 
