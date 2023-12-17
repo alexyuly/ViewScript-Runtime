@@ -8,7 +8,7 @@ type Property =
   | Abstract.Method
   | Field
   | Action
-  | ((argument: Field) => unknown);
+  | ((argument?: Field) => unknown);
 
 interface Props {
   getMember(key: string): Property;
@@ -170,7 +170,7 @@ class Field extends Channel implements Valuable {
   }
 }
 
-class Action implements Subscriber {
+class Action implements Subscriber<Field | undefined> {
   private readonly target: Procedure | Exception | Call;
 
   constructor(source: Abstract.Action, propsInScope: Props) {
@@ -191,8 +191,8 @@ class Action implements Subscriber {
     }
   }
 
-  handleEvent(value?: unknown) {
-    return this.target.handleEvent(value);
+  handleEvent(argument?: Field) {
+    return this.target.handleEvent(argument);
   }
 }
 
@@ -236,7 +236,17 @@ class Atom extends Publisher<HTMLElement> {
         }
         case "action": {
           const action = new Action(value, propsInScope);
-          element.addEventListener(key, action);
+          element.addEventListener(key, (event) => {
+            const abstractArgument: Abstract.Field = {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: event,
+              },
+            };
+            const argument = new Field(abstractArgument, new StoredProps({}));
+            action.handleEvent(argument);
+          });
           this.props.addMember(key, action);
           break;
         }
@@ -434,7 +444,8 @@ class Implication extends Channel implements Valuable {
   getProps(): Props {
     const conditionalValue = this.condition.getValue();
     const impliedField = conditionalValue ? this.consequence : this.alternative;
-    return impliedField?.getProps() ?? new StoredProps({});
+    const impliedProps = impliedField?.getProps() ?? new StoredProps({});
+    return impliedProps;
   }
 }
 
@@ -452,7 +463,7 @@ class Reference extends Channel implements Valuable {
       field.connect(this);
       this.field = field;
     } else {
-      throw new Error(`Reference cannot point to a component which is not a field: ${source.fieldName}`);
+      throw new Error(`Cannot reference a component which is not a field: ${source.fieldName}`);
     }
   }
 
@@ -461,7 +472,7 @@ class Reference extends Channel implements Valuable {
   }
 }
 
-class Procedure implements Subscriber {
+class Procedure implements Subscriber<Field | undefined> {
   private readonly steps: Array<Abstract.Action>;
   private readonly parameterName?: string;
   private readonly props: Props;
@@ -472,24 +483,13 @@ class Procedure implements Subscriber {
     this.props = propsInScope;
   }
 
-  handleEvent(value: unknown): void {
+  handleEvent(argument?: Field): void {
     let stepsProps = this.props;
 
-    if (this.parameterName) {
-      const parameterField = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value,
-          },
-        },
-        new StoredProps({}),
-      );
-
+    if (this.parameterName && argument) {
       stepsProps = new StoredProps(
         {
-          [this.parameterName]: parameterField,
+          [this.parameterName]: argument,
         },
         this.props,
       );
@@ -497,8 +497,8 @@ class Procedure implements Subscriber {
 
     for (const step of this.steps) {
       const action = new Action(step, stepsProps);
-      const conditionalValue = action.handleEvent();
-      if (conditionalValue) {
+      const caughtException = action.handleEvent();
+      if (caughtException) {
         break;
       }
     }
@@ -531,12 +531,30 @@ class Exception implements Subscriber {
 }
 
 class Call implements Subscriber {
-  // TODO
+  private readonly action: Subscriber;
+  private readonly argument?: Field;
+
   constructor(source: Abstract.Call, propsInScope: Props) {
-    // TODO
+    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
+
+    const action = context.getMember(source.actionName);
+
+    if (action instanceof Action) {
+      this.action = action;
+    } else if (typeof action === "function") {
+      this.action = {
+        handleEvent: action,
+      };
+    } else {
+      throw new Error(`Cannot call a component which is not an action or function: ${source.actionName}`);
+    }
+
+    if (source.argument) {
+      this.argument = new Field(source.argument, propsInScope);
+    }
   }
 
-  handleEvent(value: unknown): void {
-    // TODO
+  handleEvent(): void {
+    this.action.handleEvent(this.argument);
   }
 }
