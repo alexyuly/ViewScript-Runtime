@@ -1,7 +1,12 @@
 import type { Abstract } from "./abstract";
-import { isSubscriber, Subscriber, Publisher, Channel } from "./pubsub";
+import { isRawObject, isSubscriber, Subscriber, Publisher, Channel } from "./pubsub";
 
 type Component = { kind: string };
+
+export function isComponent(value: unknown): value is Component {
+  return isRawObject(value) && "kind" in value && typeof value.kind === "string";
+}
+
 type Property = Abstract.View | Abstract.Task | Abstract.Model | Method | Field | Action;
 
 interface Props {
@@ -60,7 +65,7 @@ export class App {
           this.props.addMember(key, new Action(value, this.props));
           break;
         default:
-          throw new Error(`App cannot construct prop ${key} of invalid kind: ${(value as Component).kind}`);
+          throw new Error(`App cannot construct inner prop ${key} of invalid kind: ${(value as Component).kind}`);
       }
     });
 
@@ -180,6 +185,29 @@ class Atom extends Publisher<HTMLElement> {
       switch (value.kind) {
         case "field": {
           const field = new Field(value, scopeProps);
+          field.connect((fieldValue) => {
+            if (key === "content") {
+              const content: Array<Node | string> = [];
+              const handleContentValue = (contentValue: unknown) => {
+                if (contentValue instanceof Array) {
+                  contentValue.forEach((field: Field) => {
+                    field.connect(handleContentValue);
+                  });
+                } else {
+                  content.push(contentValue as Node | string);
+                }
+              };
+              handleContentValue(fieldValue);
+              element.replaceChildren(...content);
+            } else if (CSS.supports(key, fieldValue as string)) {
+              element.style.setProperty(key, fieldValue as string);
+            } else if (fieldValue === true) {
+              element.setAttribute(key, key);
+            } else if (fieldValue === false || fieldValue === null || fieldValue === undefined) {
+              element.removeAttribute(key);
+              element.style.removeProperty(key);
+            }
+          });
           this.props.addMember(key, field);
           break;
         }
@@ -190,16 +218,80 @@ class Atom extends Publisher<HTMLElement> {
           break;
         }
         default:
-          throw new Error(`Atom cannot construct prop ${key} of invalid kind: ${(value as Component).kind}`);
+          throw new Error(`Atom cannot construct outer prop ${key} of invalid kind: ${(value as Component).kind}`);
       }
     });
+
+    this.publish(element);
   }
 }
 
 class ViewInstance extends Publisher<HTMLElement> {
+  private readonly props = new StaticProps({});
+  private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
+
   constructor(source: Abstract.ViewInstance, scopeProps: Props) {
     super();
-    // TODO
+
+    const view = isComponent(source.view) ? source.view : scopeProps.getMember(source.view);
+
+    if (!(isComponent(view) && view.kind === "view")) {
+      throw new Error(`Cannot construct invalid view: ${JSON.stringify(source.view)}`);
+    }
+
+    Object.entries(source.outerProps).forEach(([key, value]) => {
+      switch (value.kind) {
+        case "field":
+          this.props.addMember(key, new Field(value, scopeProps));
+          break;
+        case "action":
+          this.props.addMember(key, new Action(value, scopeProps));
+          break;
+        default:
+          throw new Error(
+            `ViewInstance cannot construct outer prop ${key} of invalid kind: ${(value as Component).kind}`,
+          );
+      }
+    });
+
+    Object.entries(view.innerProps).forEach(([key, value]) => {
+      switch (value.kind) {
+        case "method":
+          this.props.addMember(key, new Method(value, this.props));
+          break;
+        case "field":
+          this.props.addMember(key, new Field(value, this.props));
+          break;
+        case "action":
+          this.props.addMember(key, new Action(value, this.props));
+          break;
+        default:
+          throw new Error(
+            `ViewInstance cannot construct inner prop ${key} of invalid kind: ${(value as Component).kind}`,
+          );
+      }
+    });
+
+    this.stage = view.stage.map((component) => {
+      switch (component.kind) {
+        case "atom": {
+          const atom = new Atom(component, this.props);
+          atom.connect(window.document.body.append);
+          return atom;
+        }
+        case "viewInstance": {
+          const viewInstance = new ViewInstance(component, this.props);
+          viewInstance.connect(window.document.body.append);
+          return viewInstance;
+        }
+        case "taskInstance": {
+          const taskInstance = new TaskInstance(component, this.props);
+          return taskInstance;
+        }
+        default:
+          throw new Error(`ViewInstance cannot stage a component of invalid kind: ${(component as Component).kind}`);
+      }
+    });
   }
 }
 
