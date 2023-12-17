@@ -33,12 +33,16 @@ export class App {
       switch (component.kind) {
         case "atom": {
           const atom = new Atom(component, this.props);
-          atom.connect(window.document.body.append);
+          atom.connect((htmlElement) => {
+            window.document.body.append(htmlElement);
+          });
           return atom;
         }
         case "viewInstance": {
           const viewInstance = new ViewInstance(component, this.props);
-          viewInstance.connect(window.document.body.append);
+          viewInstance.connect((htmlElement) => {
+            window.document.body.append(htmlElement);
+          });
           return viewInstance;
         }
         case "taskInstance": {

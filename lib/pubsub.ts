@@ -3,24 +3,23 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  private eventHandlers: Array<Subscriber<T>["handleEvent"]> = [];
+  private subscribers: Array<Subscriber<T>> = [];
   private value?: T;
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
-    const eventHandler = typeof target === "function" ? target : target.handleEvent;
+    const subscriber = typeof target === "function" ? { handleEvent: target } : target;
 
     if (this.value !== undefined) {
-      eventHandler(this.value);
+      subscriber.handleEvent(this.value);
     }
 
-    this.eventHandlers.push(eventHandler);
+    this.subscribers.push(subscriber);
   }
 
   disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
-    const handleEvent = typeof target === "function" ? target : target.handleEvent;
-
-    this.eventHandlers = this.eventHandlers.filter((eventHandler) => {
-      return eventHandler !== handleEvent;
+    this.subscribers = this.subscribers.filter((subscriber) => {
+      const compareTo = typeof target === "function" ? subscriber.handleEvent : subscriber;
+      return compareTo !== target;
     });
   }
 
@@ -31,8 +30,8 @@ export abstract class Publisher<T = unknown> {
   protected publish(value: T) {
     this.value = value;
 
-    this.eventHandlers.forEach((handleEvent) => {
-      handleEvent(value);
+    this.subscribers.forEach((subscriber) => {
+      subscriber.handleEvent(value);
     });
   }
 }
