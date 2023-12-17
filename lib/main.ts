@@ -1,7 +1,7 @@
 import { Abstract } from "./abstract";
 import { Subscriber, Publisher, Channel } from "./pubsub";
 
-type Property = Abstract.View | Abstract.Task | Abstract.Model | Method | Field | Action;
+type Property = Abstract.View | Abstract.Task | Abstract.Model | Abstract.Method | Field | Action;
 
 interface Props {
   getMember(key: string): Property;
@@ -47,10 +47,8 @@ export class App {
         case "view":
         case "task":
         case "model":
-          this.props.addMember(key, value);
-          break;
         case "method":
-          this.props.addMember(key, new Method(value, this.props));
+          this.props.addMember(key, value);
           break;
         case "field":
           this.props.addMember(key, new Field(value, this.props));
@@ -85,29 +83,6 @@ export class App {
           throw new Error(`App cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`);
       }
     });
-  }
-}
-
-class Method {
-  private readonly source: Abstract.Method;
-  private readonly props: Props;
-
-  constructor(source: Abstract.Method, props: Props) {
-    this.source = source;
-    this.props = props;
-  }
-
-  invoke(argument?: Field): Field {
-    const invocationProps = new StaticProps(
-      argument
-        ? {
-            [this.source.parameterName ?? "it"]: argument,
-          }
-        : {},
-      this.props,
-    );
-    const invocation = new Field(this.source.result, invocationProps);
-    return invocation;
   }
 }
 
@@ -271,7 +246,7 @@ class ViewInstance extends Channel<HTMLElement> {
     Object.entries(view.innerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "method":
-          this.props.addMember(key, new Method(value, this.props));
+          this.props.addMember(key, value);
           break;
         case "field":
           this.props.addMember(key, new Field(value, this.props));
@@ -354,16 +329,73 @@ class RawValue extends Channel implements Valuable {
   }
 }
 
-class Invocation extends Publisher {
+class Invocation extends Channel implements Valuable {
   // TODO
+  // Finish RawValue first
+  constructor(source: Abstract.Invocation, scopeProps: Props) {
+    super();
+
+    // TODO
+  }
+
+  getProps(): Props {
+    // TODO
+    return new StaticProps({});
+  }
 }
 
-class Implication extends Publisher {
-  // TODO
+class Implication extends Channel implements Valuable {
+  private readonly condition: Field;
+  private readonly consequence: Field;
+  private readonly alternative?: Field;
+
+  constructor(source: Abstract.Implication, scopeProps: Props) {
+    super();
+
+    this.consequence = new Field(source.consequence, scopeProps);
+    this.consequence.connect(this);
+
+    if (source.alternative) {
+      this.alternative = new Field(source.alternative, scopeProps);
+      this.alternative.connect(this);
+    }
+
+    this.condition = new Field(source.condition, scopeProps);
+    this.condition.connect((conditionalValue) => {
+      const impliedField = conditionalValue ? this.consequence : this.alternative;
+      const impliedValue = impliedField?.getValue();
+      this.publish(impliedValue);
+    });
+  }
+
+  getProps(): Props {
+    const conditionalValue = this.condition.getValue();
+    const impliedField = conditionalValue ? this.consequence : this.alternative;
+    return impliedField?.getProps() ?? new StaticProps({});
+  }
 }
 
-class Reference extends Publisher {
-  // TODO
+class Reference extends Channel implements Valuable {
+  private readonly field: Field;
+
+  constructor(source: Abstract.Reference, scopeProps: Props) {
+    super();
+
+    const context = source.context ? new Field(source.context, scopeProps).getProps() : scopeProps;
+
+    const field = context.getMember(source.fieldName);
+
+    if (field instanceof Field) {
+      field.connect(this);
+      this.field = field;
+    } else {
+      throw new Error(`Reference cannot point to a component which is not a field: ${source.fieldName}`);
+    }
+  }
+
+  getProps(): Props {
+    return this.field.getProps();
+  }
 }
 
 class Procedure implements Subscriber {
@@ -376,4 +408,9 @@ class Exception implements Subscriber {
 
 class Call implements Subscriber {
   // TODO
+  // Finish RawValue first
+
+  handleEvent(value: unknown): void {
+    // TODO
+  }
 }
