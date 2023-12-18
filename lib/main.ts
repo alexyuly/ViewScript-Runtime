@@ -369,20 +369,30 @@ class Implication extends Channel implements Valuable {
   constructor(source: Abstract.Implication, propsInScope: Props) {
     super();
 
-    this.consequence = new Field(source.consequence, propsInScope);
-    this.consequence.connect(this);
-
-    if (source.alternative) {
-      this.alternative = new Field(source.alternative, propsInScope);
-      this.alternative.connect(this);
-    }
-
     this.condition = new Field(source.condition, propsInScope);
     this.condition.connect((conditionalValue) => {
       const impliedField = conditionalValue ? this.consequence : this.alternative;
       const impliedValue = impliedField?.getValue();
       this.publish(impliedValue);
     });
+
+    this.consequence = new Field(source.consequence, propsInScope);
+    this.consequence.connect((impliedValue) => {
+      const conditionalValue = this.condition.getValue();
+      if (conditionalValue) {
+        this.publish(impliedValue);
+      }
+    });
+
+    if (source.alternative) {
+      this.alternative = new Field(source.alternative, propsInScope);
+      this.alternative.connect((impliedValue) => {
+        const conditionalValue = this.condition.getValue();
+        if (!conditionalValue) {
+          this.publish(impliedValue);
+        }
+      });
+    }
   }
 
   getProps(): Props {
