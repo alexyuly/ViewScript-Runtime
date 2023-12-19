@@ -34,7 +34,7 @@ export namespace Abstract {
 
   export type Field = {
     kind: "field";
-    content: ModelInstance | RawValue | Invocation | Implication | Reference;
+    content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
   };
 
   export type Action = {

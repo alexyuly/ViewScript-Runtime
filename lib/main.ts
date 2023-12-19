@@ -59,12 +59,24 @@ export class App {
 // Properties:
 
 class Field extends Channel implements Valuable {
-  private readonly content: ModelInstance | RawValue | Invocation | Implication | Reference;
+  private readonly content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
 
   constructor(source: Abstract.Field, propsInScope: Props) {
     super();
 
     switch (source.content.kind) {
+      case "atom": {
+        const atom = new Atom(source.content, propsInScope);
+        atom.connect(this);
+        this.content = atom;
+        break;
+      }
+      case "viewInstance": {
+        const viewInstance = new ViewInstance(source.content, propsInScope);
+        viewInstance.connect(this);
+        this.content = viewInstance;
+        break;
+      }
       case "modelInstance": {
         const modelInstance = new ModelInstance(source.content, propsInScope);
         this.content = modelInstance;
@@ -102,6 +114,10 @@ class Field extends Channel implements Valuable {
   }
 
   getProps(): Props {
+    if (this.content instanceof Atom || this.content instanceof ViewInstance) {
+      return new StoredProps({});
+    }
+
     return this.content.getProps();
   }
 }
