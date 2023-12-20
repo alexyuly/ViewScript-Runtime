@@ -316,23 +316,24 @@ class RawValue extends Channel implements Valuable {
     super();
 
     if (source.value instanceof Array) {
-      const hydratedArray: Array<Field> = source.value.map((value) => {
-        if (!(Abstract.isComponent(value) && value.kind === "field")) {
-          throw new Error(`Cannot hydrate an array element which is not an abstract field: ${JSON.stringify(value)}`);
-        }
-        const hydratedField = new Field(value as Abstract.Field, closure);
-        return hydratedField;
-      });
-
       this.props = new StoredProps({
         push: (field) => {
-          const nextValue = [...hydratedArray, field];
+          const currentValue = this.getValue();
+          const nextValue = [...(currentValue instanceof Array ? currentValue : []), field];
           this.publish(nextValue);
         },
         set: (field) => {
           const nextValue = field?.getValue();
           this.publish(nextValue);
         },
+      });
+
+      const hydratedArray: Array<Field> = source.value.map((value) => {
+        if (!(Abstract.isComponent(value) && value.kind === "field")) {
+          throw new Error(`Cannot hydrate an array element which is not an abstract field: ${JSON.stringify(value)}`);
+        }
+        const hydratedField = new Field(value as Abstract.Field, closure);
+        return hydratedField;
       });
 
       this.publish(hydratedArray);
@@ -599,9 +600,7 @@ class RawObjectProps implements Props {
           : memberValue.bind(this.value);
 
       const memberFunction = (argument?: Field) => {
-        console.log(`Called memberFunction ${key} with argument:`, argument?.getValue());
         const result = callableMemberValue(argument?.getValue());
-        console.log(`Result of memberFunction ${key} is:`, result);
         return result;
       };
 
