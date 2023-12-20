@@ -192,7 +192,8 @@ class Atom extends Publisher<HTMLElement> {
         }
         case "action": {
           const action = new Action(value, closure);
-          element.addEventListener(key.toLowerCase(), (event) => {
+          const eventType = key.toLowerCase();
+          element.addEventListener(eventType, (event) => {
             const abstractArgument: Abstract.Field = {
               kind: "field",
               content: {
@@ -393,6 +394,8 @@ class Invocation extends Channel implements Valuable {
         },
         new StoredProps({}),
       );
+
+      this.result.connect(this);
     } else {
       throw new Error(`Cannot invoke a component which is not a method or function: ${source.methodName}`);
     }
