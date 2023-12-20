@@ -77,7 +77,7 @@ export namespace Abstract {
 
   export type Invocation = {
     kind: "invocation";
-    context?: Field;
+    scope?: Field;
     methodName: string;
     argument?: Field;
   };
@@ -91,7 +91,7 @@ export namespace Abstract {
 
   export type Reference = {
     kind: "reference";
-    context?: Field;
+    scope?: Field;
     fieldName: string;
   };
 
@@ -111,7 +111,7 @@ export namespace Abstract {
 
   export type Call = {
     kind: "call";
-    context?: Field;
+    scope?: Field;
     actionName: string;
     argument?: Field;
   };

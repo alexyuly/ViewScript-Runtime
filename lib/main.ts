@@ -61,47 +61,47 @@ export class App {
 class Field extends Channel implements Valuable {
   private readonly content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
 
-  constructor(source: Abstract.Field, propsInScope: Props) {
+  constructor(source: Abstract.Field, closure: Props) {
     super();
 
     switch (source.content.kind) {
       case "atom": {
-        const atom = new Atom(source.content, propsInScope);
+        const atom = new Atom(source.content, closure);
         atom.connect(this);
         this.content = atom;
         break;
       }
       case "viewInstance": {
-        const viewInstance = new ViewInstance(source.content, propsInScope);
+        const viewInstance = new ViewInstance(source.content, closure);
         viewInstance.connect(this);
         this.content = viewInstance;
         break;
       }
       case "modelInstance": {
-        const modelInstance = new ModelInstance(source.content, propsInScope);
+        const modelInstance = new ModelInstance(source.content, closure);
         this.content = modelInstance;
         break;
       }
       case "rawValue": {
-        const rawValue = new RawValue(source.content, propsInScope);
+        const rawValue = new RawValue(source.content, closure);
         rawValue.connect(this);
         this.content = rawValue;
         break;
       }
       case "invocation": {
-        const invocation = new Invocation(source.content, propsInScope);
+        const invocation = new Invocation(source.content, closure);
         invocation.connect(this);
         this.content = invocation;
         break;
       }
       case "implication": {
-        const implication = new Implication(source.content, propsInScope);
+        const implication = new Implication(source.content, closure);
         implication.connect(this);
         this.content = implication;
         break;
       }
       case "reference": {
-        const reference = new Reference(source.content, propsInScope);
+        const reference = new Reference(source.content, closure);
         reference.connect(this);
         this.content = reference;
         break;
@@ -125,16 +125,16 @@ class Field extends Channel implements Valuable {
 class Action implements Subscriber<Field | undefined> {
   private readonly target: Procedure | Exception | Call;
 
-  constructor(source: Abstract.Action, propsInScope: Props) {
+  constructor(source: Abstract.Action, closure: Props) {
     switch (source.target.kind) {
       case "procedure":
-        this.target = new Procedure(source.target, propsInScope);
+        this.target = new Procedure(source.target, closure);
         break;
       case "exception":
-        this.target = new Exception(source.target, propsInScope);
+        this.target = new Exception(source.target, closure);
         break;
       case "call":
-        this.target = new Call(source.target, propsInScope);
+        this.target = new Call(source.target, closure);
         break;
       default:
         throw new Error(
@@ -153,19 +153,16 @@ class Action implements Subscriber<Field | undefined> {
 class Atom extends Publisher<HTMLElement> {
   private readonly props = new StoredProps({});
 
-  constructor(source: Abstract.Atom, propsInScope: Props) {
+  constructor(source: Abstract.Atom, closure: Props) {
     super();
-    console.log("Atom", source);
 
     const element = window.document.createElement(source.tagName);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
-      console.log("key", key, "value", value);
       switch (value.kind) {
         case "field": {
-          const field = new Field(value, propsInScope);
+          const field = new Field(value, closure);
           field.connect((fieldValue) => {
-            console.log("Atom got fieldValue for key", key, fieldValue);
             if (key === "content") {
               const content: Array<Node | string> = [];
               const handleContentValue = (contentValue: unknown) => {
@@ -194,7 +191,7 @@ class Atom extends Publisher<HTMLElement> {
           break;
         }
         case "action": {
-          const action = new Action(value, propsInScope);
+          const action = new Action(value, closure);
           element.addEventListener(key.toLowerCase(), (event) => {
             const abstractArgument: Abstract.Field = {
               kind: "field",
@@ -224,10 +221,10 @@ class ViewInstance extends Channel<HTMLElement> {
   private readonly props = new StoredProps({});
   private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
 
-  constructor(source: Abstract.ViewInstance, propsInScope: Props) {
+  constructor(source: Abstract.ViewInstance, closure: Props) {
     super();
 
-    const view = Abstract.isComponent(source.view) ? source.view : propsInScope.getMember(source.view);
+    const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
     if (!(Abstract.isComponent(view) && view.kind === "view")) {
       throw new Error(`Cannot construct invalid view: ${JSON.stringify(source.view)}`);
@@ -236,10 +233,10 @@ class ViewInstance extends Channel<HTMLElement> {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
-          this.props.addMember(key, new Field(value, propsInScope));
+          this.props.addMember(key, new Field(value, closure));
           break;
         case "action":
-          this.props.addMember(key, new Action(value, propsInScope));
+          this.props.addMember(key, new Action(value, closure));
           break;
         default:
           throw new Error(
@@ -292,7 +289,7 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class TaskInstance {
-  constructor(source: Abstract.TaskInstance, propsInScope: Props) {
+  constructor(source: Abstract.TaskInstance, closure: Props) {
     // TODO: ViewScript v0.5
   }
 }
@@ -302,7 +299,7 @@ class TaskInstance {
 class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
-  constructor(source: Abstract.ModelInstance, propsInScope: Props) {
+  constructor(source: Abstract.ModelInstance, closure: Props) {
     // TODO: ViewScript v0.5
   }
 
@@ -314,7 +311,7 @@ class ModelInstance implements Valuable {
 class RawValue extends Channel implements Valuable {
   private readonly props: Props;
 
-  constructor(source: Abstract.RawValue, propsInScope: Props) {
+  constructor(source: Abstract.RawValue, closure: Props) {
     super();
 
     if (source.value instanceof Array) {
@@ -322,7 +319,7 @@ class RawValue extends Channel implements Valuable {
         if (!(Abstract.isComponent(value) && value.kind === "field")) {
           throw new Error(`Cannot hydrate an array element which is not an abstract field: ${JSON.stringify(value)}`);
         }
-        const hydratedField = new Field(value as Abstract.Field, propsInScope);
+        const hydratedField = new Field(value as Abstract.Field, closure);
         return hydratedField;
       });
 
@@ -372,20 +369,18 @@ class Invocation extends Channel implements Valuable {
   private readonly result: Field;
   private readonly argument?: Field;
 
-  constructor(source: Abstract.Invocation, propsInScope: Props) {
+  constructor(source: Abstract.Invocation, closure: Props) {
     super();
-    console.log("Invocation", source);
 
-    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
-
-    const method = context.getMember(source.methodName);
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const method = scope.getMember(source.methodName);
 
     if (Abstract.isComponent(method) && method.kind === "method") {
       // TODO: ViewScript v0.5
       throw new Error(`Invocation of abstract method is not yet supported: ${source.methodName}`);
     } else if (typeof method === "function") {
       if (source.argument) {
-        this.argument = new Field(source.argument, propsInScope);
+        this.argument = new Field(source.argument, closure);
       }
 
       this.result = new Field(
@@ -413,17 +408,17 @@ class Implication extends Channel implements Valuable {
   private readonly consequence: Field;
   private readonly alternative?: Field;
 
-  constructor(source: Abstract.Implication, propsInScope: Props) {
+  constructor(source: Abstract.Implication, closure: Props) {
     super();
 
-    this.condition = new Field(source.condition, propsInScope);
+    this.condition = new Field(source.condition, closure);
     this.condition.connect((conditionalValue) => {
       const impliedField = conditionalValue ? this.consequence : this.alternative;
       const impliedValue = impliedField?.getValue();
       this.publish(impliedValue);
     });
 
-    this.consequence = new Field(source.consequence, propsInScope);
+    this.consequence = new Field(source.consequence, closure);
     this.consequence.connect((impliedValue) => {
       const conditionalValue = this.condition.getValue();
       if (conditionalValue) {
@@ -432,7 +427,7 @@ class Implication extends Channel implements Valuable {
     });
 
     if (source.alternative) {
-      this.alternative = new Field(source.alternative, propsInScope);
+      this.alternative = new Field(source.alternative, closure);
       this.alternative.connect((impliedValue) => {
         const conditionalValue = this.condition.getValue();
         if (!conditionalValue) {
@@ -453,12 +448,11 @@ class Implication extends Channel implements Valuable {
 class Reference extends Channel implements Valuable {
   private readonly field: Field;
 
-  constructor(source: Abstract.Reference, propsInScope: Props) {
+  constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
-
-    const field = context.getMember(source.fieldName);
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const field = scope.getMember(source.fieldName);
 
     if (field instanceof Field) {
       field.connect(this);
@@ -480,10 +474,10 @@ class Procedure implements Subscriber<Field | undefined> {
   private readonly parameterName?: string;
   private readonly props: Props;
 
-  constructor(source: Abstract.Procedure, propsInScope: Props) {
+  constructor(source: Abstract.Procedure, closure: Props) {
     this.steps = source.steps;
     this.parameterName = source.parameterName;
-    this.props = propsInScope;
+    this.props = closure;
   }
 
   handleEvent(argument?: Field): void {
@@ -501,6 +495,7 @@ class Procedure implements Subscriber<Field | undefined> {
     for (const step of this.steps) {
       const action = new Action(step, stepsProps);
       const caughtException = action.handleEvent();
+
       if (caughtException) {
         break;
       }
@@ -513,10 +508,10 @@ class Exception implements Subscriber<void> {
   private readonly steps: Array<Abstract.Action>;
   private readonly props: Props;
 
-  constructor(source: Abstract.Exception, propsInScope: Props) {
-    this.condition = new Field(source.condition, propsInScope);
+  constructor(source: Abstract.Exception, closure: Props) {
+    this.condition = new Field(source.condition, closure);
     this.steps = source.steps ?? [];
-    this.props = propsInScope;
+    this.props = closure;
   }
 
   handleEvent(): boolean {
@@ -537,10 +532,9 @@ class Call implements Subscriber<void> {
   private readonly action: Subscriber<Field | undefined>;
   private readonly argument?: Field;
 
-  constructor(source: Abstract.Call, propsInScope: Props) {
-    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
-
-    const action = context.getMember(source.actionName);
+  constructor(source: Abstract.Call, closure: Props) {
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const action = scope.getMember(source.actionName);
 
     if (action instanceof Action) {
       this.action = action;
@@ -553,7 +547,7 @@ class Call implements Subscriber<void> {
     }
 
     if (source.argument) {
-      this.argument = new Field(source.argument, propsInScope);
+      this.argument = new Field(source.argument, closure);
     }
   }
 
@@ -581,41 +575,10 @@ type Property =
   | Action
   | ((argument?: Field) => unknown);
 
-class StoredProps implements Props {
-  private readonly properties: Record<string, Property>;
-  private readonly propsInScope?: Props;
-
-  constructor(properties: Record<string, Property>, propsInScope?: Props) {
-    this.properties = properties;
-    this.propsInScope = propsInScope;
-  }
-
-  addMember(key: string, value: Property) {
-    this.properties[key] = value;
-  }
-
-  getMember(key: string): Property {
-    if (key in this.properties) {
-      return this.properties[key];
-    }
-
-    if (this.propsInScope) {
-      return this.propsInScope.getMember(key);
-    }
-
-    if (key === "window") {
-      const windowProps = new RawObjectProps(window);
-      return windowProps.getMember(key);
-    }
-
-    throw new Error(`Prop ${key} not found`);
-  }
-}
-
 class RawObjectProps implements Props {
   private readonly value: any;
 
-  constructor(value: any) {
+  constructor(value: unknown) {
     this.value = value;
   }
 
@@ -627,17 +590,19 @@ class RawObjectProps implements Props {
     const memberValue = this.value[key];
 
     if (typeof memberValue === "function") {
-      const boundMember =
+      const callableMemberValue =
         memberValue.prototype?.constructor === memberValue
-          ? (argument: unknown) => {
-              console.log(argument);
-              return new memberValue(argument);
-            }
+          ? (argument: unknown) => new memberValue(argument)
           : memberValue.bind(this.value);
-      return (argument?: Field) => {
-        const result = boundMember(argument?.getValue());
+
+      const memberFunction = (argument?: Field) => {
+        console.log(`Called memberFunction ${key} with argument:`, argument?.getValue());
+        const result = callableMemberValue(argument?.getValue());
+        console.log(`Result of memberFunction ${key} is:`, result);
         return result;
       };
+
+      return memberFunction;
     }
 
     const abstractField: Abstract.Field = {
@@ -649,6 +614,38 @@ class RawObjectProps implements Props {
     };
 
     const field = new Field(abstractField, new StoredProps({}));
+
     return field;
+  }
+}
+
+class StoredProps implements Props {
+  private readonly properties: Record<string, Property>;
+  private readonly closure?: Props;
+  private static readonly globalScope = new RawObjectProps(window);
+
+  constructor(properties: Record<string, Property>, closure?: Props) {
+    this.properties = properties;
+    this.closure = closure;
+  }
+
+  addMember(key: string, value: Property) {
+    this.properties[key] = value;
+  }
+
+  getMember(key: string): Property {
+    if (key in this.properties) {
+      return this.properties[key];
+    }
+
+    if (this.closure) {
+      return this.closure.getMember(key);
+    }
+
+    if (key === "window") {
+      return StoredProps.globalScope.getMember(key);
+    }
+
+    throw new Error(`Prop ${key} not found`);
   }
 }
