@@ -1,347 +1,132 @@
-// Data Sources:
+export namespace Abstract {
+  // Root:
 
-/**
- * An abstract source of data feeding into a subscriber.
- */
-export type DataSource =
-  | Value
-  | FieldReference
-  | MethodReference
-  | ConditionalData;
+  export type App = {
+    kind: "app";
+    innerProps: Record<string, View | Task | Model | Method | Field | Action>;
+    stage: Array<Atom | ViewInstance | TaskInstance>;
+  };
 
-/**
- * An anonymous source of data feeding into a subscriber.
- */
-export type Value = Primitive | Structure | Element | Array<DataSource>;
+  // Properties:
 
-/**
- * A primitive value.
- */
-export type Primitive = null | boolean | number | string;
+  export type View = {
+    kind: "view";
+    innerProps: Record<string, Method | Field | Action>;
+    stage: Array<TaskInstance | ViewInstance | Atom>;
+  };
 
-/**
- * A node in the abstract syntax tree.
- */
-export type Node<Kind extends string> = {
-  kind: Kind;
-};
+  export type Task = {
+    kind: "task";
+    innerProps: Record<string, Method | Field | Action>;
+    stage: Array<TaskInstance>;
+  };
 
-/**
- * A mapping of keys to data sources.
- */
-export type Structure = Node<"structure"> & {
-  data: Record<string, DataSource>;
-};
+  export type Model = {
+    kind: "model";
+    innerProps: Record<string, Method | Field | Action>;
+  };
 
-/**
- * A binding to an HTML element.
- * It is rendered using either a view or an HTML tag name.
- */
-export type Element = Node<"element"> & {
-  viewKey: string;
-  properties: Record<string, DataSource | SideEffect>;
-};
+  export type Method = {
+    kind: "method";
+    result: Field;
+    parameterName?: string;
+  };
 
-/**
- * A reference to a field, or a data source within its structure.
- */
-export type FieldReference = Node<"fieldReference"> & {
-  pathToFieldKey: Array<string>;
-};
+  export type Field = {
+    kind: "field";
+    content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
+  };
 
-/**
- * An identifiable container for values.
- * It is validated by a model.
- * It may be initialized to a value.
- */
-export type Field<
-  ModelKey extends string = string,
-  FieldValue extends Value = Value,
-> = Node<"field"> & {
-  key: string;
-  modelKey: ModelKey;
-  initialValue?: FieldValue;
-};
+  export type Action = {
+    kind: "action";
+    target: Procedure | Exception | Call;
+  };
 
-/**
- * A field containing boolean values.
- */
-export type BooleanField = Field<"Boolean", boolean>;
+  // Stage actors:
 
-/**
- * A field containing numeric values.
- */
-export type NumberField = Field<"Number", number>;
+  export type Atom = {
+    kind: "atom";
+    tagName: string;
+    outerProps: Record<string, Field | Action>;
+  };
 
-/**
- * A field containing string values.
- */
-export type StringField = Field<"String", string>;
+  export type ViewInstance = {
+    kind: "viewInstance";
+    view: string | View;
+    outerProps: Record<string, Field | Action>;
+  };
 
-/**
- * A field containing structures.
- * It is validated by a model.
- */
-export type StructureField<ModelKey extends string = string> = Field<
-  ModelKey,
-  Structure
->;
+  export type TaskInstance = {
+    kind: "taskInstance";
+    task: string | Task;
+    outerProps: Record<string, Field | Action>;
+  };
 
-/**
- * A field containing elements.
- */
-export type ElementField = Field<"Element", Element>;
+  // Field content:
 
-/**
- * A field containing arrays of data sources.
- * Its children's data sources may be validated by a model.
- */
-export type ArrayField = Field<"Array", Array<DataSource>> & {
-  dataModelKey?: string;
-};
+  export type ModelInstance = {
+    kind: "modelInstance";
+    model: string | Model;
+    outerProps: Record<string, Field>;
+  };
 
-/**
- * A source of data from subscribing to a method.
- */
-export type MethodReference = Node<"methodReference"> & {
-  pathToMethodKey: Array<string>;
-  argument?: DataSource | MethodDelegate;
-};
+  export type RawValue = {
+    kind: "rawValue";
+    value: unknown;
+  };
 
-/**
- * An anonymous mapping of a parameter to a result.
- * It can be passed as an argument when subscribing to a method.
- * It is used to implement array methods like `map` and `filter`.
- */
-export type MethodDelegate = Node<"methodDelegate"> & {
-  parameter: Field;
-  result: DataSource;
-};
+  export type Invocation = {
+    kind: "invocation";
+    scope?: Field;
+    methodName: string;
+    argument?: Field;
+  };
 
-/**
- * An identifiable mapping of an optional parameter to a result.
- */
-export type Method = Node<"method"> & {
-  key: string;
-  parameter?: Field | MethodDelegateSlot;
-  result: DataSource;
-};
+  export type Implication = {
+    kind: "implication";
+    condition: Field;
+    consequence: Field;
+    alternative?: Field;
+  };
 
-/**
- * A method parameter which accepts a method delegate as an argument.
- */
-export type MethodDelegateSlot = Node<"methodDelegateSlot">;
+  export type Reference = {
+    kind: "reference";
+    scope?: Field;
+    fieldName: string;
+  };
 
-/**
- * A conditional source of data.
- */
-export type ConditionalData = Node<"conditionalData"> & {
-  when: DataSource;
-  then: DataSource;
-  else?: DataSource;
-};
+  // Action targets:
 
-// Side Effects:
+  export type Procedure = {
+    kind: "procedure";
+    steps: Array<Action>;
+    parameterName?: string;
+  };
 
-/**
- * An abstract sink for data flowing out of a publisher.
- */
-export type SideEffect = Action | ActionStep;
+  export type Exception = {
+    kind: "exception";
+    condition: Field;
+    steps?: Array<Action>;
+  };
 
-/**
- * An identifiable mapping of an optional parameter to a series of steps.
- */
-export type Action = Node<"action"> & {
-  key: string;
-  parameter?: Field;
-  steps: Array<ActionStep>;
-};
+  export type Call = {
+    kind: "call";
+    scope?: Field;
+    actionName: string;
+    argument?: Field;
+  };
 
-export type ActionStep = ActionReference | StreamReference | ConditionalFork;
+  // Base types:
 
-/**
- * An aggregate side effect which results from calling an action.
- */
-export type ActionReference = Node<"actionReference"> & {
-  pathToActionKey: Array<string>;
-  argument?: DataSource;
-};
+  export type Component = {
+    kind: string;
+  };
 
-/**
- * A reference to a stream.
- */
-export type StreamReference = Node<"streamReference"> & {
-  streamKey: string;
-  argument?: DataSource;
-};
+  export function isComponent(value: unknown): value is Component {
+    return isRawObject(value) && "kind" in value && typeof value.kind === "string";
+  }
 
-/**
- * An identifiable channel for data flowing out of an element.
- */
-export type Stream = Node<"stream"> & {
-  key: string;
-  parameter?: Field;
-};
-
-/**
- * A conditional fork in a series of steps.
- */
-export type ConditionalFork = Node<"conditionalFork"> & {
-  when: DataSource;
-  then?: Array<ActionStep>;
-};
-
-// Model & View:
-
-/**
- * A template used to construct an element.
- * It has a set of fields and streams which bind to element properties at runtime.
- */
-export type View = Node<"view"> & {
-  key: string;
-  element: Element;
-  terrain: Record<string, Field | Stream>;
-};
-
-/**
- * A template used to construct, use, and manipulate data.
- * It has a set of fields, methods, and actions which bind to field members at runtime.
- */
-export type Model = Node<"model"> & {
-  key: string;
-  members: Record<string, Field | Method | Action>;
-};
-
-// Apps:
-
-/**
- * An abstract ViewScript app.
- */
-export type App = Node<"app"> & {
-  version: "ViewScript v0.3.4";
-  root: View;
-  branches: Record<string, View | Model>;
-};
-
-// Type Guards:
-
-function isNode<Kind extends string>(x: unknown, kind: Kind): x is Node<Kind> {
-  return (
-    x !== null &&
-    (typeof x === "object" || typeof x === "function") &&
-    "kind" in x &&
-    x.kind === kind
-  );
-}
-
-export function isAction(node: unknown): node is Action {
-  return isNode(node, "action");
-}
-
-export function isActionReference(node: unknown): node is ActionReference {
-  return isNode(node, "actionReference");
-}
-
-export function isActionStep(node: unknown): node is ActionStep {
-  return (
-    isActionReference(node) ||
-    isStreamReference(node) ||
-    isConditionalFork(node)
-  );
-}
-
-export function isArrayField(field: Field): field is ArrayField {
-  return field.modelKey === "Array";
-}
-
-export function isBooleanField(field: Field): field is BooleanField {
-  return field.modelKey === "Boolean";
-}
-
-export function isConditionalData(node: unknown): node is ConditionalData {
-  return isNode(node, "conditionalData");
-}
-
-export function isConditionalFork(node: unknown): node is ConditionalFork {
-  return isNode(node, "conditionalFork");
-}
-
-export function isDataSource(node: unknown): node is DataSource {
-  return (
-    isValue(node) ||
-    isFieldReference(node) ||
-    isMethodReference(node) ||
-    isConditionalData(node)
-  );
-}
-
-export function isElement(node: unknown): node is Element {
-  return isNode(node, "element");
-}
-
-export function isElementField(field: Field): field is ElementField {
-  return field.modelKey === "Element";
-}
-
-export function isField(node: unknown): node is Field {
-  return isNode(node, "field");
-}
-
-export function isFieldReference(node: unknown): node is FieldReference {
-  return isNode(node, "fieldReference");
-}
-
-export function isMethodReference(node: unknown): node is MethodReference {
-  return isNode(node, "methodReference");
-}
-
-export function isNumberField(field: Field): field is NumberField {
-  return field.modelKey === "Number";
-}
-
-export function isSideEffect(node: unknown): node is SideEffect {
-  return isAction(node) || isActionStep(node);
-}
-
-export function isStreamReference(node: unknown): node is StreamReference {
-  return isNode(node, "streamReference");
-}
-
-export function isStringField(field: Field): field is StringField {
-  return field.modelKey === "String";
-}
-
-export function isStructure(node: unknown): node is Structure {
-  return (
-    isNode(node, "structure") &&
-    "data" in node &&
-    typeof node.data === "object" &&
-    node.data !== null &&
-    Object.values(node.data).every(isDataSource)
-  );
-}
-
-export function isStructureField<ModelKey extends string>(
-  field: Field<ModelKey>
-): field is StructureField<ModelKey> {
-  return (
-    isField(field) &&
-    (field.initialValue === undefined || isStructure(field.initialValue))
-  );
-}
-
-export function isValue(node: unknown): node is Value {
-  return (
-    node === null ||
-    typeof node === "boolean" ||
-    typeof node === "number" ||
-    typeof node === "string" ||
-    isStructure(node) ||
-    isElement(node) ||
-    (node instanceof Array && node.every(isDataSource))
-  );
-}
-
-export function isView(node: unknown): node is View {
-  return isNode(node, "view");
+  export function isRawObject(value: unknown): value is object {
+    return typeof value === "object" && value !== null && !(value instanceof Array);
+  }
 }
