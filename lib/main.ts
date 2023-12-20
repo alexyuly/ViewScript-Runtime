@@ -385,17 +385,15 @@ class Invocation extends Channel implements Valuable {
         this.argument = new Field(source.argument, closure);
       }
 
-      this.result = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value: method(this.argument),
-          },
+      const abstractResult: Abstract.Field = {
+        kind: "field",
+        content: {
+          kind: "rawValue",
+          value: method(this.argument),
         },
-        new StoredProps({}),
-      );
+      };
 
+      this.result = new Field(abstractResult, new StoredProps({}));
       this.result.connect(this);
     } else {
       throw new Error(`Cannot invoke a component which is not a method or function: ${source.methodName}`);
