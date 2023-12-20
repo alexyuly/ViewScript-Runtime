@@ -155,14 +155,17 @@ class Atom extends Publisher<HTMLElement> {
 
   constructor(source: Abstract.Atom, propsInScope: Props) {
     super();
+    console.log("Atom", source);
 
     const element = window.document.createElement(source.tagName);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
+      console.log("key", key, "value", value);
       switch (value.kind) {
         case "field": {
           const field = new Field(value, propsInScope);
           field.connect((fieldValue) => {
+            console.log("Atom got fieldValue for key", key, fieldValue);
             if (key === "content") {
               const content: Array<Node | string> = [];
               const handleContentValue = (contentValue: unknown) => {
@@ -366,14 +369,42 @@ class RawValue extends Channel implements Valuable {
 }
 
 class Invocation extends Channel implements Valuable {
+  private readonly result: Field;
+  private readonly argument?: Field;
+
   constructor(source: Abstract.Invocation, propsInScope: Props) {
     super();
+    console.log("Invocation", source);
 
-    // TODO: ViewScript v0.5
+    const context = source.context ? new Field(source.context, propsInScope).getProps() : propsInScope;
+
+    const method = context.getMember(source.methodName);
+
+    if (Abstract.isComponent(method) && method.kind === "method") {
+      // TODO: ViewScript v0.5
+      throw new Error(`Invocation of abstract method is not yet supported: ${source.methodName}`);
+    } else if (typeof method === "function") {
+      if (source.argument) {
+        this.argument = new Field(source.argument, propsInScope);
+      }
+
+      this.result = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: method(this.argument),
+          },
+        },
+        new StoredProps({}),
+      );
+    } else {
+      throw new Error(`Cannot invoke a component which is not a method or function: ${source.methodName}`);
+    }
   }
 
   getProps(): Props {
-    return new StoredProps({});
+    return this.result.getProps();
   }
 }
 
@@ -572,6 +603,11 @@ class StoredProps implements Props {
       return this.propsInScope.getMember(key);
     }
 
+    if (key === "window") {
+      const windowProps = new RawObjectProps(window);
+      return windowProps.getMember(key);
+    }
+
     throw new Error(`Prop ${key} not found`);
   }
 }
@@ -588,15 +624,27 @@ class RawObjectProps implements Props {
       throw new Error(`Prop ${key} not found`);
     }
 
-    if (typeof this.value[key] === "function") {
-      return this.value[key];
+    const memberValue = this.value[key];
+
+    if (typeof memberValue === "function") {
+      const boundMember =
+        memberValue.prototype?.constructor === memberValue
+          ? (argument: unknown) => {
+              console.log(argument);
+              return new memberValue(argument);
+            }
+          : memberValue.bind(this.value);
+      return (argument?: Field) => {
+        const result = boundMember(argument?.getValue());
+        return result;
+      };
     }
 
     const abstractField: Abstract.Field = {
       kind: "field",
       content: {
         kind: "rawValue",
-        value: this.value[key],
+        value: memberValue,
       },
     };
 
