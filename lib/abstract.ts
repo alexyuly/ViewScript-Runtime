@@ -3,46 +3,40 @@ export namespace Abstract {
 
   export type App = {
     kind: "app";
-    innerProps: Record<string, View | Task | Model | Method | Field | Action>;
-    stage: Array<Atom | ViewInstance | TaskInstance>;
+    innerProps: Record<string, View | Model | Method | Field | Action>;
+    stage: Array<Atom | ViewInstance>;
   };
 
   // Properties:
 
   export type View = {
     kind: "view";
-    innerProps: Record<string, Method | Field | Action>;
-    stage: Array<TaskInstance | ViewInstance | Atom>;
-  };
-
-  export type Task = {
-    kind: "task";
-    innerProps: Record<string, Method | Field | Action>;
-    stage: Array<TaskInstance>;
+    innerProps: Record<string, Field | Action | Method>;
+    stage: Array<Atom | ViewInstance>;
   };
 
   export type Model = {
     kind: "model";
-    innerProps: Record<string, Method | Field | Action>;
+    innerProps: Record<string, Field | Action | Method>;
   };
 
   export type Method = {
     kind: "method";
-    result: Field;
     parameterName?: string;
+    result: Field;
   };
 
   export type Field = {
     kind: "field";
-    content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
+    content: Atom | ViewInstance | ModelInstance | RawValue | Expectation | Invocation | Implication | Reference;
   };
 
   export type Action = {
     kind: "action";
-    target: Procedure | Exception | Call;
+    target: Procedure | Operation | Exception | Call;
   };
 
-  // Stage actors:
+  // Field contents:
 
   export type Atom = {
     kind: "atom";
@@ -56,14 +50,6 @@ export namespace Abstract {
     outerProps: Record<string, Field | Action>;
   };
 
-  export type TaskInstance = {
-    kind: "taskInstance";
-    task: string | Task;
-    outerProps: Record<string, Field | Action>;
-  };
-
-  // Field content:
-
   export type ModelInstance = {
     kind: "modelInstance";
     model: string | Model;
@@ -73,6 +59,11 @@ export namespace Abstract {
   export type RawValue = {
     kind: "rawValue";
     value: unknown;
+  };
+
+  export type Expectation = {
+    kind: "expectation";
+    source: Invocation;
   };
 
   export type Invocation = {
@@ -99,14 +90,20 @@ export namespace Abstract {
 
   export type Procedure = {
     kind: "procedure";
-    steps: Array<Action>;
     parameterName?: string;
+    steps: Array<Action>;
+  };
+
+  export type Operation = {
+    kind: "operation";
+    effect: Expectation;
+    reaction?: Action;
   };
 
   export type Exception = {
     kind: "exception";
     condition: Field;
-    steps?: Array<Action>;
+    reaction?: Action;
   };
 
   export type Call = {

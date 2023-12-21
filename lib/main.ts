@@ -5,13 +5,12 @@ import { Subscriber, Publisher, Channel } from "./pubsub";
 
 export class App {
   private readonly props = new StoredProps({});
-  private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
+  private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
     Object.entries(source.innerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "view":
-        case "task":
         case "model":
         case "method":
           this.props.addMember(key, value);
@@ -44,10 +43,6 @@ export class App {
             window.document.body.append(htmlElement);
           });
           return viewInstance;
-        }
-        case "taskInstance": {
-          const taskInstance = new TaskInstance(component, this.props);
-          return taskInstance;
         }
         default:
           throw new Error(`App cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`);
@@ -220,7 +215,7 @@ class Atom extends Publisher<HTMLElement> {
 
 class ViewInstance extends Channel<HTMLElement> {
   private readonly props = new StoredProps({});
-  private readonly stage: Array<TaskInstance | ViewInstance | Atom> = [];
+  private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props) {
     super();
@@ -276,22 +271,12 @@ class ViewInstance extends Channel<HTMLElement> {
           viewInstance.connect(this);
           return viewInstance;
         }
-        case "taskInstance": {
-          const taskInstance = new TaskInstance(component, this.props);
-          return taskInstance;
-        }
         default:
           throw new Error(
             `ViewInstance cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`,
           );
       }
     });
-  }
-}
-
-class TaskInstance {
-  constructor(source: Abstract.TaskInstance, closure: Props) {
-    // TODO: ViewScript v0.5
   }
 }
 
@@ -507,23 +492,21 @@ class Procedure implements Subscriber<Field | undefined> {
 
 class Exception implements Subscriber<void> {
   private readonly condition: Field;
-  private readonly steps: Array<Abstract.Action>;
+  private readonly reaction?: Abstract.Action;
   private readonly props: Props;
 
   constructor(source: Abstract.Exception, closure: Props) {
     this.condition = new Field(source.condition, closure);
-    this.steps = source.steps ?? [];
+    this.reaction = source.reaction;
     this.props = closure;
   }
 
   handleEvent(): boolean {
     const conditionalValue = Boolean(this.condition.getValue());
 
-    if (conditionalValue) {
-      for (const step of this.steps) {
-        const action = new Action(step, this.props);
-        action.handleEvent();
-      }
+    if (conditionalValue && this.reaction) {
+      const action = new Action(this.reaction, this.props);
+      action.handleEvent();
     }
 
     return conditionalValue;
@@ -568,19 +551,12 @@ interface Props {
   getMember(key: string): Property;
 }
 
-type Property =
-  | Abstract.View
-  | Abstract.Task
-  | Abstract.Model
-  | Abstract.Method
-  | Field
-  | Action
-  | ((argument?: Field) => unknown);
+type Property = Abstract.View | Abstract.Model | Abstract.Method | Field | Action | ((argument?: Field) => unknown);
 
 class RawObjectProps implements Props {
   private readonly value: any;
 
-  constructor(value: unknown) {
+  constructor(value: object) {
     this.value = value;
   }
 
@@ -598,7 +574,8 @@ class RawObjectProps implements Props {
           : memberValue.bind(this.value);
 
       const memberFunction = (argument?: Field) => {
-        const result = callableMemberValue(argument?.getValue());
+        const argumentValue = argument?.getValue();
+        const result = callableMemberValue(argumentValue);
         return result;
       };
 
@@ -642,10 +619,6 @@ class StoredProps implements Props {
       return this.closure.getMember(key);
     }
 
-    if (key === "window") {
-      return StoredProps.globalScope.getMember(key);
-    }
-
-    throw new Error(`Prop ${key} not found`);
+    return StoredProps.globalScope.getMember(key);
   }
 }
