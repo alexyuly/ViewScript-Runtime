@@ -492,20 +492,20 @@ class Procedure implements Subscriber<Field | undefined> {
 
 class Exception implements Subscriber<void> {
   private readonly condition: Field;
-  private readonly reaction?: Abstract.Action;
+  private readonly response?: Abstract.Action;
   private readonly props: Props;
 
   constructor(source: Abstract.Exception, closure: Props) {
     this.condition = new Field(source.condition, closure);
-    this.reaction = source.reaction;
+    this.response = source.response;
     this.props = closure;
   }
 
   handleEvent(): boolean {
     const conditionalValue = Boolean(this.condition.getValue());
 
-    if (conditionalValue && this.reaction) {
-      const action = new Action(this.reaction, this.props);
+    if (conditionalValue && this.response) {
+      const action = new Action(this.response, this.props);
       action.handleEvent();
     }
 
