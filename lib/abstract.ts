@@ -28,7 +28,7 @@ export namespace Abstract {
 
   export type Field = {
     kind: "field";
-    content: Atom | ViewInstance | ModelInstance | RawValue | Expectation | Invocation | Implication | Reference;
+    content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Expectation | Implication | Reference;
   };
 
   export type Action = {
@@ -61,11 +61,6 @@ export namespace Abstract {
     value: unknown;
   };
 
-  export type Expectation = {
-    kind: "expectation";
-    source: Invocation;
-  };
-
   export type Invocation = {
     kind: "invocation";
     scope?: Field;
@@ -73,11 +68,18 @@ export namespace Abstract {
     argument?: Field;
   };
 
+  export type Expectation = {
+    kind: "expectation";
+    source: Invocation;
+    fallback?: Action;
+  };
+
   export type Implication = {
     kind: "implication";
     condition: Field;
     consequence: Field;
     alternative?: Field;
+    fallback?: Action;
   };
 
   export type Reference = {
