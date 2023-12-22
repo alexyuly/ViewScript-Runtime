@@ -3,7 +3,7 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  private subscribers: Array<Subscriber<T>> = [];
+  protected subscribers: Array<Subscriber<T>> = [];
   private value?: T;
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
@@ -27,11 +27,11 @@ export abstract class Publisher<T = unknown> {
     return this.value;
   }
 
-  protected publish(value: T) {
-    this.value = value;
+  protected publish(event: T) {
+    this.value = event;
 
     this.subscribers.forEach((subscriber) => {
-      subscriber.handleEvent(value);
+      subscriber.handleEvent(event);
     });
   }
 }
@@ -39,5 +39,27 @@ export abstract class Publisher<T = unknown> {
 export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
   handleEvent(value: T): void {
     this.publish(value);
+  }
+}
+
+export abstract class SafeChannel<T = unknown> extends Channel<T> {
+  private error?: unknown;
+
+  getError() {
+    return this.error;
+  }
+
+  handleError(error: unknown): void {
+    this.publishError(error);
+  }
+
+  protected publishError(error: unknown) {
+    this.error = error;
+
+    this.subscribers.forEach((subscriber) => {
+      if (subscriber instanceof SafeChannel) {
+        subscriber.handleError(error);
+      }
+    });
   }
 }

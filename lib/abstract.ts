@@ -71,7 +71,7 @@ export namespace Abstract {
 
   export type Expectation = {
     kind: "expectation";
-    source: Invocation;
+    promise: Invocation;
   };
 
   export type Implication = {

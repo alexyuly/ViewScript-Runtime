@@ -1,5 +1,5 @@
 import { Abstract } from "./abstract";
-import { Subscriber, Publisher, Channel } from "./pubsub";
+import { Subscriber, Publisher, Channel, SafeChannel } from "./pubsub";
 
 // Root:
 
@@ -53,7 +53,7 @@ export class App {
 
 // Properties:
 
-class Field extends Channel implements Valuable {
+class Field extends SafeChannel implements Valuable {
   private readonly content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
 
   constructor(source: Abstract.Field, closure: Props) {
@@ -286,7 +286,7 @@ class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
-    // TODO: ViewScript v0.5
+    // TODO: ViewScript v0.5 (?)
   }
 
   getProps(): Props {
@@ -364,6 +364,7 @@ class Invocation extends Channel implements Valuable {
 
     if (Abstract.isComponent(method) && method.kind === "method") {
       // TODO: ViewScript v0.5
+      // TODO: Support multiple expecations in one invocation...
       throw new Error(`Invocation of abstract method is not yet supported: ${source.methodName}`);
     } else if (typeof method === "function") {
       if (source.argument) {
@@ -387,6 +388,34 @@ class Invocation extends Channel implements Valuable {
 
   getProps(): Props {
     return this.result.getProps();
+  }
+}
+
+class Expectation extends SafeChannel implements Valuable {
+  private readonly invocation: Invocation;
+
+  constructor(source: Abstract.Expectation, closure: Props) {
+    super();
+
+    this.invocation = new Invocation(source.promise, closure);
+    this.invocation.connect((result) => {
+      const promise = Promise.resolve(result);
+      promise
+        .then((value) => {
+          // TODO Create a new Field to contain the value, in order to implement getProps?
+          this.publish(value);
+        })
+        .catch((error) => {
+          this.publishError(error);
+        });
+    });
+    // TODO: ViewScript v0.5
+    // TODO: Subscribe to an invocation, then await the promise and publish the result.
+  }
+
+  getProps(): Props {
+    // TODO
+    return new StoredProps({});
   }
 }
 
@@ -487,6 +516,16 @@ class Procedure implements Subscriber<Field | undefined> {
         break;
       }
     }
+  }
+}
+
+class Operation implements Subscriber<void> {
+  constructor(source: Abstract.ModelInstance, closure: Props) {
+    // TODO: ViewScript v0.5
+  }
+
+  handleEvent(): void {
+    // TODO
   }
 }
 
