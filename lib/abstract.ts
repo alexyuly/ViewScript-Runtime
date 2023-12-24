@@ -9,22 +9,30 @@ export namespace Abstract {
     stage: Array<Atom | ViewInstance>;
   };
 
-  // view { ... }
+  // view {
+  //   INNER-PROP-NAME = FIELD
+  //   INNER-PROP-NAME = ACTION
+  //   <TAG-NAME> { OUTER-PROPS }
+  //   VIEW-NAME { OUTER-PROPS }
+  // }
   export type View = {
     kind: "view";
     innerProps: Record<string, Method | Field | Action>;
     stage: Array<Atom | ViewInstance>;
   };
 
-  // model { ... }
+  // model {
+  //   INNER-PROP-NAME = FIELD
+  //   INNER-PROP-NAME = ACTION
+  // }
   export type Model = {
     kind: "model";
     innerProps: Record<string, Method | Field | Action>;
   };
 
   // make FIELD
-  // (PARAMETER) -> FIELD
-  // (PARAMETER: TYPE) -> FIELD
+  // (PARAMETER) => FIELD
+  // (PARAMETER: TYPE) => FIELD
   export type Method = {
     kind: "method";
     parameterName?: string;
