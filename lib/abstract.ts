@@ -1,5 +1,7 @@
 export namespace Abstract {
-  // Root:
+  /**
+   * Templates:
+   */
 
   export type App = {
     kind: "app";
@@ -7,73 +9,99 @@ export namespace Abstract {
     stage: Array<Atom | ViewInstance>;
   };
 
-  // Properties:
-
+  // view { ... }
   export type View = {
     kind: "view";
-    innerProps: Record<string, Field | Action | Method>;
+    innerProps: Record<string, Method | Field | Action>;
     stage: Array<Atom | ViewInstance>;
   };
 
+  // model { ... }
   export type Model = {
     kind: "model";
-    innerProps: Record<string, Field | Action | Method>;
+    innerProps: Record<string, Method | Field | Action>;
   };
 
+  // make FIELD
+  // (PARAMETER) -> FIELD
+  // (PARAMETER: TYPE) -> FIELD
   export type Method = {
     kind: "method";
     parameterName?: string;
     result: Field;
   };
 
+  /**
+   * Fields:
+   */
+
   export type Field = {
     kind: "field";
-    content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Expectation | Implication | Reference;
-    fallback?: Action;
+    content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
+    otherwise?: Action; // If this field contains an Expectation, then this action is called when the expectation's promise rejects.
   };
 
-  export type Action = {
-    kind: "action";
-    target: Procedure | Operation | Exception | Call;
-  };
-
-  // Field contents:
-
+  // <TAG-NAME> { OUTER-PROPS }
   export type Atom = {
     kind: "atom";
     tagName: string;
     outerProps: Record<string, Field | Action>;
   };
 
+  // VIEW-NAME { OUTER-PROPS }
   export type ViewInstance = {
     kind: "viewInstance";
     view: string | View;
     outerProps: Record<string, Field | Action>;
   };
 
+  // object { OUTER-PROPS }
+  // MODEL-NAME { OUTER-PROPS }
   export type ModelInstance = {
     kind: "modelInstance";
-    model: string | Model;
-    outerProps: Record<string, Field>;
+    model?: string | Model;
+    outerProps: Record<string, Field | Action>;
   };
 
   export type RawValue = {
     kind: "rawValue";
-    value: unknown;
+    value?: unknown;
   };
 
-  export type Invocation = {
-    kind: "invocation";
+  // FIELD
+  // SCOPE.FIELD
+  export type Reference = {
+    kind: "reference";
+    scope?: Field;
+    fieldName: string;
+  };
+
+  // METHOD()
+  // METHOD(PARAMETER)
+  // METHOD(PARAMETER0, PARAMETER1, ETC...)
+  // SCOPE.METHOD()
+  // SCOPE.METHOD(PARAMETER)
+  // SCOPE.METHOD(PARAMETER0, PARAMETER1, ETC...)
+  export type Expression = {
+    kind: "expression";
     scope?: Field;
     methodName: string;
     argument?: Field;
   };
 
+  // METHOD?
+  // METHOD(PARAMETER)?
+  // METHOD(PARAMETER0, PARAMETER1, ETC...)?
+  // SCOPE.METHOD?
+  // SCOPE.METHOD(PARAMETER)?
+  // SCOPE.METHOD(PARAMETER0, PARAMETER1, ETC...)?
   export type Expectation = {
     kind: "expectation";
-    promise: Invocation;
+    expression: Expression;
   };
 
+  // if FIELD then FIELD
+  // if FIELD then FIELD else FIELD
   export type Implication = {
     kind: "implication";
     condition: Field;
@@ -81,32 +109,32 @@ export namespace Abstract {
     alternative?: Field;
   };
 
-  export type Reference = {
-    kind: "reference";
-    scope?: Field;
-    fieldName: string;
+  /**
+   * Actions:
+   */
+
+  export type Action = {
+    kind: "action";
+    target: Procedure | Call | Invocation | Gate;
   };
 
-  // Action targets:
-
+  // do { STEPS }
+  // (PARAMETER) -> ACTION
+  // (PARAMETER: TYPE) -> ACTION
+  // (PARAMETER) -> { STEPS }
+  // (PARAMETER: TYPE) -> { STEPS }
   export type Procedure = {
     kind: "procedure";
     parameterName?: string;
     steps: Array<Action>;
   };
 
-  export type Operation = {
-    kind: "operation";
-    effect: Field;
-    reaction?: Action;
-  };
-
-  export type Exception = {
-    kind: "exception";
-    condition: Field;
-    response?: Action;
-  };
-
+  // ACTION!
+  // ACTION(PARAMETER)!
+  // ACTION(PARAMETER0, PARAMETER1, ETC...)!
+  // SCOPE.ACTION!
+  // SCOPE.ACTION(PARAMETER)!
+  // SCOPE.ACTION(PARAMETER0, PARAMETER1, ETC...)!
   export type Call = {
     kind: "call";
     scope?: Field;
@@ -114,7 +142,24 @@ export namespace Abstract {
     argument?: Field;
   };
 
-  // Base types:
+  // let FIELD-NAME = FIELD
+  export type Invocation = {
+    kind: "invocation";
+    effect: Field;
+    reaction?: Action; // In code, this action targets a procedure with all steps that come after the invocation.
+  };
+
+  // return if FIELD
+  // return if FIELD then ACTION
+  export type Gate = {
+    kind: "gate";
+    condition: Field;
+    consequence?: Action;
+  };
+
+  /**
+   * Useful stuff:
+   */
 
   export type Component = {
     kind: string;

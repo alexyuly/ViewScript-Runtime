@@ -54,7 +54,15 @@ export class App {
 // Properties:
 
 class Field extends SafeChannel implements Valuable {
-  private readonly content: Atom | ViewInstance | ModelInstance | RawValue | Invocation | Implication | Reference;
+  private readonly content:
+    | Atom
+    | ViewInstance
+    | ModelInstance
+    | RawValue
+    | Reference
+    | Expression
+    | Expectation
+    | Implication;
 
   constructor(source: Abstract.Field, closure: Props) {
     super();
@@ -83,22 +91,28 @@ class Field extends SafeChannel implements Valuable {
         this.content = rawValue;
         break;
       }
-      case "invocation": {
-        const invocation = new Invocation(source.content, closure);
-        invocation.connect(this);
-        this.content = invocation;
+      case "reference": {
+        const reference = new Reference(source.content, closure);
+        reference.connect(this);
+        this.content = reference;
+        break;
+      }
+      case "expression": {
+        const expression = new Expression(source.content, closure);
+        expression.connect(this);
+        this.content = expression;
+        break;
+      }
+      case "expectation": {
+        const expectation = new Expectation(source.content, closure);
+        expectation.connect(this);
+        this.content = expectation;
         break;
       }
       case "implication": {
         const implication = new Implication(source.content, closure);
         implication.connect(this);
         this.content = implication;
-        break;
-      }
-      case "reference": {
-        const reference = new Reference(source.content, closure);
-        reference.connect(this);
-        this.content = reference;
         break;
       }
       default:
@@ -118,18 +132,18 @@ class Field extends SafeChannel implements Valuable {
 }
 
 class Action implements Subscriber<Field | undefined> {
-  private readonly target: Procedure | Exception | Call;
+  private readonly target: Procedure | Call | Gate;
 
   constructor(source: Abstract.Action, closure: Props) {
     switch (source.target.kind) {
       case "procedure":
         this.target = new Procedure(source.target, closure);
         break;
-      case "exception":
-        this.target = new Exception(source.target, closure);
-        break;
       case "call":
         this.target = new Call(source.target, closure);
+        break;
+      case "gate":
+        this.target = new Gate(source.target, closure);
         break;
       default:
         throw new Error(
@@ -352,11 +366,11 @@ class RawValue extends Channel implements Valuable {
   }
 }
 
-class Invocation extends Channel implements Valuable {
+class Expression extends Channel implements Valuable {
   private readonly result: Field;
   private readonly argument?: Field;
 
-  constructor(source: Abstract.Invocation, closure: Props) {
+  constructor(source: Abstract.Expression, closure: Props) {
     super();
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
@@ -365,7 +379,7 @@ class Invocation extends Channel implements Valuable {
     if (Abstract.isComponent(method) && method.kind === "method") {
       // TODO: ViewScript v0.5
       // TODO: Support multiple expecations in one invocation...
-      throw new Error(`Invocation of abstract method is not yet supported: ${source.methodName}`);
+      throw new Error(`Expression of abstract method is not yet supported: ${source.methodName}`);
     } else if (typeof method === "function") {
       if (source.argument) {
         this.argument = new Field(source.argument, closure);
@@ -392,20 +406,36 @@ class Invocation extends Channel implements Valuable {
 }
 
 class Expectation extends SafeChannel implements Valuable {
-  private readonly invocation: Invocation;
+  private readonly invocation: Expression;
+  private readonly queue: Array<unknown> = [];
+  private readonly result: Field;
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
 
-    this.invocation = new Invocation(source.promise, closure);
+    const abstractResult: Abstract.Field = {
+      kind: "field",
+      content: {
+        kind: "rawValue",
+      },
+    };
+
+    this.result = new Field(abstractResult, new StoredProps({}));
+    this.result.connect(this);
+
+    this.invocation = new Expression(source.expression, closure);
     this.invocation.connect((result) => {
       const promise = Promise.resolve(result);
+      const promiseIndex = this.queue.length;
+      this.queue.push(promise);
       promise
         .then((value) => {
-          // TODO Create a new Field to contain the value, in order to implement getProps?
-          this.publish(value);
+          // TODO: If this is the latest resolved promise, publish the result.
+          // this.queue.splice(promiseIndex, 1, value);
+          this.result.handleEvent(value);
         })
         .catch((error) => {
+          // TODO: If this is the latest rejected promise, publish the error.
           this.publishError(error);
         });
     });
@@ -529,22 +559,22 @@ class Operation implements Subscriber<void> {
   }
 }
 
-class Exception implements Subscriber<void> {
+class Gate implements Subscriber<void> {
   private readonly condition: Field;
-  private readonly response?: Abstract.Action;
+  private readonly consequence?: Abstract.Action;
   private readonly props: Props;
 
-  constructor(source: Abstract.Exception, closure: Props) {
+  constructor(source: Abstract.Gate, closure: Props) {
     this.condition = new Field(source.condition, closure);
-    this.response = source.response;
+    this.consequence = source.consequence;
     this.props = closure;
   }
 
   handleEvent(): boolean {
     const conditionalValue = Boolean(this.condition.getValue());
 
-    if (conditionalValue && this.response) {
-      const action = new Action(this.response, this.props);
+    if (conditionalValue && this.consequence) {
+      const action = new Action(this.consequence, this.props);
       action.handleEvent();
     }
 
