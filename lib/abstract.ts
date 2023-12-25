@@ -31,8 +31,8 @@ export namespace Abstract {
   };
 
   // make FIELD
-  // (PARAMETER) => FIELD
-  // (PARAMETER: TYPE) => FIELD
+  // (PARAMETER-NAME) => FIELD
+  // (PARAMETER-NAME: TYPE) => FIELD
   export type Method = {
     kind: "method";
     parameterName?: string;
@@ -76,20 +76,20 @@ export namespace Abstract {
     value?: unknown;
   };
 
-  // FIELD
-  // SCOPE.FIELD
+  // FIELD-NAME
+  // SCOPE.FIELD-NAME
   export type Reference = {
     kind: "reference";
     scope?: Field;
     fieldName: string;
   };
 
-  // METHOD()
-  // METHOD(PARAMETER)
-  // METHOD(PARAMETER0, PARAMETER1, ETC...)
-  // SCOPE.METHOD()
-  // SCOPE.METHOD(PARAMETER)
-  // SCOPE.METHOD(PARAMETER0, PARAMETER1, ETC...)
+  // METHOD-NAME()
+  // METHOD-NAME(ARGUMENT)
+  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)
+  // SCOPE.METHOD-NAME()
+  // SCOPE.METHOD-NAME(ARGUMENT)
+  // SCOPE.METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)
   export type Expression = {
     kind: "expression";
     scope?: Field;
@@ -97,12 +97,12 @@ export namespace Abstract {
     argument?: Field;
   };
 
-  // METHOD?
-  // METHOD(PARAMETER)?
-  // METHOD(PARAMETER0, PARAMETER1, ETC...)?
-  // SCOPE.METHOD?
-  // SCOPE.METHOD(PARAMETER)?
-  // SCOPE.METHOD(PARAMETER0, PARAMETER1, ETC...)?
+  // METHOD-NAME?
+  // METHOD-NAME(ARGUMENT)?
+  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
+  // SCOPE.METHOD-NAME?
+  // SCOPE.METHOD-NAME(ARGUMENT)?
+  // SCOPE.METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
   export type Expectation = {
     kind: "expectation";
     expression: Expression;
@@ -126,23 +126,23 @@ export namespace Abstract {
     target: Procedure | Call | Invocation | Gate;
   };
 
-  // do { STEPS }
-  // (PARAMETER) -> ACTION
-  // (PARAMETER: TYPE) -> ACTION
-  // (PARAMETER) -> { STEPS }
-  // (PARAMETER: TYPE) -> { STEPS }
+  // do { ACTIONS }
+  // (PARAMETER-NAME) -> ACTION
+  // (PARAMETER-NAME: TYPE) -> ACTION
+  // (PARAMETER-NAME) -> { ACTIONS }
+  // (PARAMETER-NAME: TYPE) -> { ACTIONS }
   export type Procedure = {
     kind: "procedure";
     parameterName?: string;
     steps: Array<Action>;
   };
 
-  // ACTION!
-  // ACTION(PARAMETER)!
-  // ACTION(PARAMETER0, PARAMETER1, ETC...)!
-  // SCOPE.ACTION!
-  // SCOPE.ACTION(PARAMETER)!
-  // SCOPE.ACTION(PARAMETER0, PARAMETER1, ETC...)!
+  // ACTION-NAME!
+  // ACTION-NAME(ARGUMENT)!
+  // ACTION-NAME(ARGUMENT0, ARGUMENT1, ETC...)!
+  // SCOPE.ACTION-NAME!
+  // SCOPE.ACTION-NAME(ARGUMENT)!
+  // SCOPE.ACTION-NAME(ARGUMENT0, ARGUMENT1, ETC...)!
   export type Call = {
     kind: "call";
     scope?: Field;
