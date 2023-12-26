@@ -796,7 +796,7 @@ class RawObjectProps implements Props {
 class StoredProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
-  private static readonly globalScope = new RawObjectProps(this);
+  private static readonly globalScope = new RawObjectProps(window);
 
   constructor(properties: Record<string, Property>, closure?: Props) {
     this.properties = properties;
