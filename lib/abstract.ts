@@ -175,13 +175,12 @@ export namespace Abstract {
     arguments: Array<Field>;
   };
 
-  // let PARAMETER-NAME = CAUSE [...] EFFECT
-  // (The bracketed ellipsis represents a new line separating the cause from the effect.)
+  // let PARAMETER-NAME = PREREQUISITE [...] STEPS
+  // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
   export type Invocation = {
     kind: "invocation";
-    cause: Field;
-    parameterName?: string;
-    effect?: Action;
+    prerequisite: Field;
+    procedure?: Procedure;
   };
 
   // return if CONDITION

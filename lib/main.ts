@@ -664,44 +664,37 @@ class Call implements Subscriber<void> {
 }
 
 class Invocation implements Subscriber<void> {
-  private readonly cause: Abstract.Field;
-  private readonly parameterName?: string;
-  private readonly effect?: Abstract.Action;
+  private readonly prerequisite: Abstract.Field;
+  private readonly procedure?: Abstract.Procedure;
   private readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
-    this.cause = source.cause;
-    this.parameterName = source.parameterName;
-    this.effect = source.effect;
+    this.prerequisite = source.prerequisite;
+    this.procedure = source.procedure;
     this.closure = closure;
   }
 
   handleEvent(): void {
-    const cause = new Field(this.cause, this.closure);
+    const prerequisite = new Field(this.prerequisite, this.closure);
 
-    cause.connect((causeValue) => {
-      if (this.effect) {
-        let parameterizedClosure = this.closure;
+    prerequisite.connect((prerequisiteValue) => {
+      if (this.procedure) {
+        const args: Array<Field> = [];
 
-        if (this.parameterName) {
+        if (this.procedure.parameterName) {
           const abstractField: Abstract.Field = {
             kind: "field",
             content: {
               kind: "rawValue",
-              value: causeValue,
+              value: prerequisiteValue,
             },
           };
           const field = new Field(abstractField, new StoredProps({}));
-          parameterizedClosure = new StoredProps(
-            {
-              [this.parameterName]: field,
-            },
-            this.closure,
-          );
+          args.push(field);
         }
 
-        const action = new Action(this.effect, parameterizedClosure);
-        action.handleEvent();
+        const procedure = new Procedure(this.procedure, this.closure);
+        procedure.handleEvent(args);
       }
     });
   }
