@@ -36,21 +36,11 @@ export abstract class Publisher<T = unknown> {
   }
 }
 
-export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
-  handleEvent(value: T): void {
-    this.publish(value);
-  }
-}
-
-export abstract class SafeChannel<T = unknown> extends Channel<T> {
+export abstract class SafePublisher<T = unknown> extends Publisher<T> {
   private error?: unknown;
 
   getError() {
     return this.error;
-  }
-
-  handleError(error: unknown): void {
-    this.publishError(error);
   }
 
   protected publishError(error: unknown) {
@@ -61,5 +51,21 @@ export abstract class SafeChannel<T = unknown> extends Channel<T> {
         subscriber.handleError(error);
       }
     });
+  }
+}
+
+export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
+  handleEvent(value: T): void {
+    this.publish(value);
+  }
+}
+
+export abstract class SafeChannel<T = unknown> extends SafePublisher<T> implements Subscriber<T> {
+  handleEvent(value: T): void {
+    this.publish(value);
+  }
+
+  handleError(error: unknown): void {
+    this.publishError(error);
   }
 }

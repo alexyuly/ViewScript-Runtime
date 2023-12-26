@@ -1,5 +1,5 @@
 import { Abstract } from "./abstract";
-import { Subscriber, Publisher, Channel, SafeChannel } from "./pubsub";
+import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pubsub";
 
 /**
  * Foundation:
@@ -73,7 +73,7 @@ class Field extends SafeChannel implements Valuable {
   constructor(source: Abstract.Field, closure: Props) {
     super();
 
-    this.fallback = source.fallback ? new Action(source.fallback, closure) : undefined;
+    this.fallback = source.fallback && new Action(source.fallback, closure);
 
     switch (source.content.kind) {
       case "atom": {
@@ -152,32 +152,6 @@ class Field extends SafeChannel implements Valuable {
     } else {
       super.handleError(error);
     }
-  }
-}
-
-class Action implements Subscriber<Array<Field>> {
-  private readonly target: Procedure | Call | Gate;
-
-  constructor(source: Abstract.Action, closure: Props) {
-    switch (source.target.kind) {
-      case "procedure":
-        this.target = new Procedure(source.target, closure);
-        break;
-      case "call":
-        this.target = new Call(source.target, closure);
-        break;
-      case "gate":
-        this.target = new Gate(source.target, closure);
-        break;
-      default:
-        throw new Error(
-          `Action cannot target a component of invalid kind: ${(source.target as Abstract.Component).kind}`,
-        );
-    }
-  }
-
-  handleEvent(callArguments: Array<Field> = []) {
-    return this.target.handleEvent(callArguments);
   }
 }
 
@@ -328,7 +302,7 @@ class ModelInstance implements Valuable {
   }
 }
 
-class RawValue extends Channel implements Valuable {
+class RawValue extends Publisher implements Valuable {
   private readonly props: Props;
 
   constructor(source: Abstract.RawValue, closure: Props) {
@@ -386,7 +360,7 @@ class RawValue extends Channel implements Valuable {
   }
 }
 
-class Reference extends Channel implements Valuable {
+class Reference extends SafeChannel implements Valuable {
   private readonly field: Field;
 
   constructor(source: Abstract.Reference, closure: Props) {
@@ -408,7 +382,7 @@ class Reference extends Channel implements Valuable {
   }
 }
 
-class Expression extends Channel implements Valuable {
+class Expression extends SafeChannel implements Valuable {
   private readonly arguments: Array<Field>;
   private readonly result: Field;
 
@@ -458,7 +432,7 @@ class Expression extends Channel implements Valuable {
   }
 }
 
-class Expectation extends SafeChannel implements Valuable {
+class Expectation extends SafePublisher implements Valuable {
   private readonly expression: Expression;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
@@ -501,7 +475,7 @@ class Expectation extends SafeChannel implements Valuable {
   }
 }
 
-class Implication extends Channel implements Valuable {
+class Implication extends SafeChannel implements Valuable {
   private readonly condition: Field;
   private readonly consequence: Field;
   private readonly alternative?: Field;
@@ -546,6 +520,35 @@ class Implication extends Channel implements Valuable {
 /**
  * Actions:
  */
+
+class Action implements Subscriber<Array<Field>> {
+  private readonly target: Procedure | Call | Invocation | Gate;
+
+  constructor(source: Abstract.Action, closure: Props) {
+    switch (source.target.kind) {
+      case "procedure":
+        this.target = new Procedure(source.target, closure);
+        break;
+      case "call":
+        this.target = new Call(source.target, closure);
+        break;
+      case "invocation":
+        this.target = new Invocation(source.target, closure);
+        break;
+      case "gate":
+        this.target = new Gate(source.target, closure);
+        break;
+      default:
+        throw new Error(
+          `Action cannot target a component of invalid kind: ${(source.target as Abstract.Component).kind}`,
+        );
+    }
+  }
+
+  handleEvent(callArguments: Array<Field> = []) {
+    return this.target.handleEvent(callArguments);
+  }
+}
 
 class Procedure implements Subscriber<Array<Field>> {
   private readonly steps: Array<Abstract.Action>;
@@ -611,31 +614,65 @@ class Call implements Subscriber<void> {
 }
 
 class Invocation implements Subscriber<void> {
-  constructor(source: Abstract.ModelInstance, closure: Props) {
-    // TODO: ViewScript v0.5
+  private readonly cause: Abstract.Field;
+  private readonly parameterName?: string;
+  private readonly effect?: Abstract.Action;
+  private readonly closure: Props;
+
+  constructor(source: Abstract.Invocation, closure: Props) {
+    this.cause = source.cause;
+    this.parameterName = source.parameterName;
+    this.effect = source.effect;
+    this.closure = closure;
   }
 
   handleEvent(): void {
-    // TODO
+    const cause = new Field(this.cause, this.closure);
+
+    cause.connect((causeValue) => {
+      if (this.effect) {
+        let parameterizedClosure = this.closure;
+
+        if (this.parameterName) {
+          const abstractField: Abstract.Field = {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value: causeValue,
+            },
+          };
+          const field = new Field(abstractField, new StoredProps({}));
+          parameterizedClosure = new StoredProps(
+            {
+              [this.parameterName]: field,
+            },
+            this.closure,
+          );
+        }
+
+        const action = new Action(this.effect, parameterizedClosure);
+        action.handleEvent();
+      }
+    });
   }
 }
 
 class Gate implements Subscriber<void> {
   private readonly condition: Field;
   private readonly consequence?: Abstract.Action;
-  private readonly props: Props;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Gate, closure: Props) {
     this.condition = new Field(source.condition, closure);
     this.consequence = source.consequence;
-    this.props = closure;
+    this.closure = closure;
   }
 
   handleEvent(): boolean {
     const isConditionMet = this.condition.getValue();
 
     if (isConditionMet && this.consequence) {
-      const action = new Action(this.consequence, this.props);
+      const action = new Action(this.consequence, this.closure);
       action.handleEvent();
     }
 

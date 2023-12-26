@@ -175,11 +175,12 @@ export namespace Abstract {
     arguments: Array<Field>;
   };
 
-  // let FIELD-NAME = CAUSE [...] EFFECT
+  // let PARAMETER-NAME = CAUSE [...] EFFECT
   // (The bracketed ellipsis represents a new line separating the cause from the effect.)
   export type Invocation = {
     kind: "invocation";
     cause: Field;
+    parameterName?: string;
     effect?: Action;
   };
 
