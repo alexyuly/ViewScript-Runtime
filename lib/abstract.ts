@@ -118,7 +118,7 @@ export namespace Abstract {
     kind: "expression";
     scope?: Field;
     methodName: string;
-    argument?: Field;
+    arguments: Array<Field>;
   };
 
   // METHOD-NAME?
@@ -172,7 +172,7 @@ export namespace Abstract {
     kind: "call";
     scope?: Field;
     actionName: string;
-    argument?: Field;
+    arguments: Array<Field>;
   };
 
   // let FIELD-NAME = CAUSE [...] EFFECT

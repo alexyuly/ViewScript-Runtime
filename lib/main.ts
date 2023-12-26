@@ -148,14 +148,14 @@ class Field extends SafeChannel implements Valuable {
         },
       };
       const field = new Field(abstractField, new StoredProps({}));
-      this.fallback.handleEvent(field);
+      this.fallback.handleEvent([field]);
     } else {
       super.handleError(error);
     }
   }
 }
 
-class Action implements Subscriber<Field | undefined> {
+class Action implements Subscriber<Array<Field>> {
   private readonly target: Procedure | Call | Gate;
 
   constructor(source: Abstract.Action, closure: Props) {
@@ -176,8 +176,8 @@ class Action implements Subscriber<Field | undefined> {
     }
   }
 
-  handleEvent(argument?: Field) {
-    return this.target.handleEvent(argument);
+  handleEvent(callArguments: Array<Field> = []) {
+    return this.target.handleEvent(callArguments);
   }
 }
 
@@ -233,7 +233,7 @@ class Atom extends Publisher<HTMLElement> {
               },
             };
             const argument = new Field(abstractArgument, new StoredProps({}));
-            action.handleEvent(argument);
+            action.handleEvent([argument]);
           });
           this.props.addMember(key, action);
           break;
@@ -409,11 +409,16 @@ class Reference extends Channel implements Valuable {
 }
 
 class Expression extends Channel implements Valuable {
+  private readonly arguments: Array<Field>;
   private readonly result: Field;
-  private readonly argument?: Field;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
+
+    this.arguments = source.arguments.map((arg) => {
+      const argument = new Field(arg, closure);
+      return argument;
+    });
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
     const method = scope.getMember(source.methodName);
@@ -421,11 +426,10 @@ class Expression extends Channel implements Valuable {
     if (Abstract.isComponent(method) && method.kind === "method") {
       let parameterizedClosure = closure;
 
-      if (method.parameterName && source.argument) {
-        const argument = new Field(source.argument, closure);
+      if (method.parameterName) {
         parameterizedClosure = new StoredProps(
           {
-            [method.parameterName]: argument,
+            [method.parameterName]: this.arguments[0],
           },
           closure,
         );
@@ -434,15 +438,11 @@ class Expression extends Channel implements Valuable {
       this.result = new Field(method.result, parameterizedClosure);
       this.result.connect(this);
     } else if (typeof method === "function") {
-      if (source.argument) {
-        this.argument = new Field(source.argument, closure);
-      }
-
       const abstractResult: Abstract.Field = {
         kind: "field",
         content: {
           kind: "rawValue",
-          value: method(this.argument),
+          value: method(...this.arguments),
         },
       };
 
@@ -547,7 +547,7 @@ class Implication extends Channel implements Valuable {
  * Actions:
  */
 
-class Procedure implements Subscriber<Field | undefined> {
+class Procedure implements Subscriber<Array<Field>> {
   private readonly steps: Array<Abstract.Action>;
   private readonly parameterName?: string;
   private readonly closure: Props;
@@ -558,13 +558,13 @@ class Procedure implements Subscriber<Field | undefined> {
     this.closure = closure;
   }
 
-  handleEvent(argument?: Field): void {
+  handleEvent(callArguments: Array<Field>): void {
     let parameterizedClosure = this.closure;
 
-    if (this.parameterName && argument) {
+    if (this.parameterName) {
       parameterizedClosure = new StoredProps(
         {
-          [this.parameterName]: argument,
+          [this.parameterName]: callArguments[0],
         },
         this.closure,
       );
@@ -582,10 +582,15 @@ class Procedure implements Subscriber<Field | undefined> {
 }
 
 class Call implements Subscriber<void> {
-  private readonly action: Subscriber<Field | undefined>;
-  private readonly argument?: Field;
+  private readonly arguments: Array<Field>;
+  private readonly action: Subscriber<Array<Field>>;
 
   constructor(source: Abstract.Call, closure: Props) {
+    this.arguments = source.arguments.map((arg) => {
+      const argument = new Field(arg, closure);
+      return argument;
+    });
+
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
     const action = scope.getMember(source.actionName);
 
@@ -593,19 +598,15 @@ class Call implements Subscriber<void> {
       this.action = action;
     } else if (typeof action === "function") {
       this.action = {
-        handleEvent: action,
+        handleEvent: (args) => action(...args),
       };
     } else {
       throw new Error(`Cannot call a component which is not an action or function: ${source.actionName}`);
     }
-
-    if (source.argument) {
-      this.argument = new Field(source.argument, closure);
-    }
   }
 
   handleEvent(): void {
-    this.action.handleEvent(this.argument);
+    this.action.handleEvent(this.arguments);
   }
 }
 
@@ -654,7 +655,13 @@ interface Props {
   getMember(key: string): Property;
 }
 
-type Property = Abstract.View | Abstract.Model | Abstract.Method | Field | Action | ((argument?: Field) => unknown);
+type Property =
+  | Abstract.View
+  | Abstract.Model
+  | Abstract.Method
+  | Field
+  | Action
+  | ((...args: Array<Field>) => unknown);
 
 class RawObjectProps implements Props {
   private readonly value: any;
