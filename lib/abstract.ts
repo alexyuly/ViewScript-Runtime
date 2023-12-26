@@ -61,8 +61,8 @@ export namespace Abstract {
   };
 
   // <TAG-NAME> {
-  //   OUTER-PROP-NAME = FIELD
-  //   OUTER-PROP-NAME = ACTION
+  //   OUTER-PROP-NAME: FIELD
+  //   OUTER-PROP-NAME: ACTION
   // }
   export type Atom = {
     kind: "atom";
@@ -71,8 +71,8 @@ export namespace Abstract {
   };
 
   // VIEW-NAME {
-  //   OUTER-PROP-NAME = FIELD
-  //   OUTER-PROP-NAME = ACTION
+  //   OUTER-PROP-NAME: FIELD
+  //   OUTER-PROP-NAME: ACTION
   // }
   export type ViewInstance = {
     kind: "viewInstance";
@@ -81,12 +81,12 @@ export namespace Abstract {
   };
 
   // object {
-  //   OUTER-PROP-NAME = FIELD
-  //   OUTER-PROP-NAME = ACTION
+  //   OUTER-PROP-NAME: FIELD
+  //   OUTER-PROP-NAME: ACTION
   // }
   // MODEL-NAME {
-  //   OUTER-PROP-NAME = FIELD
-  //   OUTER-PROP-NAME = ACTION
+  //   OUTER-PROP-NAME: FIELD
+  //   OUTER-PROP-NAME: ACTION
   // }
   export type ModelInstance = {
     kind: "modelInstance";
