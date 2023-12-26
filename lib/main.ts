@@ -439,46 +439,43 @@ class Expression extends Channel implements Valuable {
 }
 
 class Expectation extends SafeChannel implements Valuable {
-  private readonly invocation: Expression;
-  private readonly queue: Array<unknown> = [];
-  private readonly result: Field;
+  private readonly expression: Expression;
+  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
 
-    const abstractResult: Abstract.Field = {
-      kind: "field",
-      content: {
-        kind: "rawValue",
-      },
-    };
+    this.expression = new Expression(source.expression, closure);
 
-    this.result = new Field(abstractResult, new StoredProps({}));
-    this.result.connect(this);
-
-    this.invocation = new Expression(source.expression, closure);
-    this.invocation.connect((result) => {
-      const promise = Promise.resolve(result);
-      const promiseIndex = this.queue.length;
-      this.queue.push(promise);
-      promise
+    this.expression.connect((resultingValue) => {
+      const attendant = {
+        id: crypto.randomUUID(),
+        promise: Promise.resolve(resultingValue),
+      };
+      this.queue.push(attendant);
+      attendant.promise
         .then((value) => {
-          // TODO: If this is the latest resolved promise, publish the result.
-          // this.queue.splice(promiseIndex, 1, value);
-          this.result.handleEvent(value);
+          if (this.queue.includes(attendant)) {
+            this.queue.splice(0, this.queue.indexOf(attendant) + 1);
+            this.publish(value);
+          }
         })
         .catch((error) => {
-          // TODO: If this is the latest rejected promise, publish the error.
-          this.publishError(error);
+          if (this.queue.includes(attendant)) {
+            this.queue.splice(this.queue.indexOf(attendant), 1);
+            this.publishError(error);
+          }
         });
     });
-    // TODO: ViewScript v0.5
-    // TODO: Subscribe to an invocation, then await the promise and publish the result.
   }
 
   getProps(): Props {
-    // TODO
-    return new StoredProps({});
+    const abstractValue: Abstract.RawValue = {
+      kind: "rawValue",
+      value: this.getValue(),
+    };
+    const rawValue = new RawValue(abstractValue, new StoredProps({}));
+    return rawValue.getProps();
   }
 }
 
@@ -683,7 +680,7 @@ class RawObjectProps implements Props {
 class StoredProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
-  private static readonly globalScope = new RawObjectProps(window);
+  private static readonly globalScope = new RawObjectProps(this);
 
   constructor(properties: Record<string, Property>, closure?: Props) {
     this.properties = properties;
