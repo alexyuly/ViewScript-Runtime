@@ -3,6 +3,13 @@ export namespace Abstract {
    * Foundation:
    */
 
+  // INNER-PROP-NAME = VIEW
+  // INNER-PROP-NAME = MODEL
+  // INNER-PROP-NAME = METHOD
+  // INNER-PROP-NAME = FIELD
+  // INNER-PROP-NAME = ACTION
+  // ATOM
+  // VIEW-INSTANCE
   export type App = {
     kind: "app";
     innerProps: Record<string, View | Model | Method | Field | Action>;
@@ -10,10 +17,11 @@ export namespace Abstract {
   };
 
   // view {
+  //   INNER-PROP-NAME = METHOD
   //   INNER-PROP-NAME = FIELD
   //   INNER-PROP-NAME = ACTION
-  //   <TAG-NAME> { OUTER-PROPS }
-  //   VIEW-NAME { OUTER-PROPS }
+  //   ATOM
+  //   VIEW-INSTANCE
   // }
   export type View = {
     kind: "view";
@@ -22,6 +30,7 @@ export namespace Abstract {
   };
 
   // model {
+  //   INNER-PROP-NAME = METHOD
   //   INNER-PROP-NAME = FIELD
   //   INNER-PROP-NAME = ACTION
   // }
@@ -30,9 +39,9 @@ export namespace Abstract {
     innerProps: Record<string, Method | Field | Action>;
   };
 
-  // make FIELD
-  // (PARAMETER-NAME) => FIELD
-  // (PARAMETER-NAME: TYPE) => FIELD
+  // make RESULT
+  // (PARAMETER-NAME) => RESULT
+  // (PARAMETER-NAME: TYPE) => RESULT
   export type Method = {
     kind: "method";
     parameterName?: string;
@@ -43,34 +52,49 @@ export namespace Abstract {
    * Fields:
    */
 
+  // CONTENT
+  // CONTENT otherwise FALLBACK
   export type Field = {
     kind: "field";
     content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
-    otherwise?: Action;
+    fallback?: Action;
   };
 
-  // <TAG-NAME> { OUTER-PROPS }
+  // <TAG-NAME> {
+  //   OUTER-PROP-NAME = FIELD
+  //   OUTER-PROP-NAME = ACTION
+  // }
   export type Atom = {
     kind: "atom";
     tagName: string;
     outerProps: Record<string, Field | Action>;
   };
 
-  // VIEW-NAME { OUTER-PROPS }
+  // VIEW-NAME {
+  //   OUTER-PROP-NAME = FIELD
+  //   OUTER-PROP-NAME = ACTION
+  // }
   export type ViewInstance = {
     kind: "viewInstance";
     view: string | View;
     outerProps: Record<string, Field | Action>;
   };
 
-  // object { OUTER-PROPS }
-  // MODEL-NAME { OUTER-PROPS }
+  // object {
+  //   OUTER-PROP-NAME = FIELD
+  //   OUTER-PROP-NAME = ACTION
+  // }
+  // MODEL-NAME {
+  //   OUTER-PROP-NAME = FIELD
+  //   OUTER-PROP-NAME = ACTION
+  // }
   export type ModelInstance = {
     kind: "modelInstance";
     model?: string | Model;
     outerProps: Record<string, Field | Action>;
   };
 
+  // VALUE
   export type RawValue = {
     kind: "rawValue";
     value?: unknown;
@@ -108,8 +132,8 @@ export namespace Abstract {
     expression: Expression;
   };
 
-  // if FIELD then FIELD
-  // if FIELD then FIELD else FIELD
+  // if CONDITION then CONSEQUENCE
+  // if CONDITION then CONSEQUENCE else ALTERNATIVE
   export type Implication = {
     kind: "implication";
     condition: Field;
@@ -121,16 +145,17 @@ export namespace Abstract {
    * Actions:
    */
 
+  // TARGET
   export type Action = {
     kind: "action";
     target: Procedure | Call | Invocation | Gate;
   };
 
-  // do { ACTIONS }
-  // (PARAMETER-NAME) -> ACTION
-  // (PARAMETER-NAME: TYPE) -> ACTION
-  // (PARAMETER-NAME) -> { ACTIONS }
-  // (PARAMETER-NAME: TYPE) -> { ACTIONS }
+  // do { STEPS }
+  // (PARAMETER-NAME) -> STEP
+  // (PARAMETER-NAME: TYPE) -> STEP
+  // (PARAMETER-NAME) -> { STEPS }
+  // (PARAMETER-NAME: TYPE) -> { STEPS }
   export type Procedure = {
     kind: "procedure";
     parameterName?: string;
@@ -150,16 +175,16 @@ export namespace Abstract {
     argument?: Field;
   };
 
-  // let FIELD-NAME = FIELD [...] ACTION
-  // (The bracketed ellipsis represents a new line separating the field from the reaction.)
+  // let FIELD-NAME = CAUSE [...] EFFECT
+  // (The bracketed ellipsis represents a new line separating the cause from the effect.)
   export type Invocation = {
     kind: "invocation";
-    effect: Field;
-    reaction?: Action;
+    cause: Field;
+    effect?: Action;
   };
 
-  // return if FIELD
-  // return if FIELD then ACTION
+  // return if CONDITION
+  // return if CONDITION then CONSEQUENCE
   export type Gate = {
     kind: "gate";
     condition: Field;

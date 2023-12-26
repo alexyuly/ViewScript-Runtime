@@ -58,7 +58,7 @@ export class App {
  */
 
 class Field extends SafeChannel implements Valuable {
-  private readonly otherwise?: Action;
+  private readonly fallback?: Action;
 
   private readonly content:
     | Atom
@@ -73,7 +73,7 @@ class Field extends SafeChannel implements Valuable {
   constructor(source: Abstract.Field, closure: Props) {
     super();
 
-    this.otherwise = source.otherwise ? new Action(source.otherwise, closure) : undefined;
+    this.fallback = source.fallback ? new Action(source.fallback, closure) : undefined;
 
     switch (source.content.kind) {
       case "atom": {
@@ -139,7 +139,7 @@ class Field extends SafeChannel implements Valuable {
   }
 
   handleError(error: unknown): void {
-    if (this.otherwise) {
+    if (this.fallback) {
       const abstractField: Abstract.Field = {
         kind: "field",
         content: {
@@ -148,7 +148,7 @@ class Field extends SafeChannel implements Valuable {
         },
       };
       const field = new Field(abstractField, new StoredProps({}));
-      this.otherwise.handleEvent(field);
+      this.fallback.handleEvent(field);
     }
   }
 }
