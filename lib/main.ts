@@ -513,16 +513,25 @@ class Expectation extends SafePublisher implements Valuable {
 class Implication extends SafeChannel implements Valuable {
   private readonly condition: Field;
   private readonly consequence: Field;
-  private readonly alternative?: Field;
+  private readonly alternative?: Field | Action;
 
   constructor(source: Abstract.Implication, closure: Props) {
     super();
 
     this.condition = new Field(source.condition, closure);
     this.condition.connect((isConditionMet) => {
-      const impliedField = isConditionMet ? this.consequence : this.alternative;
+      const impliedField = isConditionMet
+        ? this.consequence
+        : this.alternative instanceof Field
+        ? this.alternative
+        : undefined;
+
       const impliedValue = impliedField?.getValue();
       this.publish(impliedValue);
+
+      if (this.alternative instanceof Action) {
+        this.alternative.handleEvent();
+      }
     });
 
     this.consequence = new Field(source.consequence, closure);
@@ -533,7 +542,7 @@ class Implication extends SafeChannel implements Valuable {
       }
     });
 
-    if (source.alternative) {
+    if (Abstract.isComponent(source.alternative) && source.alternative.kind === "field") {
       this.alternative = new Field(source.alternative, closure);
       this.alternative.connect((impliedValue) => {
         const isConditionMet = this.condition.getValue();
@@ -546,7 +555,13 @@ class Implication extends SafeChannel implements Valuable {
 
   getProps(): Props {
     const isConditionMet = this.condition.getValue();
-    const impliedField = isConditionMet ? this.consequence : this.alternative;
+
+    const impliedField = isConditionMet
+      ? this.consequence
+      : this.alternative instanceof Field
+      ? this.alternative
+      : undefined;
+
     const impliedProps = impliedField?.getProps() ?? new StoredProps({});
     return impliedProps;
   }

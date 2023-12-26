@@ -138,7 +138,7 @@ export namespace Abstract {
     kind: "implication";
     condition: Field;
     consequence: Field;
-    alternative?: Field;
+    alternative?: Field | Action;
   };
 
   /**
