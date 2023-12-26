@@ -58,6 +58,8 @@ export class App {
  */
 
 class Field extends SafeChannel implements Valuable {
+  private readonly otherwise?: Action;
+
   private readonly content:
     | Atom
     | ViewInstance
@@ -70,6 +72,8 @@ class Field extends SafeChannel implements Valuable {
 
   constructor(source: Abstract.Field, closure: Props) {
     super();
+
+    this.otherwise = source.otherwise ? new Action(source.otherwise, closure) : undefined;
 
     switch (source.content.kind) {
       case "atom": {
@@ -132,6 +136,20 @@ class Field extends SafeChannel implements Valuable {
     }
 
     return this.content.getProps();
+  }
+
+  handleError(error: unknown): void {
+    if (this.otherwise) {
+      const abstractField: Abstract.Field = {
+        kind: "field",
+        content: {
+          kind: "rawValue",
+          value: error,
+        },
+      };
+      const field = new Field(abstractField, new StoredProps({}));
+      this.otherwise.handleEvent(field);
+    }
   }
 }
 

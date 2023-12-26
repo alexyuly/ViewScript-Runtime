@@ -46,7 +46,7 @@ export namespace Abstract {
   export type Field = {
     kind: "field";
     content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
-    otherwise?: Action; // If this field contains an Expectation, then this action is called when the expectation's (expression's method's result's raw value's) promise rejects.
+    otherwise?: Action;
   };
 
   // <TAG-NAME> { OUTER-PROPS }
@@ -150,11 +150,12 @@ export namespace Abstract {
     argument?: Field;
   };
 
-  // let FIELD-NAME = FIELD
+  // let FIELD-NAME = FIELD [...] ACTION
+  // (The bracketed ellipsis represents a new line separating the field from the reaction.)
   export type Invocation = {
     kind: "invocation";
     effect: Field;
-    reaction?: Action; // In code, this action targets a procedure with all steps that come after the invocation.
+    reaction?: Action;
   };
 
   // return if FIELD
