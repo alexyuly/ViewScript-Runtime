@@ -35,14 +35,14 @@ export class App {
         case "atom": {
           const atom = new Atom(component, this.props);
           atom.connect((htmlElement) => {
-            window.document.body.append(htmlElement);
+            document.body.append(htmlElement);
           });
           return atom;
         }
         case "viewInstance": {
           const viewInstance = new ViewInstance(component, this.props);
           viewInstance.connect((htmlElement) => {
-            window.document.body.append(htmlElement);
+            document.body.append(htmlElement);
           });
           return viewInstance;
         }
@@ -187,7 +187,7 @@ class Atom extends Publisher<HTMLElement> {
   constructor(source: Abstract.Atom, closure: Props) {
     super();
 
-    const element = window.document.createElement(source.tagName);
+    const element = document.createElement(source.tagName);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
