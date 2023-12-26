@@ -399,8 +399,20 @@ class Expression extends Channel implements Valuable {
     const method = scope.getMember(source.methodName);
 
     if (Abstract.isComponent(method) && method.kind === "method") {
-      // TODO: ViewScript v0.5
-      throw new Error(`Expression of abstract method is not yet supported: ${source.methodName}`);
+      let parameterizedClosure = closure;
+
+      if (method.parameterName && source.argument) {
+        const argument = new Field(source.argument, closure);
+        parameterizedClosure = new StoredProps(
+          {
+            [method.parameterName]: argument,
+          },
+          closure,
+        );
+      }
+
+      this.result = new Field(method.result, parameterizedClosure);
+      this.result.connect(this);
     } else if (typeof method === "function") {
       if (source.argument) {
         this.argument = new Field(source.argument, closure);
@@ -519,28 +531,28 @@ class Implication extends Channel implements Valuable {
 class Procedure implements Subscriber<Field | undefined> {
   private readonly steps: Array<Abstract.Action>;
   private readonly parameterName?: string;
-  private readonly props: Props;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
     this.steps = source.steps;
     this.parameterName = source.parameterName;
-    this.props = closure;
+    this.closure = closure;
   }
 
   handleEvent(argument?: Field): void {
-    let stepsProps = this.props;
+    let parameterizedClosure = this.closure;
 
     if (this.parameterName && argument) {
-      stepsProps = new StoredProps(
+      parameterizedClosure = new StoredProps(
         {
           [this.parameterName]: argument,
         },
-        this.props,
+        this.closure,
       );
     }
 
     for (const step of this.steps) {
-      const action = new Action(step, stepsProps);
+      const action = new Action(step, parameterizedClosure);
       const caughtException = action.handleEvent();
 
       if (caughtException) {
