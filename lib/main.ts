@@ -455,14 +455,16 @@ class Expectation extends SafeChannel implements Valuable {
       this.queue.push(attendant);
       attendant.promise
         .then((value) => {
-          if (this.queue.includes(attendant)) {
-            this.queue.splice(0, this.queue.indexOf(attendant) + 1);
+          const index = this.queue.indexOf(attendant);
+          if (index !== -1) {
+            this.queue.splice(0, index + 1);
             this.publish(value);
           }
         })
         .catch((error) => {
-          if (this.queue.includes(attendant)) {
-            this.queue.splice(this.queue.indexOf(attendant), 1);
+          const index = this.queue.indexOf(attendant);
+          if (index !== -1) {
+            this.queue.splice(index, 1);
             this.publishError(error);
           }
         });
