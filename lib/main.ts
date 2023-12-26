@@ -510,16 +510,16 @@ class Implication extends Channel implements Valuable {
     super();
 
     this.condition = new Field(source.condition, closure);
-    this.condition.connect((conditionalValue) => {
-      const impliedField = conditionalValue ? this.consequence : this.alternative;
+    this.condition.connect((isConditionMet) => {
+      const impliedField = isConditionMet ? this.consequence : this.alternative;
       const impliedValue = impliedField?.getValue();
       this.publish(impliedValue);
     });
 
     this.consequence = new Field(source.consequence, closure);
     this.consequence.connect((impliedValue) => {
-      const conditionalValue = this.condition.getValue();
-      if (conditionalValue) {
+      const isConditionMet = this.condition.getValue();
+      if (isConditionMet) {
         this.publish(impliedValue);
       }
     });
@@ -527,8 +527,8 @@ class Implication extends Channel implements Valuable {
     if (source.alternative) {
       this.alternative = new Field(source.alternative, closure);
       this.alternative.connect((impliedValue) => {
-        const conditionalValue = this.condition.getValue();
-        if (!conditionalValue) {
+        const isConditionMet = this.condition.getValue();
+        if (!isConditionMet) {
           this.publish(impliedValue);
         }
       });
@@ -536,8 +536,8 @@ class Implication extends Channel implements Valuable {
   }
 
   getProps(): Props {
-    const conditionalValue = this.condition.getValue();
-    const impliedField = conditionalValue ? this.consequence : this.alternative;
+    const isConditionMet = this.condition.getValue();
+    const impliedField = isConditionMet ? this.consequence : this.alternative;
     const impliedProps = impliedField?.getProps() ?? new StoredProps({});
     return impliedProps;
   }
@@ -631,14 +631,14 @@ class Gate implements Subscriber<void> {
   }
 
   handleEvent(): boolean {
-    const conditionalValue = Boolean(this.condition.getValue());
+    const isConditionMet = this.condition.getValue();
 
-    if (conditionalValue && this.consequence) {
+    if (isConditionMet && this.consequence) {
       const action = new Action(this.consequence, this.props);
       action.handleEvent();
     }
 
-    return conditionalValue;
+    return Boolean(isConditionMet);
   }
 }
 
