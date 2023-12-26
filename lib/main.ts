@@ -149,6 +149,8 @@ class Field extends SafeChannel implements Valuable {
       };
       const field = new Field(abstractField, new StoredProps({}));
       this.fallback.handleEvent(field);
+    } else {
+      super.handleError(error);
     }
   }
 }
