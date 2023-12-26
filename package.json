@@ -3,7 +3,7 @@
   "version": "0.4.0",
   "description": "ViewScript's Web Browser Runtime",
   "main": "dist/index.js",
-  "author": "Alex Yuly",
+  "author": "Alexander Patrick Yuly",
   "license": "MIT",
   "homepage": "https://github.com/alexyuly/ViewScript-Runtime#readme",
   "repository": {

@@ -781,7 +781,6 @@ class RawObjectProps implements Props {
     };
 
     const field = new Field(abstractField, new StoredProps({}));
-
     return field;
   }
 }
