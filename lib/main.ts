@@ -294,7 +294,42 @@ class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
-    // TODO: ViewScript v0.5
+    const model = !source.model || Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
+
+    Object.entries(source.outerProps).forEach(([key, value]) => {
+      switch (value.kind) {
+        case "field":
+          this.props.addMember(key, new Field(value, closure));
+          break;
+        case "action":
+          this.props.addMember(key, new Action(value, closure));
+          break;
+        default:
+          throw new Error(
+            `ModelInstance cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+          );
+      }
+    });
+
+    if (Abstract.isComponent(model) && model.kind === "model") {
+      Object.entries(model.innerProps).forEach(([key, value]) => {
+        switch (value.kind) {
+          case "method":
+            this.props.addMember(key, value);
+            break;
+          case "field":
+            this.props.addMember(key, new Field(value, this.props));
+            break;
+          case "action":
+            this.props.addMember(key, new Action(value, this.props));
+            break;
+          default:
+            throw new Error(
+              `ModelInstance cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+            );
+        }
+      });
+    }
   }
 
   getProps(): Props {
