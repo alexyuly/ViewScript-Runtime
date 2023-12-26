@@ -1,7 +1,9 @@
 import { Abstract } from "./abstract";
 import { Subscriber, Publisher, Channel, SafeChannel } from "./pubsub";
 
-// Root:
+/**
+ * Foundation:
+ */
 
 export class App {
   private readonly props = new StoredProps({});
@@ -51,7 +53,9 @@ export class App {
   }
 }
 
-// Properties:
+/**
+ * Fields:
+ */
 
 class Field extends SafeChannel implements Valuable {
   private readonly content:
@@ -156,8 +160,6 @@ class Action implements Subscriber<Field | undefined> {
     return this.target.handleEvent(argument);
   }
 }
-
-// Stage actors:
 
 class Atom extends Publisher<HTMLElement> {
   private readonly props = new StoredProps({});
@@ -294,13 +296,11 @@ class ViewInstance extends Channel<HTMLElement> {
   }
 }
 
-// Field content:
-
 class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
-    // TODO: ViewScript v0.5 (?)
+    // TODO: ViewScript v0.5
   }
 
   getProps(): Props {
@@ -366,6 +366,28 @@ class RawValue extends Channel implements Valuable {
   }
 }
 
+class Reference extends Channel implements Valuable {
+  private readonly field: Field;
+
+  constructor(source: Abstract.Reference, closure: Props) {
+    super();
+
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const field = scope.getMember(source.fieldName);
+
+    if (field instanceof Field) {
+      field.connect(this);
+      this.field = field;
+    } else {
+      throw new Error(`Cannot reference a component which is not a field: ${source.fieldName}`);
+    }
+  }
+
+  getProps(): Props {
+    return this.field.getProps();
+  }
+}
+
 class Expression extends Channel implements Valuable {
   private readonly result: Field;
   private readonly argument?: Field;
@@ -378,7 +400,6 @@ class Expression extends Channel implements Valuable {
 
     if (Abstract.isComponent(method) && method.kind === "method") {
       // TODO: ViewScript v0.5
-      // TODO: Support multiple expecations in one invocation...
       throw new Error(`Expression of abstract method is not yet supported: ${source.methodName}`);
     } else if (typeof method === "function") {
       if (source.argument) {
@@ -491,29 +512,9 @@ class Implication extends Channel implements Valuable {
   }
 }
 
-class Reference extends Channel implements Valuable {
-  private readonly field: Field;
-
-  constructor(source: Abstract.Reference, closure: Props) {
-    super();
-
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const field = scope.getMember(source.fieldName);
-
-    if (field instanceof Field) {
-      field.connect(this);
-      this.field = field;
-    } else {
-      throw new Error(`Cannot reference a component which is not a field: ${source.fieldName}`);
-    }
-  }
-
-  getProps(): Props {
-    return this.field.getProps();
-  }
-}
-
-// Action targets:
+/**
+ * Actions:
+ */
 
 class Procedure implements Subscriber<Field | undefined> {
   private readonly steps: Array<Abstract.Action>;
@@ -549,7 +550,35 @@ class Procedure implements Subscriber<Field | undefined> {
   }
 }
 
-class Operation implements Subscriber<void> {
+class Call implements Subscriber<void> {
+  private readonly action: Subscriber<Field | undefined>;
+  private readonly argument?: Field;
+
+  constructor(source: Abstract.Call, closure: Props) {
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const action = scope.getMember(source.actionName);
+
+    if (action instanceof Action) {
+      this.action = action;
+    } else if (typeof action === "function") {
+      this.action = {
+        handleEvent: action,
+      };
+    } else {
+      throw new Error(`Cannot call a component which is not an action or function: ${source.actionName}`);
+    }
+
+    if (source.argument) {
+      this.argument = new Field(source.argument, closure);
+    }
+  }
+
+  handleEvent(): void {
+    this.action.handleEvent(this.argument);
+  }
+}
+
+class Invocation implements Subscriber<void> {
   constructor(source: Abstract.ModelInstance, closure: Props) {
     // TODO: ViewScript v0.5
   }
@@ -582,35 +611,9 @@ class Gate implements Subscriber<void> {
   }
 }
 
-class Call implements Subscriber<void> {
-  private readonly action: Subscriber<Field | undefined>;
-  private readonly argument?: Field;
-
-  constructor(source: Abstract.Call, closure: Props) {
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const action = scope.getMember(source.actionName);
-
-    if (action instanceof Action) {
-      this.action = action;
-    } else if (typeof action === "function") {
-      this.action = {
-        handleEvent: action,
-      };
-    } else {
-      throw new Error(`Cannot call a component which is not an action or function: ${source.actionName}`);
-    }
-
-    if (source.argument) {
-      this.argument = new Field(source.argument, closure);
-    }
-  }
-
-  handleEvent(): void {
-    this.action.handleEvent(this.argument);
-  }
-}
-
-// Base types:
+/**
+ * Useful stuff:
+ */
 
 interface Valuable {
   getProps(): Props;

@@ -1,6 +1,6 @@
 export namespace Abstract {
   /**
-   * Templates:
+   * Foundation:
    */
 
   export type App = {
@@ -46,7 +46,7 @@ export namespace Abstract {
   export type Field = {
     kind: "field";
     content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
-    otherwise?: Action; // If this field contains an Expectation, then this action is called when the expectation's promise rejects.
+    otherwise?: Action; // If this field contains an Expectation, then this action is called when the expectation's (expression's method's result's raw value's) promise rejects.
   };
 
   // <TAG-NAME> { OUTER-PROPS }
