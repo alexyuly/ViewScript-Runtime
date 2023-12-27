@@ -53,7 +53,7 @@ export namespace Abstract {
    */
 
   // CONTENT
-  // CONTENT otherwise FALLBACK
+  // CONTENT catch FALLBACK
   export type Field = {
     kind: "field";
     content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
@@ -175,12 +175,14 @@ export namespace Abstract {
     arguments: Array<Field>;
   };
 
+  // invoke PREREQUISITE
+  // invoke PREREQUISITE [...] STEPS
   // let PARAMETER-NAME = PREREQUISITE [...] STEPS
   // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
   export type Invocation = {
     kind: "invocation";
     prerequisite: Field;
-    procedure: Procedure;
+    procedure?: Procedure;
   };
 
   // when CONDITION exit
