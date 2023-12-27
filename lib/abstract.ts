@@ -183,8 +183,8 @@ export namespace Abstract {
     procedure?: Procedure;
   };
 
-  // return when CONDITION
-  // return when CONDITION then CONSEQUENCE
+  // when CONDITION return
+  // when CONDITION just CONSEQUENCE
   export type Gate = {
     kind: "gate";
     condition: Field;
