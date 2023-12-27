@@ -665,7 +665,7 @@ class Call implements Subscriber<void> {
 
 class Invocation implements Subscriber<void> {
   private readonly prerequisite: Abstract.Field;
-  private readonly procedure?: Abstract.Procedure;
+  private readonly procedure: Abstract.Procedure;
   private readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
@@ -678,24 +678,22 @@ class Invocation implements Subscriber<void> {
     const prerequisite = new Field(this.prerequisite, this.closure);
 
     prerequisite.connect((prerequisiteValue) => {
-      if (this.procedure) {
-        const args: Array<Field> = [];
+      const args: Array<Field> = [];
 
-        if (this.procedure.parameterName) {
-          const abstractField: Abstract.Field = {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: prerequisiteValue,
-            },
-          };
-          const field = new Field(abstractField, new StoredProps({}));
-          args.push(field);
-        }
-
-        const procedure = new Procedure(this.procedure, this.closure);
-        procedure.handleEvent(args);
+      if (this.procedure.parameterName) {
+        const abstractField: Abstract.Field = {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: prerequisiteValue,
+          },
+        };
+        const field = new Field(abstractField, new StoredProps({}));
+        args.push(field);
       }
+
+      const procedure = new Procedure(this.procedure, this.closure);
+      procedure.handleEvent(args);
     });
   }
 }

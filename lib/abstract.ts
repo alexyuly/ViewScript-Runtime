@@ -180,7 +180,7 @@ export namespace Abstract {
   export type Invocation = {
     kind: "invocation";
     prerequisite: Field;
-    procedure?: Procedure;
+    procedure: Procedure;
   };
 
   // when CONDITION exit
