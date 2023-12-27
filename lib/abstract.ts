@@ -175,8 +175,8 @@ export namespace Abstract {
     arguments: Array<Field>;
   };
 
-  // invoke PREREQUISITE
-  // invoke PREREQUISITE [...] STEPS
+  // resolve PREREQUISITE
+  // resolve PREREQUISITE [...] STEPS
   // let PARAMETER-NAME = PREREQUISITE [...] STEPS
   // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
   export type Invocation = {
