@@ -28,6 +28,11 @@ export abstract class Publisher<T = unknown> {
   }
 
   protected publish(event: T) {
+    // Skip redundant messages:
+    if (this.value === event) {
+      return;
+    }
+
     this.value = event;
 
     this.subscribers.forEach((subscriber) => {
@@ -44,6 +49,11 @@ export abstract class SafePublisher<T = unknown> extends Publisher<T> {
   }
 
   protected publishError(error: unknown) {
+    // Skip redundant messages:
+    if (this.error === error) {
+      return;
+    }
+
     this.error = error;
 
     this.subscribers.forEach((subscriber) => {

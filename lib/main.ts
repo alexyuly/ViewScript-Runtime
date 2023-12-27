@@ -418,15 +418,15 @@ class Reference extends SafeChannel implements Valuable {
 }
 
 class Expression extends SafeChannel implements Valuable {
-  private readonly arguments: Array<Field>;
+  private readonly args: Array<Field>;
   private readonly result: Field;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
 
-    this.arguments = source.arguments.map((arg) => {
-      const argument = new Field(arg, closure);
-      return argument;
+    this.args = source.arguments.map((argument) => {
+      const arg = new Field(argument, closure);
+      return arg;
     });
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
@@ -438,7 +438,7 @@ class Expression extends SafeChannel implements Valuable {
       if (method.parameterName) {
         parameterizedClosure = new StoredProps(
           {
-            [method.parameterName]: this.arguments[0],
+            [method.parameterName]: this.args[0],
           },
           closure,
         );
@@ -451,12 +451,19 @@ class Expression extends SafeChannel implements Valuable {
         kind: "field",
         content: {
           kind: "rawValue",
-          value: method(...this.arguments),
+          value: method(...this.args), // TODO Memoize calls to this method.
         },
       };
 
       this.result = new Field(abstractResult, new StoredProps({}));
       this.result.connect(this);
+
+      this.args.forEach((arg) => {
+        arg.connect(() => {
+          const resultingValue = method(...this.args); // TODO Memoize calls to this method.
+          this.result.handleEvent(resultingValue);
+        });
+      });
     } else {
       throw new Error(`Cannot invoke a component which is not a method or function: ${source.methodName}`);
     }
@@ -635,13 +642,13 @@ class Procedure implements Subscriber<Array<Field>> {
 }
 
 class Call implements Subscriber<void> {
-  private readonly arguments: Array<Field>;
+  private readonly args: Array<Field>;
   private readonly action: Subscriber<Array<Field>>;
 
   constructor(source: Abstract.Call, closure: Props) {
-    this.arguments = source.arguments.map((arg) => {
-      const argument = new Field(arg, closure);
-      return argument;
+    this.args = source.arguments.map((argument) => {
+      const arg = new Field(argument, closure);
+      return arg;
     });
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
@@ -659,7 +666,7 @@ class Call implements Subscriber<void> {
   }
 
   handleEvent(): void {
-    this.action.handleEvent(this.arguments);
+    this.action.handleEvent(this.args);
   }
 }
 
