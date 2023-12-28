@@ -47,7 +47,7 @@ export class App {
           return viewInstance;
         }
         default:
-          throw new Error(`App cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`);
+          throw new Error(`App cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`);
       }
     });
   }
@@ -70,8 +70,13 @@ class Field extends SafeChannel implements Valuable {
     | Expectation
     | Implication;
 
-  constructor(source: Abstract.Field, closure: Props) {
+  constructor(source: Abstract.Field | Expression, closure: Props) {
     super();
+
+    if (source instanceof Expression) {
+      this.content = source;
+      return;
+    }
 
     this.fallback = source.fallback && new Action(source.fallback, closure);
 
@@ -125,7 +130,7 @@ class Field extends SafeChannel implements Valuable {
       }
       default:
         throw new Error(
-          `Field cannot contain a component of invalid kind: ${(source.content as Abstract.Component).kind}`,
+          `Field cannot contain something of invalid kind: ${(source.content as Abstract.Component).kind}`,
         );
     }
   }
@@ -283,7 +288,7 @@ class ViewInstance extends Channel<HTMLElement> {
         }
         default:
           throw new Error(
-            `ViewInstance cannot stage a component of invalid kind: ${(component as Abstract.Component).kind}`,
+            `ViewInstance cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`,
           );
       }
     });
@@ -345,9 +350,23 @@ class RawValue extends Publisher implements Valuable {
 
     if (source.value instanceof Array) {
       this.props = new StoredProps({
+        map: (field) => {
+          const method = field.getValue();
+          if (!(Abstract.isComponent(method) && method.kind === "method")) {
+            throw new Error(`Cannot map an array with an argument which is not a method: ${JSON.stringify(method)}`);
+          }
+          const currentValue = this.getValue();
+          const fn = method as Abstract.Method;
+          const nextValue: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map((arg) => {
+            const expression = new Expression([fn, [arg]], closure);
+            const field = new Field(expression, closure);
+            return field;
+          });
+          this.publish(nextValue);
+        },
         push: (field) => {
           const currentValue = this.getValue();
-          const nextValue = [...(currentValue instanceof Array ? currentValue : []), field];
+          const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), field];
           this.publish(nextValue);
         },
         set: (field) => {
@@ -408,7 +427,7 @@ class Reference extends SafeChannel implements Valuable {
       field.connect(this);
       this.field = field;
     } else {
-      throw new Error(`Cannot reference a component which is not a field: ${source.fieldName}`);
+      throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
     }
   }
 
@@ -421,16 +440,22 @@ class Expression extends SafeChannel implements Valuable {
   private readonly args: Array<Field>;
   private readonly result: Field;
 
-  constructor(source: Abstract.Expression, closure: Props) {
+  constructor(source: Abstract.Expression | [Abstract.Method, Array<Field>], closure: Props) {
     super();
 
-    this.args = source.arguments.map((argument) => {
-      const arg = new Field(argument, closure);
-      return arg;
-    });
+    let method: Property;
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const method = scope.getMember(source.methodName);
+    if (source instanceof Array) {
+      [method, this.args] = source;
+    } else {
+      this.args = source.arguments.map((argument) => {
+        const arg = new Field(argument, closure);
+        return arg;
+      });
+
+      const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+      method = Abstract.isComponent(source.method) ? source.method : scope.getMember(source.method);
+    }
 
     if (Abstract.isComponent(method) && method.kind === "method") {
       let parameterizedClosure = closure;
@@ -447,11 +472,13 @@ class Expression extends SafeChannel implements Valuable {
       this.result = new Field(method.result, parameterizedClosure);
       this.result.connect(this);
     } else if (typeof method === "function") {
+      // TODO Memoize calls to this method:
+      const fn = method;
       const abstractResult: Abstract.Field = {
         kind: "field",
         content: {
           kind: "rawValue",
-          value: method(...this.args), // TODO Memoize calls to this method.
+          value: fn(...this.args),
         },
       };
 
@@ -460,12 +487,12 @@ class Expression extends SafeChannel implements Valuable {
 
       this.args.forEach((arg) => {
         arg.connect(() => {
-          const resultingValue = method(...this.args); // TODO Memoize calls to this method.
+          const resultingValue = fn(...this.args);
           this.result.handleEvent(resultingValue);
         });
       });
     } else {
-      throw new Error(`Cannot invoke a component which is not a method or function: ${source.methodName}`);
+      throw new Error(`Cannot express something which is not a method or function: ${JSON.stringify(method)}`);
     }
   }
 
@@ -597,7 +624,7 @@ class Action implements Subscriber<Array<Field>> {
         break;
       default:
         throw new Error(
-          `Action cannot target a component of invalid kind: ${(source.target as Abstract.Component).kind}`,
+          `Action cannot target something of invalid kind: ${(source.target as Abstract.Component).kind}`,
         );
     }
   }
@@ -661,7 +688,7 @@ class Call implements Subscriber<void> {
         handleEvent: (args) => action(...args),
       };
     } else {
-      throw new Error(`Cannot call a component which is not an action or function: ${source.actionName}`);
+      throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
     }
   }
 
