@@ -172,7 +172,7 @@ export namespace Abstract {
     kind: "call";
     scope?: Field;
     actionName: string;
-    arguments: Array<Field>;
+    arguments?: Array<Field>;
   };
 
   // resolve PREREQUISITE

@@ -629,8 +629,8 @@ class Action implements Subscriber<Array<Field>> {
     }
   }
 
-  handleEvent(callArguments: Array<Field> = []) {
-    return this.target.handleEvent(callArguments);
+  handleEvent(args: Array<Field> = []) {
+    return this.target.handleEvent(args);
   }
 }
 
@@ -645,13 +645,13 @@ class Procedure implements Subscriber<Array<Field>> {
     this.closure = closure;
   }
 
-  handleEvent(callArguments: Array<Field>): void {
+  handleEvent(args: Array<Field>): void {
     let parameterizedClosure = this.closure;
 
     if (this.parameterName) {
       parameterizedClosure = new StoredProps(
         {
-          [this.parameterName]: callArguments[0],
+          [this.parameterName]: args[0],
         },
         this.closure,
       );
@@ -668,12 +668,12 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
-class Call implements Subscriber<void> {
-  private readonly args: Array<Field>;
+class Call implements Subscriber<Array<Field>> {
+  private readonly args?: Array<Field>;
   private readonly action: Subscriber<Array<Field>>;
 
   constructor(source: Abstract.Call, closure: Props) {
-    this.args = source.arguments.map((argument) => {
+    this.args = source.arguments?.map((argument) => {
       const arg = new Field(argument, closure);
       return arg;
     });
@@ -692,8 +692,8 @@ class Call implements Subscriber<void> {
     }
   }
 
-  handleEvent(): void {
-    this.action.handleEvent(this.args);
+  handleEvent(args: Array<Field>): void {
+    this.action.handleEvent(this.args ?? args);
   }
 }
 
