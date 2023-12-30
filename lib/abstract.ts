@@ -80,21 +80,21 @@ export namespace Abstract {
     outerProps: Record<string, Field | Action>;
   };
 
-  // object {
-  //   OUTER-PROP-NAME: FIELD
-  //   OUTER-PROP-NAME: ACTION
-  // }
   // MODEL-NAME {
   //   OUTER-PROP-NAME: FIELD
   //   OUTER-PROP-NAME: ACTION
   // }
   export type ModelInstance = {
     kind: "modelInstance";
-    model?: string | Model;
+    model: string | Model;
     outerProps: Record<string, Field | Action>;
   };
 
   // VALUE
+  // [ FIELDS ]
+  // object {
+  //   PROP-NAME: FIELD
+  // }
   export type RawValue = {
     kind: "rawValue";
     value?: unknown;

@@ -299,7 +299,7 @@ class ModelInstance implements Valuable {
   private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
-    const model = !source.model || Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
+    const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
