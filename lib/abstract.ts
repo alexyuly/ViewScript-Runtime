@@ -117,7 +117,7 @@ export namespace Abstract {
   export type Expression = {
     kind: "expression";
     scope?: Field;
-    method: string | Method;
+    methodName: string;
     arguments: Array<Field>;
   };
 

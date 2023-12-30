@@ -95,6 +95,7 @@ class Field extends SafeChannel implements Valuable {
       }
       case "modelInstance": {
         const modelInstance = new ModelInstance(source.content, closure);
+        modelInstance.connect(this);
         this.content = modelInstance;
         break;
       }
@@ -295,10 +296,12 @@ class ViewInstance extends Channel<HTMLElement> {
   }
 }
 
-class ModelInstance implements Valuable {
+class ModelInstance extends SafeChannel implements Valuable {
   private readonly props = new StoredProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
+    super();
+
     const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
@@ -335,6 +338,9 @@ class ModelInstance implements Valuable {
         }
       });
     }
+
+    // TODO Publish the initial value of the model's serialized contents.
+    // TODO Listen to the model's property changes and publish the serialized contents.
   }
 
   getProps(): Props {
@@ -454,7 +460,7 @@ class Expression extends SafeChannel implements Valuable {
       });
 
       const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-      method = Abstract.isComponent(source.method) ? source.method : scope.getMember(source.method);
+      method = scope.getMember(source.methodName);
     }
 
     if (Abstract.isComponent(method) && method.kind === "method") {
