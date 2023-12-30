@@ -186,7 +186,7 @@ export namespace Abstract {
   };
 
   // when CONDITION exit
-  // when CONDITION just CONSEQUENCE
+  // when CONDITION then CONSEQUENCE
   export type Gate = {
     kind: "gate";
     condition: Field;

@@ -1,6 +1,6 @@
 {
   "name": "viewscript-runtime",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Runs ViewScript abstract syntax trees in a web browser using JavaScript",
   "main": "dist/index.js",
   "author": "Alexander Patrick Yuly",
