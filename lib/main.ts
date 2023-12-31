@@ -461,36 +461,39 @@ class Reference extends SafeChannel implements Valuable {
   }
 }
 
-// TODO Finish fixing this...
 class Expression extends SafeChannel implements Valuable {
-  private args?: Array<Field>;
   private readonly result: Promise<Field>;
 
   constructor(source: Abstract.Expression | [Abstract.Method, Array<Field>], closure: Props) {
     super();
 
-    this.result = new Promise((resolve, reject) => {
-      let method: Property;
-
+    this.result = new Promise<[Property, Array<Field>]>((resolve, reject) => {
       if (source instanceof Array) {
-        [method, this.args] = source;
+        const [method, args] = source;
+        resolve([method, args]);
       } else {
-        this.args = source.arguments.map((argument) => {
+        const args = source.arguments.map((argument) => {
           const arg = new Field(argument, closure);
           return arg;
         });
 
-        const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-        method = scope.getMember(source.methodName);
-      }
+        const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
 
+        resolvableScope
+          .then((scope) => {
+            const method = scope.getMember(source.methodName);
+            resolve([method, args]);
+          })
+          .catch(reject);
+      }
+    }).then(([method, args]) => {
       if (Abstract.isComponent(method) && method.kind === "method") {
         let parameterizedClosure = closure;
 
         if (method.parameterName) {
           parameterizedClosure = new StoredProps(
             {
-              [method.parameterName]: this.args[0],
+              [method.parameterName]: args[0],
             },
             closure,
           );
@@ -499,32 +502,34 @@ class Expression extends SafeChannel implements Valuable {
         const result = new Field(method.result, parameterizedClosure);
         result.connect(this);
 
-        resolve(result);
-      } else if (typeof method === "function") {
+        return result;
+      }
+
+      if (typeof method === "function") {
         // TODO Memoize calls to this method:
         const fn = method;
         const abstractResult: Abstract.Field = {
           kind: "field",
           content: {
             kind: "rawValue",
-            value: fn(...this.args),
+            value: fn(...args),
           },
         };
 
         const result = new Field(abstractResult, new StoredProps({}));
         result.connect(this);
 
-        this.args.forEach((arg) => {
+        args.forEach((arg) => {
           arg.connect(() => {
-            const resultingValue = fn(...(this.args ?? []));
+            const resultingValue = fn(...args);
             result.handleEvent(resultingValue);
           });
         });
 
-        resolve(result);
-      } else {
-        reject(new Error("Cannot express something which is not a method or function."));
+        return result;
       }
+
+      throw new Error("Cannot express something which is not a method or function.");
     });
   }
 
