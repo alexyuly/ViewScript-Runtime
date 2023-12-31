@@ -432,61 +432,51 @@ class Reference extends SafeChannel implements Valuable {
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
+    this.field = (async () => {
+      const scope = await Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
 
-    this.field = new Promise((resolve, reject) => {
-      resolvableScope
-        .then((scope) => {
-          const field = scope.getMember(source.fieldName);
+      const field = scope.getMember(source.fieldName);
 
-          if (field instanceof Field) {
-            field.connect(this);
-            resolve(field);
-          } else {
-            reject(new Error(`Cannot reference something which is not a field: ${source.fieldName}`));
-          }
-        })
-        .catch(reject);
-    });
+      if (!(field instanceof Field)) {
+        throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
+      }
+
+      field.connect(this);
+
+      return field;
+    })();
   }
 
-  getProps(): Props | Promise<Props> {
-    if (this.field instanceof Field) {
-      return this.field.getProps();
-    }
-
-    return this.field.then((field) => {
-      return field.getProps();
-    });
+  async getProps(): Promise<Props> {
+    return this.field.then((field) => field.getProps());
   }
 }
 
 class Expression extends SafeChannel implements Valuable {
   private readonly result: Promise<Field>;
 
-  constructor(source: Abstract.Expression | [Abstract.Method, Array<Field>], closure: Props) {
+  constructor(source: [Abstract.Method, Array<Field>] | Abstract.Expression, closure: Props) {
     super();
 
-    this.result = new Promise<[Property, Array<Field>]>((resolve, reject) => {
+    this.result = (async () => {
+      let method: Property;
+      let args: Array<Field>;
+
       if (source instanceof Array) {
-        const [method, args] = source;
-        resolve([method, args]);
+        [method, args] = source;
       } else {
-        const args = source.arguments.map((argument) => {
+        const scope = await Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
+
+        method = scope.getMember(source.methodName);
+
+        args = source.arguments.map((argument) => {
           const arg = new Field(argument, closure);
           return arg;
         });
-
-        const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
-
-        resolvableScope
-          .then((scope) => {
-            const method = scope.getMember(source.methodName);
-            resolve([method, args]);
-          })
-          .catch(reject);
       }
-    }).then(([method, args]) => {
+
+      let result: Field | undefined;
+
       if (Abstract.isComponent(method) && method.kind === "method") {
         let parameterizedClosure = closure;
 
@@ -499,44 +489,46 @@ class Expression extends SafeChannel implements Valuable {
           );
         }
 
-        const result = new Field(method.result, parameterizedClosure);
-        result.connect(this);
-
-        return result;
+        result = new Field(method.result, parameterizedClosure);
       }
 
       if (typeof method === "function") {
-        // TODO Memoize calls to this method:
-        const fn = method;
+        // TODO Memoize the results of functional method calls.
+
+        const typeSafeMethod = method;
+
         const abstractResult: Abstract.Field = {
           kind: "field",
           content: {
             kind: "rawValue",
-            value: fn(...args),
+            value: typeSafeMethod(...args),
           },
         };
 
-        const result = new Field(abstractResult, new StoredProps({}));
-        result.connect(this);
+        const typeSafeResult = new Field(abstractResult, new StoredProps({}));
 
         args.forEach((arg) => {
           arg.connect(() => {
-            const resultingValue = fn(...args);
-            result.handleEvent(resultingValue);
+            const resultingValue = typeSafeMethod(...args);
+            typeSafeResult.handleEvent(resultingValue);
           });
         });
 
-        return result;
+        result = typeSafeResult;
       }
 
-      throw new Error("Cannot express something which is not a method or function.");
-    });
+      if (!(result instanceof Field)) {
+        throw new Error("Cannot express something which is not an abstract method or a function.");
+      }
+
+      result.connect(this);
+
+      return result;
+    })();
   }
 
   async getProps(): Promise<Props> {
-    return this.result.then((result) => {
-      return result.getProps();
-    });
+    return this.result.then((result) => result.getProps());
   }
 }
 
@@ -721,11 +713,12 @@ class Procedure implements Subscriber<Array<Field>> {
 
 // TODO Finish fixing this...
 class Call implements Subscriber<Array<Field>> {
-  private readonly args?: Array<Field>;
-  private readonly action: Subscriber<Array<Field>>;
+  private readonly constantArgs?: Array<Field>;
+  private readonly action: Promise<Subscriber<Array<Field>>>;
+  private readonly queue: Array<{ args: Array<Field> }> = [];
 
   constructor(source: Abstract.Call, closure: Props) {
-    this.args = source.arguments?.map((argument) => {
+    this.constantArgs = source.arguments?.map((argument) => {
       const arg = new Field(argument, closure);
       return arg;
     });
@@ -745,7 +738,7 @@ class Call implements Subscriber<Array<Field>> {
   }
 
   handleEvent(args: Array<Field>): void {
-    this.action.handleEvent(this.args ?? args);
+    this.action.handleEvent(this.constantArgs ?? args);
   }
 }
 
