@@ -136,7 +136,7 @@ class Field extends SafeChannel implements Valuable {
     }
   }
 
-  getProps(): Props {
+  getProps(): Props | Promise<Props> {
     if (this.content instanceof Atom || this.content instanceof ViewInstance) {
       return new StoredProps({});
     }
@@ -239,7 +239,7 @@ class ViewInstance extends Channel<HTMLElement> {
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
     if (!(Abstract.isComponent(view) && view.kind === "view")) {
-      throw new Error(`Cannot construct invalid view: ${JSON.stringify(source.view)}`);
+      throw new Error("Cannot construct invalid view.");
     }
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
@@ -359,7 +359,7 @@ class RawValue extends Publisher implements Valuable {
         map: (field) => {
           const method = field.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
-            throw new Error(`Cannot map an array with an argument which is not a method: ${JSON.stringify(method)}`);
+            throw new Error("Cannot map an array with an argument which is not a method.");
           }
           const currentValue = this.getValue();
           const fn = method as Abstract.Method;
@@ -383,7 +383,7 @@ class RawValue extends Publisher implements Valuable {
 
       const hydratedArray: Array<Field> = source.value.map((value) => {
         if (!(Abstract.isComponent(value) && value.kind === "field")) {
-          throw new Error(`Cannot hydrate an array element which is not an abstract field: ${JSON.stringify(value)}`);
+          throw new Error("Cannot hydrate an array element which is not an abstract field.");
         }
         const hydratedField = new Field(value as Abstract.Field, closure);
         return hydratedField;
@@ -427,89 +427,111 @@ class RawValue extends Publisher implements Valuable {
 }
 
 class Reference extends SafeChannel implements Valuable {
-  private readonly field: Field;
+  private readonly field: Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const field = scope.getMember(source.fieldName);
+    const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
 
-    if (field instanceof Field) {
-      field.connect(this);
-      this.field = field;
-    } else {
-      throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
-    }
+    this.field = new Promise((resolve, reject) => {
+      resolvableScope
+        .then((scope) => {
+          const field = scope.getMember(source.fieldName);
+
+          if (field instanceof Field) {
+            field.connect(this);
+            resolve(field);
+          } else {
+            reject(new Error(`Cannot reference something which is not a field: ${source.fieldName}`));
+          }
+        })
+        .catch(reject);
+    });
   }
 
-  getProps(): Props {
-    return this.field.getProps();
+  getProps(): Props | Promise<Props> {
+    if (this.field instanceof Field) {
+      return this.field.getProps();
+    }
+
+    return this.field.then((field) => {
+      return field.getProps();
+    });
   }
 }
 
+// TODO Finish fixing this...
 class Expression extends SafeChannel implements Valuable {
-  private readonly args: Array<Field>;
-  private readonly result: Field;
+  private args?: Array<Field>;
+  private readonly result: Promise<Field>;
 
   constructor(source: Abstract.Expression | [Abstract.Method, Array<Field>], closure: Props) {
     super();
 
-    let method: Property;
+    this.result = new Promise((resolve, reject) => {
+      let method: Property;
 
-    if (source instanceof Array) {
-      [method, this.args] = source;
-    } else {
-      this.args = source.arguments.map((argument) => {
-        const arg = new Field(argument, closure);
-        return arg;
-      });
+      if (source instanceof Array) {
+        [method, this.args] = source;
+      } else {
+        this.args = source.arguments.map((argument) => {
+          const arg = new Field(argument, closure);
+          return arg;
+        });
 
-      const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-      method = scope.getMember(source.methodName);
-    }
-
-    if (Abstract.isComponent(method) && method.kind === "method") {
-      let parameterizedClosure = closure;
-
-      if (method.parameterName) {
-        parameterizedClosure = new StoredProps(
-          {
-            [method.parameterName]: this.args[0],
-          },
-          closure,
-        );
+        const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+        method = scope.getMember(source.methodName);
       }
 
-      this.result = new Field(method.result, parameterizedClosure);
-      this.result.connect(this);
-    } else if (typeof method === "function") {
-      // TODO Memoize calls to this method:
-      const fn = method;
-      const abstractResult: Abstract.Field = {
-        kind: "field",
-        content: {
-          kind: "rawValue",
-          value: fn(...this.args),
-        },
-      };
+      if (Abstract.isComponent(method) && method.kind === "method") {
+        let parameterizedClosure = closure;
 
-      this.result = new Field(abstractResult, new StoredProps({}));
-      this.result.connect(this);
+        if (method.parameterName) {
+          parameterizedClosure = new StoredProps(
+            {
+              [method.parameterName]: this.args[0],
+            },
+            closure,
+          );
+        }
 
-      this.args.forEach((arg) => {
-        arg.connect(() => {
-          const resultingValue = fn(...this.args);
-          this.result.handleEvent(resultingValue);
+        const result = new Field(method.result, parameterizedClosure);
+        result.connect(this);
+
+        resolve(result);
+      } else if (typeof method === "function") {
+        // TODO Memoize calls to this method:
+        const fn = method;
+        const abstractResult: Abstract.Field = {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: fn(...this.args),
+          },
+        };
+
+        const result = new Field(abstractResult, new StoredProps({}));
+        result.connect(this);
+
+        this.args.forEach((arg) => {
+          arg.connect(() => {
+            const resultingValue = fn(...(this.args ?? []));
+            result.handleEvent(resultingValue);
+          });
         });
-      });
-    } else {
-      throw new Error(`Cannot express something which is not a method or function: ${JSON.stringify(method)}`);
-    }
+
+        resolve(result);
+      } else {
+        reject(new Error("Cannot express something which is not a method or function."));
+      }
+    });
   }
 
-  getProps(): Props {
-    return this.result.getProps();
+  async getProps(): Promise<Props> {
+    return this.result.then((result) => {
+      return result.getProps();
+    });
   }
 }
 
@@ -546,13 +568,25 @@ class Expectation extends SafePublisher implements Valuable {
     });
   }
 
-  getProps(): Props {
-    const abstractValue: Abstract.RawValue = {
-      kind: "rawValue",
-      value: this.getValue(),
-    };
-    const rawValue = new RawValue(abstractValue, new StoredProps({}));
-    return rawValue.getProps();
+  async getProps(): Promise<Props> {
+    return new Promise((resolve, reject) => {
+      this.connect(
+        new (class extends SafeChannel {
+          handleEvent(value: unknown): void {
+            const abstractValue: Abstract.RawValue = {
+              kind: "rawValue",
+              value,
+            };
+            const rawValue = new RawValue(abstractValue, new StoredProps({}));
+            resolve(rawValue.getProps());
+          }
+
+          handleError(error: unknown): void {
+            reject(error);
+          }
+        })(),
+      );
+    });
   }
 }
 
@@ -599,7 +633,7 @@ class Implication extends SafeChannel implements Valuable {
     }
   }
 
-  getProps(): Props {
+  getProps(): Props | Promise<Props> {
     const isConditionMet = this.condition.getValue();
 
     const impliedField = isConditionMet
@@ -680,6 +714,7 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO Finish fixing this...
 class Call implements Subscriber<Array<Field>> {
   private readonly args?: Array<Field>;
   private readonly action: Subscriber<Array<Field>>;
@@ -774,7 +809,7 @@ class Gate implements Subscriber<void> {
  */
 
 interface Valuable {
-  getProps(): Props;
+  getProps(): Props | Promise<Props>;
 }
 
 interface Props {
@@ -831,6 +866,7 @@ class RawObjectProps implements Props {
   }
 }
 
+// TODO Fix this so that window isn't accessible for scoped prop access:
 class StoredProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
