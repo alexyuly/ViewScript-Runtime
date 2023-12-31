@@ -97,7 +97,7 @@ export namespace Abstract {
   // }
   export type RawValue = {
     kind: "rawValue";
-    value?: unknown;
+    value: unknown;
   };
 
   // FIELD-NAME

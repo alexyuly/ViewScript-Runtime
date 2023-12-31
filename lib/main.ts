@@ -368,7 +368,7 @@ class RawValue extends Publisher implements Valuable {
             const field = new Field(expression, closure);
             return field;
           });
-          this.publish(nextValue);
+          return nextValue;
         },
         push: (field) => {
           const currentValue = this.getValue();
@@ -405,6 +405,12 @@ class RawValue extends Publisher implements Valuable {
           props.addMember("toggle", () => {
             const nextValue = !this.getValue();
             this.publish(nextValue);
+          });
+        } else if (typeof source.value === "string") {
+          props.addMember("plus", (field) => {
+            const currentValue = this.getValue();
+            const nextValue = `${currentValue}${field.getValue()}`;
+            return nextValue;
           });
         }
 
