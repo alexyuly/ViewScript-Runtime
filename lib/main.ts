@@ -701,7 +701,6 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
-// TODO Finish fixing this...
 class Call implements Subscriber<Array<Field>> {
   private readonly constantArgs?: Array<Field>;
   private readonly action: Promise<Subscriber<Array<Field>>>;
@@ -713,26 +712,43 @@ class Call implements Subscriber<Array<Field>> {
       return arg;
     });
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const action = scope.getMember(source.actionName);
+    this.action = (async () => {
+      const scope = await Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
 
-    if (action instanceof Action) {
-      this.action = action;
-    } else if (typeof action === "function") {
-      this.action = {
-        handleEvent: (args) => action(...args),
-      };
-    } else {
+      const action = scope.getMember(source.actionName);
+
+      if (action instanceof Action) {
+        return action;
+      }
+
+      if (typeof action === "function") {
+        return {
+          handleEvent: (args) => action(...args),
+        };
+      }
+
       throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
-    }
+    })();
   }
 
   handleEvent(args: Array<Field>): void {
-    this.action.handleEvent(this.constantArgs ?? args);
+    this.queue.push({
+      args: this.constantArgs ?? args,
+    });
+
+    (async () => {
+      const action = await this.action;
+
+      let next = this.queue.shift();
+
+      while (next) {
+        action.handleEvent(next.args);
+        next = this.queue.shift();
+      }
+    })();
   }
 }
 
-// TODO We may be able to remove Invocations depending on how async Calls shake out
 class Invocation implements Subscriber<void> {
   private readonly prerequisite: Abstract.Field;
   private readonly procedure?: Abstract.Procedure;
