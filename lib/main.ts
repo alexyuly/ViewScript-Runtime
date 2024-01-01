@@ -6,7 +6,7 @@ import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pu
  */
 
 export class App {
-  private readonly props = new StaticProps({});
+  private readonly props = new StaticProps({}, new RawObjectProps(window));
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
@@ -880,11 +880,9 @@ class RawObjectProps implements Props {
   }
 }
 
-// TODO Fix this so that window isn't accessible for scoped prop access:
 class StaticProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
-  private static readonly globalScope = new RawObjectProps(window);
 
   constructor(properties: Record<string, Property>, closure?: Props) {
     this.properties = properties;
@@ -904,7 +902,7 @@ class StaticProps implements Props {
       return this.closure.getMember(key);
     }
 
-    return StaticProps.globalScope.getMember(key);
+    throw new Error(`Prop ${key} not found`);
   }
 }
 
