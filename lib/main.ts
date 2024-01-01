@@ -427,30 +427,47 @@ class RawValue extends Publisher implements Valuable {
 }
 
 class Reference extends SafeChannel implements Valuable {
-  private readonly field: Promise<Field>;
+  private readonly field: Field | Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    this.field = (async () => {
-      const scope = await Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
+    const resolvableScope = source.scope ? new Field(source.scope, closure).getProps() : closure;
 
-      const field = scope.getMember(source.fieldName);
+    if (resolvableScope instanceof Promise) {
+      this.field = (async () => {
+        const scope = await resolvableScope;
+        const field = scope.getMember(source.fieldName);
+
+        if (!(field instanceof Field)) {
+          throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
+        }
+
+        field.connect(this);
+        return field;
+      })();
+    } else {
+      const field = resolvableScope.getMember(source.fieldName);
 
       if (!(field instanceof Field)) {
         throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
       }
 
       field.connect(this);
-
-      return field;
-    })();
+      this.field = field;
+    }
   }
 
-  async getProps(): Promise<Props> {
-    const field = await this.field;
+  getProps(): Props | Promise<Props> {
+    if (this.field instanceof Field) {
+      return this.field.getProps();
+    }
 
-    return field.getProps();
+    return (async () => {
+      const field = await this.field;
+
+      return field.getProps();
+    })();
   }
 }
 
