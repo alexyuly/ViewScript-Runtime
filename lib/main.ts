@@ -435,8 +435,7 @@ class Reference extends SafeChannel implements Valuable {
     const resolvableScope = source.scope ? new Field(source.scope, closure).getProps() : closure;
 
     if (resolvableScope instanceof Promise) {
-      this.field = (async () => {
-        const scope = await resolvableScope;
+      this.field = resolvableScope.then((scope) => {
         const field = scope.getMember(source.fieldName);
 
         if (!(field instanceof Field)) {
@@ -445,7 +444,7 @@ class Reference extends SafeChannel implements Valuable {
 
         field.connect(this);
         return field;
-      })();
+      });
     } else {
       const field = resolvableScope.getMember(source.fieldName);
 
@@ -463,11 +462,7 @@ class Reference extends SafeChannel implements Valuable {
       return this.field.getProps();
     }
 
-    return (async () => {
-      const field = await this.field;
-
-      return field.getProps();
-    })();
+    return this.field.then((field) => field.getProps());
   }
 }
 
@@ -547,9 +542,7 @@ class Expression extends SafeChannel implements Valuable {
   }
 
   async getProps(): Promise<Props> {
-    const result = await this.result;
-
-    return result.getProps();
+    return this.result.then((result) => result.getProps());
   }
 }
 
@@ -719,19 +712,14 @@ class Procedure implements Subscriber<Array<Field>> {
 }
 
 class Call implements Subscriber<Array<Field>> {
-  private readonly constantArgs?: Array<Field>;
   private readonly action: Promise<Subscriber<Array<Field>>>;
+  private readonly constantArgs?: Array<Field>;
   private readonly queue: Array<{ args: Array<Field> }> = [];
 
   constructor(source: Abstract.Call, closure: Props) {
-    this.constantArgs = source.arguments?.map((argument) => {
-      const arg = new Field(argument, closure);
-      return arg;
-    });
+    const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
 
-    this.action = (async () => {
-      const scope = await Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
-
+    this.action = resolvableScope.then((scope) => {
       const action = scope.getMember(source.actionName);
 
       if (action instanceof Action) {
@@ -745,7 +733,12 @@ class Call implements Subscriber<Array<Field>> {
       }
 
       throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
-    })();
+    });
+
+    this.constantArgs = source.arguments?.map((argument) => {
+      const arg = new Field(argument, closure);
+      return arg;
+    });
   }
 
   // TODO Fix this, so that actions aren't called until all arguments are ready. "Ready"... how do we determine that for call args...
@@ -754,16 +747,14 @@ class Call implements Subscriber<Array<Field>> {
       args: this.constantArgs ?? args,
     });
 
-    (async () => {
-      const action = await this.action;
-
+    this.action.then((action) => {
       let next = this.queue.shift();
 
       while (next) {
         action.handleEvent(next.args);
         next = this.queue.shift();
       }
-    })();
+    });
   }
 }
 
