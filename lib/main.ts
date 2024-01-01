@@ -858,9 +858,9 @@ class RawObjectProps implements Props {
           ? (argument: unknown) => new memberValue(argument)
           : memberValue.bind(this.value);
 
-      const memberFunction = (argument?: Field) => {
-        const argumentValue = argument?.getValue();
-        const result = callableMemberValue(argumentValue);
+      const memberFunction = (...args: Array<Field>) => {
+        const argumentValues = args.map((arg) => arg.getValue());
+        const result = callableMemberValue(...argumentValues);
         return result;
       };
 
