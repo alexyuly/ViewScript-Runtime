@@ -120,14 +120,12 @@ class Field extends SafeChannel implements Owner, Supplier {
     this.fallback = source.fallback && new Action(source.fallback, closure);
   }
 
-  getProps(): Props {
-    const supply = this.getSupply();
-
-    if (supply instanceof Atom || supply instanceof ViewInstance) {
+  getProps(): Props | Promise<Props> {
+    if (this.content instanceof Atom || this.content instanceof ViewInstance) {
       return new StaticProps({});
     }
 
-    return supply.getProps();
+    return this.content.getProps();
   }
 
   getSupply(): Supply {
@@ -158,15 +156,24 @@ class Field extends SafeChannel implements Owner, Supplier {
   }
 }
 
-class Expectation extends SafeChannel implements Supplier {
-  private readonly terminal: Field;
+class Expectation extends SafeChannel implements Owner, Supplier {
+  private readonly props: Promise<Props>;
+  private readonly supplier: Field;
   private readonly path: Expression;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
 
-    this.terminal = new Field(
+    let resolveProps: (props: Props) => void;
+    let rejectProps: (error: unknown) => void;
+
+    this.props = new Promise<Props>((resolve, reject) => {
+      resolveProps = resolve;
+      rejectProps = reject;
+    });
+
+    this.supplier = new Field(
       {
         kind: "field",
         content: {
@@ -177,7 +184,7 @@ class Expectation extends SafeChannel implements Supplier {
       new StaticProps({}),
     );
 
-    this.terminal.connect(this);
+    this.supplier.connect(this);
     this.path = new Expression(source.path, closure);
 
     this.path.connect((resultingValue) => {
@@ -191,21 +198,29 @@ class Expectation extends SafeChannel implements Supplier {
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(0, index + 1);
-            this.terminal.handleEvent(value);
+            // TODO Fix this so that the supplier's value causes its props to update when it handles an event...
+            // To fix the errors of "ok" and "json" not found in the response:
+            this.supplier.handleEvent(value);
+            resolveProps(this.supplier.getProps() as Props);
           }
         })
         .catch((error) => {
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(index, 1);
-            this.terminal.handleError(error);
+            this.supplier.handleError(error);
+            rejectProps(error);
           }
         });
     });
   }
 
+  getProps(): Promise<Props> {
+    return this.props;
+  }
+
   getSupply(): Supply {
-    return this.terminal.getSupply();
+    return this.supplier.getSupply();
   }
 }
 
@@ -495,87 +510,122 @@ class RawValue extends Publisher implements Owner {
 }
 
 class Reference extends SafeChannel implements Owner {
-  private readonly field: Field;
+  private readonly field: Field | Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const field = scope.getMember(source.fieldName);
 
-    if (!(field instanceof Field)) {
-      throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
+    if (scope instanceof Promise) {
+      this.field = scope.then((scopeResult) => {
+        const field = scopeResult.getMember(source.fieldName);
+
+        if (!(field instanceof Field)) {
+          throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
+        }
+
+        field.connect(this);
+        return field;
+      });
+    } else {
+      const field = scope.getMember(source.fieldName);
+
+      if (!(field instanceof Field)) {
+        throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
+      }
+
+      field.connect(this);
+      this.field = field;
     }
-
-    field.connect(this);
-    this.field = field;
   }
 
-  getProps(): Props {
+  getProps() {
+    if (this.field instanceof Promise) {
+      return this.field.then((fieldResult) => {
+        return fieldResult.getProps();
+      });
+    }
+
     return this.field.getProps();
   }
 }
 
 // TODO Memoize the results of functional method calls.
 class Expression extends SafeChannel implements Owner {
-  private readonly result: Field;
+  private supplier?: Field | Promise<Field>;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    const method = scope.getMember(source.methodName);
+    const connectSupplier = (scopeResult: Props) => {
+      const method = scopeResult.getMember(source.methodName);
 
-    const args = source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, closure);
-      return arg;
-    });
-
-    if (Abstract.isComponent(method) && method.kind === "method") {
-      let parameterizedClosure = closure;
-
-      if (method.parameterName) {
-        parameterizedClosure = new StaticProps(
-          {
-            [method.parameterName]: args[0],
-          },
-          closure,
-        );
-      }
-
-      this.result = new Field(method.result, parameterizedClosure);
-      this.result.connect(this);
-    } else if (typeof method === "function") {
-      // TODO Wait until args are ready to call function:
-      const typeSafeMethod = method;
-      const typeSafeValue = typeSafeMethod(...args);
-      const typeSafeResult = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value: typeSafeValue,
-          },
-        },
-        new StaticProps({}),
-      );
-
-      args.forEach((arg) => {
-        arg.connect(() => {
-          const resultingValue = typeSafeMethod(...args);
-          typeSafeResult.handleEvent(resultingValue);
-        });
+      const args = source.args.map((sourceArg) => {
+        const arg = new Field(sourceArg, closure);
+        return arg;
       });
 
-      this.result = typeSafeResult;
-      this.result.connect(this);
+      if (Abstract.isComponent(method) && method.kind === "method") {
+        let parameterizedClosure = closure;
+
+        if (method.parameterName) {
+          parameterizedClosure = new StaticProps(
+            {
+              [method.parameterName]: args[0],
+            },
+            closure,
+          );
+        }
+
+        this.supplier = new Field(method.result, parameterizedClosure);
+        this.supplier.connect(this);
+      } else if (typeof method === "function") {
+        // TODO Wait until args are ready to call function:
+        const typeSafeMethod = method;
+        const typeSafeValue = typeSafeMethod(...args);
+        const typeSafeResult = new Field(
+          {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value: typeSafeValue,
+            },
+          },
+          new StaticProps({}),
+        );
+
+        args.forEach((arg) => {
+          arg.connect(() => {
+            const resultingValue = typeSafeMethod(...args);
+            typeSafeResult.handleEvent(resultingValue);
+          });
+        });
+
+        this.supplier = typeSafeResult;
+        this.supplier.connect(this);
+      } else {
+        throw new Error("Cannot express something which is not an abstract method or a function.");
+      }
+    };
+
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+
+    if (scope instanceof Promise) {
+      scope.then(connectSupplier);
     } else {
-      throw new Error("Cannot express something which is not an abstract method or a function.");
+      connectSupplier(scope);
     }
   }
 
-  getProps(): Props {
-    return this.result.getProps();
+  getProps() {
+    if (this.supplier instanceof Promise) {
+      return this.supplier.then((supply) => {
+        return supply.getProps();
+      });
+    }
+
+    return this.supplier!.getProps();
   }
 }
 
@@ -622,7 +672,7 @@ class Implication extends SafeChannel implements Owner {
     }
   }
 
-  getProps(): Props {
+  getProps() {
     const isConditionMet = this.condition.getValue();
 
     const impliedField = isConditionMet
@@ -818,7 +868,7 @@ class Gate implements Subscriber<void> {
  */
 
 interface Owner {
-  getProps(): Props;
+  getProps(): Props | Promise<Props>;
 }
 
 interface Props {
