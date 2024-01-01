@@ -57,14 +57,20 @@ export class App {
  * Fields:
  */
 
-class Field extends SafeChannel implements Supplier, Owner {
-  private readonly content: ReturnType<Supplier["getSupply"]> | Expectation;
+class Field extends SafeChannel implements Owner, Supplier {
+  private readonly content: Supply | Expectation;
   private readonly fallback?: Action;
 
   constructor(source: Abstract.Field, closure: Props) {
     super();
 
     switch (source.content.kind) {
+      case "expectation": {
+        const expectation = new Expectation(source.content, closure);
+        expectation.connect(this);
+        this.content = expectation;
+        break;
+      }
       case "atom": {
         const atom = new Atom(source.content, closure);
         atom.connect(this);
@@ -101,12 +107,6 @@ class Field extends SafeChannel implements Supplier, Owner {
         this.content = expression;
         break;
       }
-      case "expectation": {
-        const expectation = new Expectation(source.content, closure);
-        expectation.connect(this);
-        this.content = expectation;
-        break;
-      }
       case "implication": {
         const implication = new Implication(source.content, closure);
         implication.connect(this);
@@ -120,14 +120,6 @@ class Field extends SafeChannel implements Supplier, Owner {
     this.fallback = source.fallback && new Action(source.fallback, closure);
   }
 
-  getSupply(): ReturnType<Supplier["getSupply"]> {
-    if (this.content instanceof Expectation) {
-      return this.content.getSupply();
-    }
-
-    return this.content;
-  }
-
   getProps(): Props {
     const supply = this.getSupply();
 
@@ -136,6 +128,14 @@ class Field extends SafeChannel implements Supplier, Owner {
     }
 
     return supply.getProps();
+  }
+
+  getSupply(): Supply {
+    if (this.content instanceof Expectation) {
+      return this.content.getSupply();
+    }
+
+    return this.content;
   }
 
   handleError(error: unknown): void {
@@ -178,7 +178,6 @@ class Expectation extends SafeChannel implements Supplier {
     );
 
     this.terminal.connect(this);
-
     this.path = new Expression(source.path, closure);
 
     this.path.connect((resultingValue) => {
@@ -205,7 +204,7 @@ class Expectation extends SafeChannel implements Supplier {
     });
   }
 
-  getSupply(): ReturnType<Supplier["getSupply"]> {
+  getSupply(): Supply {
     return this.terminal.getSupply();
   }
 }
@@ -828,16 +827,16 @@ class Gate implements Subscriber<void> {
  * Useful stuff:
  */
 
-interface Supplier {
-  getSupply(): Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
-}
-
 interface Owner {
   getProps(): Props;
 }
 
 interface Props {
   getMember(key: string): Property;
+}
+
+interface Supplier {
+  getSupply(): Supply;
 }
 
 type Property =
@@ -847,6 +846,8 @@ type Property =
   | Field
   | Action
   | ((...args: Array<Field>) => unknown);
+
+type Supply = Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
 
 class RawObjectProps implements Props {
   private readonly value: any;
