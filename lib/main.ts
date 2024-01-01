@@ -6,7 +6,7 @@ import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pu
  */
 
 export class App {
-  private readonly props = new StoredProps({});
+  private readonly props = new StaticProps({});
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
@@ -138,7 +138,7 @@ class Field extends SafeChannel implements Valuable {
 
   getProps(): Props | Promise<Props> {
     if (this.content instanceof Atom || this.content instanceof ViewInstance) {
-      return new StoredProps({});
+      return new StaticProps({});
     }
 
     return this.content.getProps();
@@ -153,7 +153,7 @@ class Field extends SafeChannel implements Valuable {
           value: error,
         },
       };
-      const field = new Field(abstractField, new StoredProps({}));
+      const field = new Field(abstractField, new StaticProps({}));
       this.fallback.handleEvent([field]);
     } else {
       super.handleError(error);
@@ -162,7 +162,7 @@ class Field extends SafeChannel implements Valuable {
 }
 
 class Atom extends Publisher<HTMLElement> {
-  private readonly props = new StoredProps({});
+  private readonly props = new StaticProps({});
 
   constructor(source: Abstract.Atom, closure: Props) {
     super();
@@ -212,7 +212,7 @@ class Atom extends Publisher<HTMLElement> {
                 value: event,
               },
             };
-            const argument = new Field(abstractArgument, new StoredProps({}));
+            const argument = new Field(abstractArgument, new StaticProps({}));
             action.handleEvent([argument]);
           });
           this.props.addMember(key, action);
@@ -230,7 +230,7 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 class ViewInstance extends Channel<HTMLElement> {
-  private readonly props = new StoredProps({});
+  private readonly props = new StaticProps({});
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props) {
@@ -297,7 +297,7 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class ModelInstance extends SafeChannel implements Valuable {
-  private readonly props = new StoredProps({});
+  private readonly props = new StaticProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
     super();
@@ -355,7 +355,7 @@ class RawValue extends Publisher implements Valuable {
     super();
 
     if (source.value instanceof Array) {
-      this.props = new StoredProps({
+      this.props = new StaticProps({
         map: (field) => {
           const method = field.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
@@ -394,7 +394,7 @@ class RawValue extends Publisher implements Valuable {
       if (Abstract.isRawObject(source.value)) {
         this.props = new RawObjectProps(source.value);
       } else {
-        const props = new StoredProps({
+        const props = new StaticProps({
           set: (field) => {
             const nextValue = field?.getValue();
             this.publish(nextValue);
@@ -483,7 +483,7 @@ class Expression extends SafeChannel implements Valuable {
         let parameterizedClosure = closure;
 
         if (method.parameterName) {
-          parameterizedClosure = new StoredProps(
+          parameterizedClosure = new StaticProps(
             {
               [method.parameterName]: args[0],
             },
@@ -507,7 +507,7 @@ class Expression extends SafeChannel implements Valuable {
           },
         };
 
-        const typeSafeResult = new Field(abstractResult, new StoredProps({}));
+        const typeSafeResult = new Field(abstractResult, new StaticProps({}));
 
         args.forEach((arg) => {
           arg.connect(() => {
@@ -629,7 +629,7 @@ class Implication extends SafeChannel implements Valuable {
       ? this.alternative
       : undefined;
 
-    const impliedProps = impliedField?.getProps() ?? new StoredProps({});
+    const impliedProps = impliedField?.getProps() ?? new StaticProps({});
     return impliedProps;
   }
 }
@@ -682,7 +682,7 @@ class Procedure implements Subscriber<Array<Field>> {
     let parameterizedClosure = this.closure;
 
     if (this.parameterName) {
-      parameterizedClosure = new StoredProps(
+      parameterizedClosure = new StaticProps(
         {
           [this.parameterName]: args[0],
         },
@@ -731,6 +731,7 @@ class Call implements Subscriber<Array<Field>> {
     })();
   }
 
+  // TODO Fix this, so that actions aren't called until all arguments are ready. "Ready"... how do we determine that for call args...
   handleEvent(args: Array<Field>): void {
     this.queue.push({
       args: this.constantArgs ?? args,
@@ -775,7 +776,7 @@ class Invocation implements Subscriber<void> {
               value: prerequisiteValue,
             },
           };
-          const field = new Field(abstractField, new StoredProps({}));
+          const field = new Field(abstractField, new StaticProps({}));
           args.push(field);
         }
 
@@ -866,13 +867,13 @@ class RawObjectProps implements Props {
       },
     };
 
-    const field = new Field(abstractField, new StoredProps({}));
+    const field = new Field(abstractField, new StaticProps({}));
     return field;
   }
 }
 
 // TODO Fix this so that window isn't accessible for scoped prop access:
-class StoredProps implements Props {
+class StaticProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
   private static readonly globalScope = new RawObjectProps(window);
@@ -895,7 +896,7 @@ class StoredProps implements Props {
       return this.closure.getMember(key);
     }
 
-    return StoredProps.globalScope.getMember(key);
+    return StaticProps.globalScope.getMember(key);
   }
 }
 
@@ -922,7 +923,7 @@ class AsyncPropsContainer extends SafeChannel {
       kind: "rawValue",
       value,
     };
-    const rawValue = new RawValue(abstractValue, new StoredProps({}));
+    const rawValue = new RawValue(abstractValue, new StaticProps({}));
     const props = rawValue.getProps();
     this.resolve?.(props);
   }
