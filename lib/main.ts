@@ -523,65 +523,55 @@ class Expression extends SafeChannel implements Owner {
   constructor(source: Abstract.Expression, closure: Props) {
     super();
 
-    const useScopeToConnectResult = (scope: Props) => {
-      const method = scope.getMember(source.methodName);
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const method = scope.getMember(source.methodName);
 
-      const args = source.args.map((sourceArg) => {
-        const arg = new Field(sourceArg, closure);
-        return arg;
+    const args = source.args.map((sourceArg) => {
+      const arg = new Field(sourceArg, closure);
+      return arg;
+    });
+
+    if (Abstract.isComponent(method) && method.kind === "method") {
+      let parameterizedClosure = closure;
+
+      if (method.parameterName) {
+        parameterizedClosure = new StaticProps(
+          {
+            [method.parameterName]: args[0],
+          },
+          closure,
+        );
+      }
+
+      this.result = new Field(method.result, parameterizedClosure);
+      this.result.connect(this);
+    } else if (typeof method === "function") {
+      // TODO Wait until args are ready to call function:
+      const typeSafeMethod = method;
+      const typeSafeValue = typeSafeMethod(...args);
+      const typeSafeResult = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: typeSafeValue,
+          },
+        },
+        new StaticProps({}),
+      );
+
+      args.forEach((arg) => {
+        arg.connect(() => {
+          const resultingValue = typeSafeMethod(...args);
+          typeSafeResult.handleEvent(resultingValue);
+        });
       });
 
-      if (Abstract.isComponent(method) && method.kind === "method") {
-        let parameterizedClosure = closure;
-
-        if (method.parameterName) {
-          parameterizedClosure = new StaticProps(
-            {
-              [method.parameterName]: args[0],
-            },
-            closure,
-          );
-        }
-
-        const result = new Field(method.result, parameterizedClosure);
-        result.connect(this);
-
-        return result;
-      }
-
-      if (typeof method === "function") {
-        // TODO Wait until args are ready to call function:
-        const typeSafeMethod = method;
-        const typeSafeValue = typeSafeMethod(...args);
-        const typeSafeResult = new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: typeSafeValue,
-            },
-          },
-          new StaticProps({}),
-        );
-
-        args.forEach((arg) => {
-          arg.connect(() => {
-            const resultingValue = typeSafeMethod(...args);
-            typeSafeResult.handleEvent(resultingValue);
-          });
-        });
-
-        const result = typeSafeResult;
-        result.connect(this);
-
-        return result;
-      }
-
+      this.result = typeSafeResult;
+      this.result.connect(this);
+    } else {
       throw new Error("Cannot express something which is not an abstract method or a function.");
-    };
-
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-    this.result = useScopeToConnectResult(scope);
+    }
   }
 
   getProps(): Props {
