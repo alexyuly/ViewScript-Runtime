@@ -57,20 +57,12 @@ export class App {
  * Fields:
  */
 
-class Field extends SafeChannel implements Valuable {
+class Field extends SafeChannel implements Supplier, Owner {
+  private readonly content: ReturnType<Supplier["getSupply"]> | Expectation;
   private readonly fallback?: Action;
 
-  private readonly content: Provision | Expectation;
-
-  constructor(source: Abstract.Field | Expression, closure: Props) {
+  constructor(source: Abstract.Field, closure: Props) {
     super();
-
-    if (source instanceof Expression) {
-      this.content = source;
-      return;
-    }
-
-    this.fallback = source.fallback && new Action(source.fallback, closure);
 
     switch (source.content.kind) {
       case "atom": {
@@ -109,12 +101,12 @@ class Field extends SafeChannel implements Valuable {
         this.content = expression;
         break;
       }
-      // case "expectation": {
-      //   const expectation = new Expectation(source.content, closure);
-      //   expectation.connect(this);
-      //   this.content = expectation;
-      //   break;
-      // }
+      case "expectation": {
+        const expectation = new Expectation(source.content, closure);
+        expectation.connect(this);
+        this.content = expectation;
+        break;
+      }
       case "implication": {
         const implication = new Implication(source.content, closure);
         implication.connect(this);
@@ -122,52 +114,74 @@ class Field extends SafeChannel implements Valuable {
         break;
       }
       default:
-        throw new Error(
-          `Field cannot contain something of invalid kind: ${(source.content as Abstract.Component).kind}`,
-        );
+        throw new Error(`Cannot field some content of invalid kind: ${(source.content as Abstract.Component).kind}`);
     }
+
+    this.fallback = source.fallback && new Action(source.fallback, closure);
+  }
+
+  getSupply(): ReturnType<Supplier["getSupply"]> {
+    if (this.content instanceof Expectation) {
+      return this.content.getSupply();
+    }
+
+    return this.content;
   }
 
   getProps(): Props {
-    if (this.content instanceof Atom || this.content instanceof ViewInstance) {
+    const supply = this.getSupply();
+
+    if (supply instanceof Atom || supply instanceof ViewInstance) {
       return new StaticProps({});
     }
 
-    return this.content.getProps();
+    return supply.getProps();
   }
 
   handleError(error: unknown): void {
     if (this.fallback) {
-      const abstractField: Abstract.Field = {
-        kind: "field",
-        content: {
-          kind: "rawValue",
-          value: error,
+      const errorArg = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: error,
+          },
         },
-      };
-      const field = new Field(abstractField, new StaticProps({}));
-      this.fallback.handleEvent([field]);
+        new StaticProps({}),
+      );
+
+      this.fallback.handleEvent([errorArg]);
     } else {
       super.handleError(error);
     }
   }
 }
 
-class Provision {
-  // TODO
-}
-
-// TODO fix
-class Expectation extends SafePublisher<Promise<unknown>> {
-  private readonly expression: Expression;
+class Expectation extends SafeChannel implements Supplier {
+  private readonly terminal: Field;
+  private readonly path: Expression;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
 
-    this.expression = new Expression(source.expression, closure);
+    this.terminal = new Field(
+      {
+        kind: "field",
+        content: {
+          kind: "rawValue",
+          value: undefined,
+        },
+      },
+      new StaticProps({}),
+    );
 
-    this.expression.connect((resultingValue) => {
+    this.terminal.connect(this);
+
+    this.path = new Expression(source.path, closure);
+
+    this.path.connect((resultingValue) => {
       const attendant = {
         id: crypto.randomUUID(),
         promise: Promise.resolve(resultingValue),
@@ -178,17 +192,21 @@ class Expectation extends SafePublisher<Promise<unknown>> {
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(0, index + 1);
-            this.publish(value);
+            this.terminal.handleEvent(value);
           }
         })
         .catch((error) => {
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(index, 1);
-            this.publishError(error);
+            this.terminal.handleError(error);
           }
         });
     });
+  }
+
+  getSupply(): ReturnType<Supplier["getSupply"]> {
+    return this.terminal.getSupply();
   }
 }
 
@@ -229,23 +247,29 @@ class Atom extends Publisher<HTMLElement> {
               element.setAttribute(key, fieldValue as string);
             }
           });
+
           this.props.addMember(key, field);
           break;
         }
         case "action": {
           const action = new Action(value, closure);
           const eventType = key.toLowerCase();
+
           element.addEventListener(eventType, (event) => {
-            const abstractArgument: Abstract.Field = {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: event,
+            const eventArg = new Field(
+              {
+                kind: "field",
+                content: {
+                  kind: "rawValue",
+                  value: event,
+                },
               },
-            };
-            const argument = new Field(abstractArgument, new StaticProps({}));
-            action.handleEvent([argument]);
+              new StaticProps({}),
+            );
+
+            action.handleEvent([eventArg]);
           });
+
           this.props.addMember(key, action);
           break;
         }
@@ -327,7 +351,7 @@ class ViewInstance extends Channel<HTMLElement> {
   }
 }
 
-class ModelInstance extends SafeChannel implements Valuable {
+class ModelInstance extends SafeChannel implements Owner {
   private readonly props = new StaticProps({});
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
@@ -379,7 +403,7 @@ class ModelInstance extends SafeChannel implements Valuable {
   }
 }
 
-class RawValue extends Publisher implements Valuable {
+class RawValue extends Publisher implements Owner {
   private readonly props: Props;
 
   constructor(source: Abstract.RawValue, closure: Props) {
@@ -387,27 +411,40 @@ class RawValue extends Publisher implements Valuable {
 
     if (source.value instanceof Array) {
       this.props = new StaticProps({
-        map: (field) => {
-          const method = field.getValue();
+        map: (arg) => {
+          const method = arg.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
-            throw new Error("Cannot map an array with an argument which is not a method.");
+            throw new Error("Cannot map an array with an arg which is not a method.");
           }
+
+          const typeSafeMethod = method as Abstract.Method;
           const currentValue = this.getValue();
-          const fn = method as Abstract.Method;
+
           const nextValue: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map((arg) => {
-            const expression = new Expression([fn, [arg]], closure);
-            const field = new Field(expression, closure);
-            return field;
+            let parameterizedClosure = closure;
+
+            if (typeSafeMethod.parameterName) {
+              parameterizedClosure = new StaticProps(
+                {
+                  [typeSafeMethod.parameterName]: arg,
+                },
+                closure,
+              );
+            }
+
+            const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
+            return innerField;
           });
+
           return nextValue;
         },
-        push: (field) => {
+        push: (arg) => {
           const currentValue = this.getValue();
-          const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), field];
+          const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
           this.publish(nextValue);
         },
-        set: (field) => {
-          const nextValue = field?.getValue();
+        set: (arg) => {
+          const nextValue = arg?.getValue();
           this.publish(nextValue);
         },
       });
@@ -416,6 +453,7 @@ class RawValue extends Publisher implements Valuable {
         if (!(Abstract.isComponent(value) && value.kind === "field")) {
           throw new Error("Cannot hydrate an array element which is not an abstract field.");
         }
+
         const hydratedField = new Field(value as Abstract.Field, closure);
         return hydratedField;
       });
@@ -457,7 +495,7 @@ class RawValue extends Publisher implements Valuable {
   }
 }
 
-class Reference extends SafeChannel implements Valuable {
+class Reference extends SafeChannel implements Owner {
   private readonly field: Field;
 
   constructor(source: Abstract.Reference, closure: Props) {
@@ -480,70 +518,52 @@ class Reference extends SafeChannel implements Valuable {
 }
 
 // TODO Memoize the results of functional method calls.
-class Expression extends SafeChannel implements Valuable {
+class Expression extends SafeChannel implements Owner {
   private readonly result: Field;
 
-  constructor(source: [Abstract.Method, Array<Field>] | Abstract.Expression, closure: Props) {
+  constructor(source: Abstract.Expression, closure: Props) {
     super();
-
-    const mapAbstractMethodToResult = (method: Abstract.Method, args: Array<Field>) => {
-      let parameterizedClosure = closure;
-
-      if (method.parameterName) {
-        parameterizedClosure = new StaticProps(
-          {
-            [method.parameterName]: args[0],
-          },
-          closure,
-        );
-      }
-
-      const result = new Field(method.result, parameterizedClosure);
-      return result;
-    };
-
-    if (source instanceof Array) {
-      const [method, args] = source;
-
-      if (!(Abstract.isComponent(method) && method.kind === "method")) {
-        throw new Error("Cannot express something which is not an abstract method or a function.");
-      }
-
-      this.result = mapAbstractMethodToResult(method, args);
-      this.result.connect(this);
-
-      return;
-    }
 
     const useScopeToConnectResult = (scope: Props) => {
       const method = scope.getMember(source.methodName);
 
-      const args = source.arguments.map((argument) => {
-        const arg = new Field(argument, closure);
+      const args = source.args.map((sourceArg) => {
+        const arg = new Field(sourceArg, closure);
         return arg;
       });
 
       if (Abstract.isComponent(method) && method.kind === "method") {
-        const result = mapAbstractMethodToResult(method, args);
+        let parameterizedClosure = closure;
+
+        if (method.parameterName) {
+          parameterizedClosure = new StaticProps(
+            {
+              [method.parameterName]: args[0],
+            },
+            closure,
+          );
+        }
+
+        const result = new Field(method.result, parameterizedClosure);
         result.connect(this);
 
         return result;
       }
 
       if (typeof method === "function") {
-        const typeSafeMethod = method;
-
         // TODO Wait until args are ready to call function:
-
-        const abstractResult: Abstract.Field = {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value: typeSafeMethod(...args),
+        const typeSafeMethod = method;
+        const typeSafeValue = typeSafeMethod(...args);
+        const typeSafeResult = new Field(
+          {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value: typeSafeValue,
+            },
           },
-        };
-
-        const typeSafeResult = new Field(abstractResult, new StaticProps({}));
+          new StaticProps({}),
+        );
 
         args.forEach((arg) => {
           arg.connect(() => {
@@ -570,7 +590,7 @@ class Expression extends SafeChannel implements Valuable {
   }
 }
 
-class Implication extends SafeChannel implements Valuable {
+class Implication extends SafeChannel implements Owner {
   private readonly condition: Field;
   private readonly consequence: Field;
   private readonly alternative?: Field | Action;
@@ -718,8 +738,8 @@ class Call implements Subscriber<Array<Field>> {
       throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
     });
 
-    this.constantArgs = source.arguments?.map((argument) => {
-      const arg = new Field(argument, closure);
+    this.constantArgs = source.args?.map((sourceArg) => {
+      const arg = new Field(sourceArg, closure);
       return arg;
     });
   }
@@ -760,14 +780,17 @@ class Invocation implements Subscriber<void> {
         const args: Array<Field> = [];
 
         if (this.procedure.parameterName) {
-          const abstractField: Abstract.Field = {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: prerequisiteValue,
+          const field = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: prerequisiteValue,
+              },
             },
-          };
-          const field = new Field(abstractField, new StaticProps({}));
+            new StaticProps({}),
+          );
+
           args.push(field);
         }
 
@@ -805,7 +828,11 @@ class Gate implements Subscriber<void> {
  * Useful stuff:
  */
 
-interface Valuable {
+interface Supplier {
+  getSupply(): Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
+}
+
+interface Owner {
   getProps(): Props;
 }
 
@@ -838,28 +865,30 @@ class RawObjectProps implements Props {
     if (typeof memberValue === "function") {
       const callableMemberValue =
         memberValue.prototype?.constructor === memberValue
-          ? (argument: unknown) => new memberValue(argument)
+          ? (...args: Array<unknown>) => new memberValue(...args)
           : memberValue.bind(this.value);
 
       const memberFunction = (...args: Array<Field>) => {
-        const argumentValues = args.map((arg) => arg.getValue());
-        const result = callableMemberValue(...argumentValues);
+        const argValues = args.map((arg) => arg.getValue());
+        const result = callableMemberValue(...argValues);
         return result;
       };
 
       return memberFunction;
     }
 
-    const abstractField: Abstract.Field = {
-      kind: "field",
-      content: {
-        kind: "rawValue",
-        value: memberValue,
+    const memberField = new Field(
+      {
+        kind: "field",
+        content: {
+          kind: "rawValue",
+          value: memberValue,
+        },
       },
-    };
+      new StaticProps({}),
+    );
 
-    const field = new Field(abstractField, new StaticProps({}));
-    return field;
+    return memberField;
   }
 }
 
@@ -888,36 +917,3 @@ class StaticProps implements Props {
     throw new Error(`Prop ${key} not found`);
   }
 }
-
-// class AsyncPropsContainer implements Subscriber<Promise<unknown>> {
-//   private readonly props: Promise<Props>;
-//   private resolve?: (value: Props) => void;
-//   private reject?: (reason: unknown) => void;
-
-//   constructor() {
-//     this.props = new Promise((resolve, reject) => {
-//       this.resolve = resolve;
-//       this.reject = reject;
-//     });
-//   }
-
-//   getProps(): Promise<Props> {
-//     return this.props;
-//   }
-
-//   handleEvent(promise: Promise<unknown>): void {
-//     promise
-//       .then((value) => {
-//         const abstractValue: Abstract.RawValue = {
-//           kind: "rawValue",
-//           value,
-//         };
-//         const rawValue = new RawValue(abstractValue, new StaticProps({}));
-//         const props = rawValue.getProps();
-//         this.resolve?.(props);
-//       })
-//       .catch((error) => {
-//         this.reject?.(error);
-//       });
-//   }
-// }

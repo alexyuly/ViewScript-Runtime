@@ -56,19 +56,13 @@ export namespace Abstract {
   // CONTENT catch FALLBACK
   export type Field = {
     kind: "field";
-    content: Provision | Expectation;
+    content: Expectation | Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
     fallback?: Action;
   };
 
-  // YIELD
-  export type Provision = {
-    kind: "provision";
-    yield: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
-  };
-
   // METHOD-NAME?
-  // METHOD-NAME(ARGUMENT)?
-  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
+  // METHOD-NAME(ARG)?
+  // METHOD-NAME(ARG0, ARG1, ETC...)?
   export type Expectation = {
     kind: "expectation";
     path: Expression;
@@ -123,16 +117,16 @@ export namespace Abstract {
   };
 
   // METHOD-NAME()
-  // METHOD-NAME(ARGUMENT)
-  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)
+  // METHOD-NAME(ARG)
+  // METHOD-NAME(ARG0, ARG1, ETC...)
   // SCOPE.METHOD-NAME()
-  // SCOPE.METHOD-NAME(ARGUMENT)
-  // SCOPE.METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)
+  // SCOPE.METHOD-NAME(ARG)
+  // SCOPE.METHOD-NAME(ARG0, ARG1, ETC...)
   export type Expression = {
     kind: "expression";
     scope?: Field;
     methodName: string;
-    arguments: Array<Field>;
+    args: Array<Field>;
   };
 
   // if CONDITION then CONSEQUENCE
@@ -166,16 +160,16 @@ export namespace Abstract {
   };
 
   // ACTION-NAME!
-  // ACTION-NAME(ARGUMENT)!
-  // ACTION-NAME(ARGUMENT0, ARGUMENT1, ETC...)!
+  // ACTION-NAME(ARG)!
+  // ACTION-NAME(ARG0, ARG1, ETC...)!
   // SCOPE.ACTION-NAME!
-  // SCOPE.ACTION-NAME(ARGUMENT)!
-  // SCOPE.ACTION-NAME(ARGUMENT0, ARGUMENT1, ETC...)!
+  // SCOPE.ACTION-NAME(ARG)!
+  // SCOPE.ACTION-NAME(ARG0, ARG1, ETC...)!
   export type Call = {
     kind: "call";
     scope?: Field;
     actionName: string;
-    arguments?: Array<Field>;
+    args?: Array<Field>;
   };
 
   // resolve PREREQUISITE
