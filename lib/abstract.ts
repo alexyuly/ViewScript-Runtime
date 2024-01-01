@@ -56,8 +56,22 @@ export namespace Abstract {
   // CONTENT catch FALLBACK
   export type Field = {
     kind: "field";
-    content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Expectation | Implication;
+    content: Provision | Expectation;
     fallback?: Action;
+  };
+
+  // YIELD
+  export type Provision = {
+    kind: "provision";
+    yield: Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
+  };
+
+  // METHOD-NAME?
+  // METHOD-NAME(ARGUMENT)?
+  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
+  export type Expectation = {
+    kind: "expectation";
+    path: Expression;
   };
 
   // <TAG-NAME> {
@@ -119,17 +133,6 @@ export namespace Abstract {
     scope?: Field;
     methodName: string;
     arguments: Array<Field>;
-  };
-
-  // METHOD-NAME?
-  // METHOD-NAME(ARGUMENT)?
-  // METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
-  // SCOPE.METHOD-NAME?
-  // SCOPE.METHOD-NAME(ARGUMENT)?
-  // SCOPE.METHOD-NAME(ARGUMENT0, ARGUMENT1, ETC...)?
-  export type Expectation = {
-    kind: "expectation";
-    expression: Expression;
   };
 
   // if CONDITION then CONSEQUENCE

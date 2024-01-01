@@ -60,15 +60,7 @@ export class App {
 class Field extends SafeChannel implements Valuable {
   private readonly fallback?: Action;
 
-  private readonly content:
-    | Atom
-    | ViewInstance
-    | ModelInstance
-    | RawValue
-    | Reference
-    | Expression
-    | Expectation
-    | Implication;
+  private readonly content: Provision | Expectation;
 
   constructor(source: Abstract.Field | Expression, closure: Props) {
     super();
@@ -117,12 +109,12 @@ class Field extends SafeChannel implements Valuable {
         this.content = expression;
         break;
       }
-      case "expectation": {
-        const expectation = new Expectation(source.content, closure);
-        expectation.connect(this);
-        this.content = expectation;
-        break;
-      }
+      // case "expectation": {
+      //   const expectation = new Expectation(source.content, closure);
+      //   expectation.connect(this);
+      //   this.content = expectation;
+      //   break;
+      // }
       case "implication": {
         const implication = new Implication(source.content, closure);
         implication.connect(this);
@@ -136,7 +128,7 @@ class Field extends SafeChannel implements Valuable {
     }
   }
 
-  getProps(): Props | Promise<Props> {
+  getProps(): Props {
     if (this.content instanceof Atom || this.content instanceof ViewInstance) {
       return new StaticProps({});
     }
@@ -158,6 +150,45 @@ class Field extends SafeChannel implements Valuable {
     } else {
       super.handleError(error);
     }
+  }
+}
+
+class Provision {
+  // TODO
+}
+
+// TODO fix
+class Expectation extends SafePublisher<Promise<unknown>> {
+  private readonly expression: Expression;
+  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+
+  constructor(source: Abstract.Expectation, closure: Props) {
+    super();
+
+    this.expression = new Expression(source.expression, closure);
+
+    this.expression.connect((resultingValue) => {
+      const attendant = {
+        id: crypto.randomUUID(),
+        promise: Promise.resolve(resultingValue),
+      };
+      this.queue.push(attendant);
+      attendant.promise
+        .then((value) => {
+          const index = this.queue.indexOf(attendant);
+          if (index !== -1) {
+            this.queue.splice(0, index + 1);
+            this.publish(value);
+          }
+        })
+        .catch((error) => {
+          const index = this.queue.indexOf(attendant);
+          if (index !== -1) {
+            this.queue.splice(index, 1);
+            this.publishError(error);
+          }
+        });
+    });
   }
 }
 
@@ -427,48 +458,30 @@ class RawValue extends Publisher implements Valuable {
 }
 
 class Reference extends SafeChannel implements Valuable {
-  private readonly field: Field | Promise<Field>;
+  private readonly field: Field;
 
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    const resolvableScope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const field = scope.getMember(source.fieldName);
 
-    if (resolvableScope instanceof Promise) {
-      this.field = resolvableScope.then((scope) => {
-        const field = scope.getMember(source.fieldName);
-
-        if (!(field instanceof Field)) {
-          throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
-        }
-
-        field.connect(this);
-        return field;
-      });
-    } else {
-      const field = resolvableScope.getMember(source.fieldName);
-
-      if (!(field instanceof Field)) {
-        throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
-      }
-
-      field.connect(this);
-      this.field = field;
+    if (!(field instanceof Field)) {
+      throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
     }
+
+    field.connect(this);
+    this.field = field;
   }
 
-  getProps(): Props | Promise<Props> {
-    if (this.field instanceof Field) {
-      return this.field.getProps();
-    }
-
-    return this.field.then((field) => field.getProps());
+  getProps(): Props {
+    return this.field.getProps();
   }
 }
 
 // TODO Memoize the results of functional method calls.
 class Expression extends SafeChannel implements Valuable {
-  private readonly result: Field | Promise<Field>;
+  private readonly result: Field;
 
   constructor(source: [Abstract.Method, Array<Field>] | Abstract.Expression, closure: Props) {
     super();
@@ -520,6 +533,8 @@ class Expression extends SafeChannel implements Valuable {
       if (typeof method === "function") {
         const typeSafeMethod = method;
 
+        // TODO Wait until args are ready to call function:
+
         const abstractResult: Abstract.Field = {
           kind: "field",
           content: {
@@ -546,62 +561,12 @@ class Expression extends SafeChannel implements Valuable {
       throw new Error("Cannot express something which is not an abstract method or a function.");
     };
 
-    const resolvableScope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-
-    if (resolvableScope instanceof Promise) {
-      this.result = resolvableScope.then(useScopeToConnectResult);
-    } else {
-      this.result = useScopeToConnectResult(resolvableScope);
-    }
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    this.result = useScopeToConnectResult(scope);
   }
 
-  getProps(): Props | Promise<Props> {
-    if (this.result instanceof Field) {
-      return this.result.getProps();
-    }
-
-    return this.result.then((result) => result.getProps());
-  }
-}
-
-class Expectation extends SafePublisher implements Valuable {
-  private readonly expression: Expression;
-  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
-
-  constructor(source: Abstract.Expectation, closure: Props) {
-    super();
-
-    this.expression = new Expression(source.expression, closure);
-
-    this.expression.connect((resultingValue) => {
-      const attendant = {
-        id: crypto.randomUUID(),
-        promise: Promise.resolve(resultingValue),
-      };
-      this.queue.push(attendant);
-      attendant.promise
-        .then((value) => {
-          const index = this.queue.indexOf(attendant);
-          if (index !== -1) {
-            this.queue.splice(0, index + 1);
-            this.publish(value);
-          }
-        })
-        .catch((error) => {
-          const index = this.queue.indexOf(attendant);
-          if (index !== -1) {
-            this.queue.splice(index, 1);
-            this.publishError(error);
-          }
-        });
-    });
-  }
-
-  getProps(): Promise<Props> {
-    const asyncContainer = new AsyncPropsContainer();
-    this.connect(asyncContainer);
-
-    return asyncContainer.getProps();
+  getProps(): Props {
+    return this.result.getProps();
   }
 }
 
@@ -648,7 +613,7 @@ class Implication extends SafeChannel implements Valuable {
     }
   }
 
-  getProps(): Props | Promise<Props> {
+  getProps(): Props {
     const isConditionMet = this.condition.getValue();
 
     const impliedField = isConditionMet
@@ -729,7 +694,6 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
-// TODO Avoid async behavior when not necessary in this class?
 class Call implements Subscriber<Array<Field>> {
   private readonly action: Promise<Subscriber<Array<Field>>>;
   private readonly constantArgs?: Array<Field>;
@@ -760,7 +724,7 @@ class Call implements Subscriber<Array<Field>> {
     });
   }
 
-  // TODO Fix this, so that actions aren't called until all arguments are ready. "Ready"... how do we determine that for call args...
+  // TODO Wait until args are ready to handle event:
   handleEvent(args: Array<Field>): void {
     this.queue.push({
       args: this.constantArgs ?? args,
@@ -842,7 +806,7 @@ class Gate implements Subscriber<void> {
  */
 
 interface Valuable {
-  getProps(): Props | Promise<Props>;
+  getProps(): Props;
 }
 
 interface Props {
@@ -925,35 +889,35 @@ class StaticProps implements Props {
   }
 }
 
-class AsyncPropsContainer extends SafeChannel {
-  private readonly props: Promise<Props>;
-  private resolve?: (value: Props) => void;
-  private reject?: (reason: unknown) => void;
+// class AsyncPropsContainer implements Subscriber<Promise<unknown>> {
+//   private readonly props: Promise<Props>;
+//   private resolve?: (value: Props) => void;
+//   private reject?: (reason: unknown) => void;
 
-  constructor() {
-    super();
+//   constructor() {
+//     this.props = new Promise((resolve, reject) => {
+//       this.resolve = resolve;
+//       this.reject = reject;
+//     });
+//   }
 
-    this.props = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    });
-  }
+//   getProps(): Promise<Props> {
+//     return this.props;
+//   }
 
-  getProps(): Promise<Props> {
-    return this.props;
-  }
-
-  handleEvent(value: unknown): void {
-    const abstractValue: Abstract.RawValue = {
-      kind: "rawValue",
-      value,
-    };
-    const rawValue = new RawValue(abstractValue, new StaticProps({}));
-    const props = rawValue.getProps();
-    this.resolve?.(props);
-  }
-
-  handleError(error: unknown): void {
-    this.reject?.(error);
-  }
-}
+//   handleEvent(promise: Promise<unknown>): void {
+//     promise
+//       .then((value) => {
+//         const abstractValue: Abstract.RawValue = {
+//           kind: "rawValue",
+//           value,
+//         };
+//         const rawValue = new RawValue(abstractValue, new StaticProps({}));
+//         const props = rawValue.getProps();
+//         this.resolve?.(props);
+//       })
+//       .catch((error) => {
+//         this.reject?.(error);
+//       });
+//   }
+// }
