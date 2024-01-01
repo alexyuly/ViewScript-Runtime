@@ -448,7 +448,9 @@ class Reference extends SafeChannel implements Valuable {
   }
 
   async getProps(): Promise<Props> {
-    return this.field.then((field) => field.getProps());
+    const field = await this.field;
+
+    return field.getProps();
   }
 }
 
@@ -528,7 +530,9 @@ class Expression extends SafeChannel implements Valuable {
   }
 
   async getProps(): Promise<Props> {
-    return this.result.then((result) => result.getProps());
+    const result = await this.result;
+
+    return result.getProps();
   }
 }
 
@@ -565,25 +569,11 @@ class Expectation extends SafePublisher implements Valuable {
     });
   }
 
-  async getProps(): Promise<Props> {
-    return new Promise((resolve, reject) => {
-      this.connect(
-        new (class extends SafeChannel {
-          handleEvent(value: unknown): void {
-            const abstractValue: Abstract.RawValue = {
-              kind: "rawValue",
-              value,
-            };
-            const rawValue = new RawValue(abstractValue, new StoredProps({}));
-            resolve(rawValue.getProps());
-          }
+  getProps(): Promise<Props> {
+    const asyncContainer = new AsyncPropsContainer();
+    this.connect(asyncContainer);
 
-          handleError(error: unknown): void {
-            reject(error);
-          }
-        })(),
-      );
-    });
+    return asyncContainer.getProps();
   }
 }
 
@@ -742,6 +732,7 @@ class Call implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO We may be able to remove Invocations depending on how async Calls shake out
 class Invocation implements Subscriber<void> {
   private readonly prerequisite: Abstract.Field;
   private readonly procedure?: Abstract.Procedure;
@@ -889,5 +880,38 @@ class StoredProps implements Props {
     }
 
     return StoredProps.globalScope.getMember(key);
+  }
+}
+
+class AsyncPropsContainer extends SafeChannel {
+  private readonly promise: Promise<Props>;
+  private resolve?: (value: Props) => void;
+  private reject?: (reason: unknown) => void;
+
+  constructor() {
+    super();
+
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+
+  getProps(): Promise<Props> {
+    return this.promise;
+  }
+
+  handleEvent(value: unknown): void {
+    const abstractValue: Abstract.RawValue = {
+      kind: "rawValue",
+      value,
+    };
+    const rawValue = new RawValue(abstractValue, new StoredProps({}));
+    const props = rawValue.getProps();
+    this.resolve?.(props);
+  }
+
+  handleError(error: unknown): void {
+    this.reject?.(error);
   }
 }
