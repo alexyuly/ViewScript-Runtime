@@ -909,21 +909,21 @@ class StaticProps implements Props {
 }
 
 class AsyncPropsContainer extends SafeChannel {
-  private readonly promise: Promise<Props>;
+  private readonly props: Promise<Props>;
   private resolve?: (value: Props) => void;
   private reject?: (reason: unknown) => void;
 
   constructor() {
     super();
 
-    this.promise = new Promise((resolve, reject) => {
+    this.props = new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
     });
   }
 
   getProps(): Promise<Props> {
-    return this.promise;
+    return this.props;
   }
 
   handleEvent(value: unknown): void {
