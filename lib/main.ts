@@ -68,7 +68,7 @@ class Field extends Channel implements Owner {
     | Expression
     | Expectation;
 
-  // TODO Avoid this construct, by refactoring props to allow their individual members to be either Property or Promise<Property>:
+  // TODO Can we avoid this construct?
   readonly isVoid = () => this.getValue() === undefined;
 
   constructor(source: Abstract.Field, closure: Props) {
