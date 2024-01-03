@@ -6,7 +6,7 @@ import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pu
  */
 
 export class App {
-  private readonly props = new StaticProps({}, new RawObjectProps(window));
+  private readonly props = new StaticProps({}, new RawObjectProps(window)); // TODO fix this -- window is not available in some scopes where it should be
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
@@ -183,13 +183,11 @@ class Expectation extends SafeChannel implements Owner {
       this.queue.push(attendant);
       attendant.promise
         .then((value) => {
-          console.log("value", value);
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(0, index + 1);
 
             if (!this.supplier) {
-              console.log("***");
               this.supplier = new Field(
                 {
                   kind: "field",
@@ -198,10 +196,9 @@ class Expectation extends SafeChannel implements Owner {
                     value,
                   },
                 },
-                new StaticProps({}),
+                closure,
               );
 
-              console.log("&&&");
               this.supplier.connect(this);
               resolveProps(this.supplier.getProps() as Props);
             }
@@ -299,7 +296,7 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 class ViewInstance extends Channel<HTMLElement> {
-  private readonly props = new StaticProps({});
+  private readonly props;
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props) {
@@ -307,10 +304,13 @@ class ViewInstance extends Channel<HTMLElement> {
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
+    this.props = new StaticProps({}, closure);
+
     if (!(Abstract.isComponent(view) && view.kind === "view")) {
       throw new Error("Cannot construct invalid view.");
     }
 
+    // TODO Make sure outer props can override the default inner props (need to switch the order here)
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
@@ -366,12 +366,14 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class ModelInstance extends SafeChannel implements Owner {
-  private readonly props = new StaticProps({});
+  private readonly props;
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
     super();
 
     const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
+
+    this.props = new StaticProps({}, closure);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
@@ -426,7 +428,6 @@ class RawValue extends Publisher implements Owner {
     if (source.value instanceof Array) {
       this.props = new StaticProps({
         map: (arg) => {
-          console.log("called map with arg:", arg);
           const method = arg.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
             throw new Error("Cannot map an array with an arg which is not a method.");
@@ -570,7 +571,6 @@ class Expression extends SafeChannel implements Owner {
     super();
 
     const connectSupplier = (scopeResult: Props) => {
-      console.log("source.methodName", source.methodName);
       const method = scopeResult.getMember(source.methodName);
 
       const args = source.args.map((sourceArg) => {
