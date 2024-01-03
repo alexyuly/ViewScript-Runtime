@@ -57,12 +57,23 @@ export class App {
  * Fields:
  */
 
-class Field extends SafeChannel implements Owner, Supplier {
-  private readonly content: Supply | Expectation;
+class Field extends SafeChannel implements Owner {
   private readonly fallback?: Action;
+
+  private readonly content:
+    | Expectation
+    | Atom
+    | ViewInstance
+    | ModelInstance
+    | RawValue
+    | Reference
+    | Expression
+    | ConditionalField;
 
   constructor(source: Abstract.Field, closure: Props) {
     super();
+
+    this.fallback = source.fallback && new Action(source.fallback, closure);
 
     switch (source.content.kind) {
       case "expectation": {
@@ -107,8 +118,8 @@ class Field extends SafeChannel implements Owner, Supplier {
         this.content = expression;
         break;
       }
-      case "implication": {
-        const implication = new Implication(source.content, closure);
+      case "conditionalField": {
+        const implication = new ConditionalField(source.content, closure);
         implication.connect(this);
         this.content = implication;
         break;
@@ -116,8 +127,6 @@ class Field extends SafeChannel implements Owner, Supplier {
       default:
         throw new Error(`Cannot field some content of invalid kind: ${(source.content as Abstract.Component).kind}`);
     }
-
-    this.fallback = source.fallback && new Action(source.fallback, closure);
   }
 
   getProps(): Props | Promise<Props> {
@@ -126,14 +135,6 @@ class Field extends SafeChannel implements Owner, Supplier {
     }
 
     return this.content.getProps();
-  }
-
-  getSupply(): Supply {
-    if (this.content instanceof Expectation) {
-      return this.content.getSupply();
-    }
-
-    return this.content;
   }
 
   handleError(error: unknown): void {
@@ -156,11 +157,11 @@ class Field extends SafeChannel implements Owner, Supplier {
   }
 }
 
-class Expectation extends SafeChannel implements Owner, Supplier {
+class Expectation extends SafeChannel implements Owner {
   private readonly props: Promise<Props>;
-  private readonly supplier: Field;
   private readonly path: Expression;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+  private supplier?: Field;
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
@@ -173,20 +174,7 @@ class Expectation extends SafeChannel implements Owner, Supplier {
       rejectProps = reject;
     });
 
-    this.supplier = new Field(
-      {
-        kind: "field",
-        content: {
-          kind: "rawValue",
-          value: undefined,
-        },
-      },
-      new StaticProps({}),
-    );
-
-    this.supplier.connect(this);
     this.path = new Expression(source.path, closure);
-
     this.path.connect((resultingValue) => {
       const attendant = {
         id: crypto.randomUUID(),
@@ -195,20 +183,36 @@ class Expectation extends SafeChannel implements Owner, Supplier {
       this.queue.push(attendant);
       attendant.promise
         .then((value) => {
+          console.log("value", value);
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(0, index + 1);
-            // TODO Fix this so that the supplier's value causes its props to update when it handles an event...
-            // To fix the errors of "ok" and "json" not found in the response:
-            this.supplier.handleEvent(value);
-            resolveProps(this.supplier.getProps() as Props);
+
+            if (!this.supplier) {
+              console.log("***");
+              this.supplier = new Field(
+                {
+                  kind: "field",
+                  content: {
+                    kind: "rawValue",
+                    value,
+                  },
+                },
+                new StaticProps({}),
+              );
+
+              console.log("&&&");
+              this.supplier.connect(this);
+              resolveProps(this.supplier.getProps() as Props);
+            }
           }
         })
         .catch((error) => {
           const index = this.queue.indexOf(attendant);
           if (index !== -1) {
             this.queue.splice(index, 1);
-            this.supplier.handleError(error);
+            // TODO fix
+            // this.supplier.handleError(error);
             rejectProps(error);
           }
         });
@@ -217,10 +221,6 @@ class Expectation extends SafeChannel implements Owner, Supplier {
 
   getProps(): Promise<Props> {
     return this.props;
-  }
-
-  getSupply(): Supply {
-    return this.supplier.getSupply();
   }
 }
 
@@ -426,6 +426,7 @@ class RawValue extends Publisher implements Owner {
     if (source.value instanceof Array) {
       this.props = new StaticProps({
         map: (arg) => {
+          console.log("called map with arg:", arg);
           const method = arg.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
             throw new Error("Cannot map an array with an arg which is not a method.");
@@ -434,21 +435,19 @@ class RawValue extends Publisher implements Owner {
           const typeSafeMethod = method as Abstract.Method;
           const currentValue = this.getValue();
 
-          const nextValue: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map((arg) => {
-            let parameterizedClosure = closure;
-
-            if (typeSafeMethod.parameterName) {
-              parameterizedClosure = new StaticProps(
+          const nextValue: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map(
+            (innerArg) => {
+              const parameterizedClosure = new StaticProps(
                 {
-                  [typeSafeMethod.parameterName]: arg,
+                  [typeSafeMethod.params[0]]: innerArg,
                 },
                 closure,
               );
-            }
 
-            const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
-            return innerField;
-          });
+              const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
+              return innerField;
+            },
+          );
 
           return nextValue;
         },
@@ -464,12 +463,24 @@ class RawValue extends Publisher implements Owner {
       });
 
       const hydratedArray: Array<Field> = source.value.map((value) => {
-        if (!(Abstract.isComponent(value) && value.kind === "field")) {
-          throw new Error("Cannot hydrate an array element which is not an abstract field.");
+        let field: Field;
+
+        if (Abstract.isComponent(value) && value.kind === "field") {
+          field = new Field(value as Abstract.Field, closure);
+        } else {
+          field = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value,
+              },
+            },
+            new StaticProps({}),
+          );
         }
 
-        const hydratedField = new Field(value as Abstract.Field, closure);
-        return hydratedField;
+        return field;
       });
 
       this.publish(hydratedArray);
@@ -559,6 +570,7 @@ class Expression extends SafeChannel implements Owner {
     super();
 
     const connectSupplier = (scopeResult: Props) => {
+      console.log("source.methodName", source.methodName);
       const method = scopeResult.getMember(source.methodName);
 
       const args = source.args.map((sourceArg) => {
@@ -567,20 +579,18 @@ class Expression extends SafeChannel implements Owner {
       });
 
       if (Abstract.isComponent(method) && method.kind === "method") {
-        let parameterizedClosure = closure;
-
-        if (method.parameterName) {
-          parameterizedClosure = new StaticProps(
-            {
-              [method.parameterName]: args[0],
-            },
-            closure,
-          );
-        }
+        const parameterizedClosure = new StaticProps(
+          method.params.reduce<Record<string, Field>>((acc, param, index) => {
+            acc[param] = args[index];
+            return acc;
+          }, {}),
+          closure,
+        );
 
         this.supplier = new Field(method.result, parameterizedClosure);
         this.supplier.connect(this);
       } else if (typeof method === "function") {
+        // TODO Prevent duplicate calls to the method. We especially don't want this to happen for promises...
         // TODO Wait until args are ready to call function:
         const typeSafeMethod = method;
         const typeSafeValue = typeSafeMethod(...args);
@@ -629,12 +639,12 @@ class Expression extends SafeChannel implements Owner {
   }
 }
 
-class Implication extends SafeChannel implements Owner {
+class ConditionalField extends SafeChannel implements Owner {
   private readonly condition: Field;
   private readonly consequence: Field;
   private readonly alternative?: Field | Action;
 
-  constructor(source: Abstract.Implication, closure: Props) {
+  constructor(source: Abstract.ConditionalField, closure: Props) {
     super();
 
     this.condition = new Field(source.condition, closure);
@@ -691,7 +701,7 @@ class Implication extends SafeChannel implements Owner {
  */
 
 class Action implements Subscriber<Array<Field>> {
-  private readonly target: Procedure | Call | Invocation | Gate;
+  private readonly target: Procedure | Call | Invocation | ConditionalAction;
 
   constructor(source: Abstract.Action, closure: Props) {
     switch (source.target.kind) {
@@ -704,8 +714,8 @@ class Action implements Subscriber<Array<Field>> {
       case "invocation":
         this.target = new Invocation(source.target, closure);
         break;
-      case "gate":
-        this.target = new Gate(source.target, closure);
+      case "conditionalAction":
+        this.target = new ConditionalAction(source.target, closure);
         break;
       default:
         throw new Error(
@@ -721,26 +731,23 @@ class Action implements Subscriber<Array<Field>> {
 
 class Procedure implements Subscriber<Array<Field>> {
   private readonly steps: Array<Abstract.Action>;
-  private readonly parameterName?: string;
+  private readonly params: Array<string>;
   private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
     this.steps = source.steps;
-    this.parameterName = source.parameterName;
+    this.params = source.params;
     this.closure = closure;
   }
 
   handleEvent(args: Array<Field>): void {
-    let parameterizedClosure = this.closure;
-
-    if (this.parameterName) {
-      parameterizedClosure = new StaticProps(
-        {
-          [this.parameterName]: args[0],
-        },
-        this.closure,
-      );
-    }
+    const parameterizedClosure = new StaticProps(
+      this.params.reduce<Record<string, Field>>((acc, param, index) => {
+        acc[param] = args[index];
+        return acc;
+      }, {}),
+      this.closure,
+    );
 
     for (const step of this.steps) {
       const action = new Action(step, parameterizedClosure);
@@ -816,10 +823,8 @@ class Invocation implements Subscriber<void> {
 
     prerequisite.connect((prerequisiteValue) => {
       if (this.procedure) {
-        const args: Array<Field> = [];
-
-        if (this.procedure.parameterName) {
-          const field = new Field(
+        const args = [
+          new Field(
             {
               kind: "field",
               content: {
@@ -828,10 +833,8 @@ class Invocation implements Subscriber<void> {
               },
             },
             new StaticProps({}),
-          );
-
-          args.push(field);
-        }
+          ),
+        ];
 
         const procedure = new Procedure(this.procedure, this.closure);
         procedure.handleEvent(args);
@@ -840,12 +843,12 @@ class Invocation implements Subscriber<void> {
   }
 }
 
-class Gate implements Subscriber<void> {
+class ConditionalAction implements Subscriber<void> {
   private readonly condition: Field;
   private readonly consequence?: Abstract.Action;
   private readonly closure: Props;
 
-  constructor(source: Abstract.Gate, closure: Props) {
+  constructor(source: Abstract.ConditionalAction, closure: Props) {
     this.condition = new Field(source.condition, closure);
     this.consequence = source.consequence;
     this.closure = closure;
@@ -875,10 +878,6 @@ interface Props {
   getMember(key: string): Property;
 }
 
-interface Supplier {
-  getSupply(): Supply;
-}
-
 type Property =
   | Abstract.View
   | Abstract.Model
@@ -886,8 +885,6 @@ type Property =
   | Field
   | Action
   | ((...args: Array<Field>) => unknown);
-
-type Supply = Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
 
 class RawObjectProps implements Props {
   private readonly value: any;

@@ -40,11 +40,11 @@ export namespace Abstract {
   };
 
   // make RESULT
-  // (PARAMETER-NAME) => RESULT
-  // (PARAMETER-NAME: TYPE) => RESULT
+  // (PARAM0, PARAM1, ETC...) => RESULT
+  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) => RESULT
   export type Method = {
     kind: "method";
-    parameterName?: string;
+    params: Array<string>;
     result: Field;
   };
 
@@ -56,7 +56,7 @@ export namespace Abstract {
   // CONTENT catch FALLBACK
   export type Field = {
     kind: "field";
-    content: Expectation | Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | Implication;
+    content: Expectation | Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | ConditionalField;
     fallback?: Action;
   };
 
@@ -131,8 +131,8 @@ export namespace Abstract {
 
   // if CONDITION then CONSEQUENCE
   // if CONDITION then CONSEQUENCE else ALTERNATIVE
-  export type Implication = {
-    kind: "implication";
+  export type ConditionalField = {
+    kind: "conditionalField";
     condition: Field;
     consequence: Field;
     alternative?: Field | Action;
@@ -145,17 +145,17 @@ export namespace Abstract {
   // TARGET
   export type Action = {
     kind: "action";
-    target: Procedure | Call | Invocation | Gate;
+    target: Procedure | Call | Invocation | ConditionalAction;
   };
 
   // do { STEPS }
-  // (PARAMETER-NAME) -> STEP
-  // (PARAMETER-NAME: TYPE) -> STEP
-  // (PARAMETER-NAME) -> { STEPS }
-  // (PARAMETER-NAME: TYPE) -> { STEPS }
+  // (PARAM0, PARAM1, ETC...) -> STEP
+  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) -> STEP
+  // (PARAM0, PARAM1, ETC...) -> { STEPS }
+  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) -> { STEPS }
   export type Procedure = {
     kind: "procedure";
-    parameterName?: string;
+    params: Array<string>;
     steps: Array<Action>;
   };
 
@@ -172,8 +172,8 @@ export namespace Abstract {
     args?: Array<Field>;
   };
 
-  // resolve PREREQUISITE
-  // resolve PREREQUISITE [...] STEPS
+  // await PREREQUISITE
+  // await PREREQUISITE [...] STEPS
   // let PARAMETER-NAME = PREREQUISITE [...] STEPS
   // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
   export type Invocation = {
@@ -182,12 +182,13 @@ export namespace Abstract {
     procedure?: Procedure;
   };
 
-  // when CONDITION exit
   // when CONDITION then CONSEQUENCE
-  export type Gate = {
-    kind: "gate";
+  // when CONDITION then CONSEQUENCE else ALTERNATIVE
+  export type ConditionalAction = {
+    kind: "conditionalAction";
     condition: Field;
-    consequence?: Action;
+    consequence: Action;
+    alternative?: Action;
   };
 
   /**
