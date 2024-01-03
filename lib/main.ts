@@ -6,7 +6,7 @@ import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pu
  */
 
 export class App {
-  private readonly props = new StaticProps({}, new RawObjectProps(window)); // TODO fix this -- window is not available in some scopes where it should be
+  private readonly props = new StaticProps({}, new RawObjectProps(window));
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
