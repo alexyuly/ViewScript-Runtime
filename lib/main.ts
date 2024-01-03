@@ -129,6 +129,10 @@ class Field extends SafeChannel implements Owner {
     }
   }
 
+  getContent() {
+    return this.content;
+  }
+
   getProps(): Props | Promise<Props> {
     if (this.content instanceof Atom || this.content instanceof ViewInstance) {
       return new StaticProps({});
@@ -590,7 +594,6 @@ class Reference extends SafeChannel implements Owner {
   }
 }
 
-// TODO Memoize the results of functional method calls.
 class Expression extends SafeChannel implements Owner {
   private supplier?: Field | Promise<Field>;
 
@@ -617,30 +620,31 @@ class Expression extends SafeChannel implements Owner {
         this.supplier = new Field(method.result, parameterizedClosure);
         this.supplier.connect(this);
       } else if (typeof method === "function") {
-        // TODO Prevent duplicate calls to the method. We especially don't want this to happen for promises...
-        // TODO Wait until args are ready to call function:
-        const typeSafeMethod = method;
-        const typeSafeValue = typeSafeMethod(...args);
-        const typeSafeResult = new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: typeSafeValue,
+        const callMethod = () => {
+          this.supplier = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: method(...args),
+              },
             },
-          },
-          new StaticProps({}),
-        );
+            new StaticProps({}),
+          );
+          this.supplier.connect(this);
+        };
 
-        args.forEach((arg) => {
-          arg.connect(() => {
-            const resultingValue = typeSafeMethod(...args);
-            typeSafeResult.handleEvent(resultingValue);
-          });
-        });
+        if (args.length === 0) {
+          callMethod();
+        } else {
+          const expectedArgs = args.filter((arg) => arg.getContent() instanceof Expectation);
 
-        this.supplier = typeSafeResult;
-        this.supplier.connect(this);
+          if (expectedArgs.length === 0) {
+            callMethod();
+          } else {
+            Promise.all(expectedArgs.map((arg) => arg.getProps())).then(callMethod);
+          }
+        }
       } else {
         throw new Error("Cannot express something which is not an abstract method or a function.");
       }
@@ -787,6 +791,7 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO Make sync calls synchronous again...
 class Call implements Subscriber<Array<Field>> {
   private readonly action: Promise<Subscriber<Array<Field>>>;
   private readonly constantArgs?: Array<Field>;
@@ -870,6 +875,7 @@ class Invocation implements Subscriber<void> {
   }
 }
 
+// TODO update to support alternatives and not exiting early
 class ConditionalAction implements Subscriber<void> {
   private readonly condition: Field;
   private readonly consequence?: Abstract.Action;
