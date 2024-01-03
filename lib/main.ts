@@ -221,11 +221,11 @@ class ViewInstance extends Channel<HTMLElement> {
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
-    this.props = new StaticProps({}, closure);
-
     if (!(Abstract.isComponent(view) && view.kind === "view")) {
       throw new Error("Cannot construct invalid view.");
     }
+
+    this.props = new StaticProps({}, closure);
 
     // TODO Make sure outer props can override the default inner props (need to switch the order here)
     Object.entries(source.outerProps).forEach(([key, value]) => {
@@ -283,21 +283,23 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class ModelInstance extends Channel implements Owner {
-  private readonly props: StaticProps;
+  private readonly props: StaticProps | Promise<StaticProps>;
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
     super();
 
-    this.props = new StaticProps({}, closure);
+    const props = new StaticProps({}, closure);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
+        // TODO Allow methods to be passed in as outer props, here
         case "field":
-          this.props.addMember(key, new Field(value, closure));
+          props.addMember(key, new Field(value, closure));
           break;
         case "action":
-          this.props.addMember(key, new Action(value, closure));
+          props.addMember(key, new Action(value, closure));
           break;
+        // TODO Allow functions to be passed in as outer props, here
         default:
           throw new Error(
             `ModelInstance cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
@@ -306,21 +308,19 @@ class ModelInstance extends Channel implements Owner {
     });
 
     const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
-    const resultKeys = Object.keys(source.outerProps).filter((key) => source.outerProps[key].kind === "field");
 
     if (Abstract.isComponent(model) && model.kind === "model") {
-      resultKeys.push(...Object.keys(model.innerProps).filter((key) => model.innerProps[key].kind === "field"));
-
       Object.entries(model.innerProps).forEach(([key, value]) => {
         switch (value.kind) {
           case "method":
-            this.props.addMember(key, value);
+            // TODO Provide proper closure scoping for ModelInstance methods:
+            props.addMember(key, value);
             break;
           case "field":
-            this.props.addMember(key, new Field(value, this.props));
+            props.addMember(key, new Field(value, props));
             break;
           case "action":
-            this.props.addMember(key, new Action(value, this.props));
+            props.addMember(key, new Action(value, props));
             break;
           default:
             throw new Error(
@@ -330,20 +330,61 @@ class ModelInstance extends Channel implements Owner {
       });
     }
 
-    const result: Record<string, unknown> = {};
+    const serialization: Record<string, unknown> = {};
 
-    resultKeys.forEach((key) => {
-      const field = this.props.getMember(key) as Field;
-      field.connect((value) => {
-        result[key] = value;
-        if (resultKeys.every((key) => key in result)) {
-          this.publish(result);
+    const publishInitialValue = () => {
+      const properties = props.getProperties();
+
+      properties.forEach(([key, prop]) => {
+        if (Abstract.isComponent(model) && model.kind === "method") {
+          // TODO Serialize abstract methods
+        } else if (prop instanceof Field) {
+          serialization[key] = prop.getValue();
+        } else if (prop instanceof Action) {
+          // TODO Serialize actions
+        } else if (typeof prop === "function") {
+          serialization[key] = prop;
+        } else {
+          // TODO throw
         }
       });
-    });
+
+      this.publish({ ...serialization });
+
+      return props;
+    };
+
+    const publishUpdatedValues = () => {
+      const properties = props.getProperties();
+
+      properties.forEach(([key, prop]) => {
+        if (prop instanceof Field) {
+          prop.connectPassively((propValue) => {
+            serialization[key] = propValue;
+            this.publish({ ...serialization });
+          });
+        }
+      });
+
+      return props;
+    };
+
+    const expectedProps = Object.values(props).filter(
+      (prop) => prop instanceof Field && prop.getContent() instanceof Expectation,
+    );
+
+    if (expectedProps.length > 0) {
+      this.props = Promise.all(expectedProps.map((prop) => prop.getProps()))
+        .then(publishInitialValue)
+        .then(publishUpdatedValues);
+    } else {
+      publishInitialValue();
+      publishUpdatedValues();
+      this.props = props;
+    }
   }
 
-  getProps(): Props {
+  getProps() {
     return this.props;
   }
 }
@@ -574,8 +615,6 @@ class Expression extends Channel implements Owner {
         this.supplier = new Field(method.result, parameterizedClosure);
         this.supplier.connect(this);
       } else if (typeof method === "function") {
-        // TODO Listen for args and call method when they change
-
         const createFunctionalSupplier = () => {
           const supplier = new Field(
             {
@@ -587,16 +626,31 @@ class Expression extends Channel implements Owner {
             },
             new StaticProps({}),
           );
+
           supplier.connect(this);
+          return supplier;
+        };
+
+        const maintainSupplier = (supplier: Field) => {
+          args.forEach((arg) => {
+            arg.connectPassively(() => {
+              supplier.handleEvent(method(...args));
+            });
+          });
+
           return supplier;
         };
 
         const expectedArgs = args.filter((arg) => arg.getContent() instanceof Expectation);
 
         if (expectedArgs.length > 0) {
-          this.supplier = Promise.all(expectedArgs.map((arg) => arg.getProps())).then(createFunctionalSupplier);
+          this.supplier = Promise.all(expectedArgs.map((arg) => arg.getProps()))
+            .then(createFunctionalSupplier)
+            .then(maintainSupplier);
         } else {
-          this.supplier = createFunctionalSupplier();
+          const supplier = createFunctionalSupplier();
+          maintainSupplier(supplier);
+          this.supplier = supplier;
         }
       } else {
         throw new Error("Cannot express something which is not an abstract method or a function.");
@@ -916,7 +970,7 @@ type Property =
   | Abstract.Method
   | Field
   | Action
-  | ((...args: Array<Field>) => unknown);
+  | ((...args: Array<Field>) => unknown); // TODO Allow any args here, not just Fields? For native model instance serialization integration?
 
 class RawObjectProps implements Props {
   private readonly value: any;
@@ -939,6 +993,7 @@ class RawObjectProps implements Props {
           : memberValue.bind(this.value);
 
       const memberFunction = (...args: Array<Field>) => {
+        // TODO For arg values which are abstract methods or actions, we need to pass in a JavaScript function instead:
         const argValues = args.map((arg) => arg.getValue());
         const result = callableMemberValue(...argValues);
         return result;
@@ -985,5 +1040,9 @@ class StaticProps implements Props {
     }
 
     throw new Error(`Prop ${key} not found`);
+  }
+
+  getProperties(): Array<[string, Property]> {
+    return Object.entries(this.properties);
   }
 }

@@ -3,24 +3,23 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  private subscribers: Array<Subscriber<T>> = [];
+  private readonly subscribers: Array<Subscriber<T>> = [];
   private value?: T;
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
-    const subscriber = typeof target === "function" ? { handleEvent: target } : target;
+    const subscriber = this.connectPassively(target);
 
     if (this.value !== undefined) {
       subscriber.handleEvent(this.value);
     }
-
-    this.subscribers.push(subscriber);
   }
 
-  disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
-    this.subscribers = this.subscribers.filter((subscriber) => {
-      const compareTo = typeof target === "function" ? subscriber.handleEvent : subscriber;
-      return compareTo !== target;
-    });
+  connectPassively(target: Subscriber<T>["handleEvent"] | Subscriber<T>): Subscriber<T> {
+    const subscriber = typeof target === "function" ? { handleEvent: target } : target;
+
+    this.subscribers.push(subscriber);
+
+    return subscriber;
   }
 
   protected getSubscribers(): Array<Subscriber<T>> {
