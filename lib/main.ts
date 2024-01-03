@@ -68,6 +68,12 @@ class Field extends Channel implements Owner {
     | Expression
     | Expectation;
 
+  readonly getStatus = () => {
+    // TODO: Return VOID | VALID | INVALID;
+  };
+
+  readonly isVoid = () => this.getValue() === undefined;
+
   constructor(source: Abstract.Field, closure: Props) {
     super();
 
@@ -460,16 +466,16 @@ class RawValue extends Publisher implements Owner {
 
       this.publish(hydratedArray);
     } else {
-      if (Abstract.isRawObject(source.value)) {
-        this.props = new RawObjectProps(source.value);
-      } else {
-        const props = new StaticProps({
-          set: (field) => {
-            const nextValue = field?.getValue();
-            this.publish(nextValue);
-          },
-        });
+      const props = new StaticProps({
+        set: (field) => {
+          const nextValue = field?.getValue();
+          this.publish(nextValue);
+        },
+      });
 
+      if (Abstract.isRawObject(source.value)) {
+        this.props = new StaticProps(props, new RawObjectProps(source.value));
+      } else {
         if (typeof source.value === "boolean") {
           props.addMember("toggle", () => {
             const nextValue = !this.getValue();
@@ -478,8 +484,8 @@ class RawValue extends Publisher implements Owner {
         } else if (typeof source.value === "string") {
           props.addMember("plus", (field) => {
             const currentValue = this.getValue();
-            const nextValue = `${currentValue}${field.getValue()}`;
-            return nextValue;
+            const result = `${currentValue}${field.getValue()}`;
+            return result;
           });
         }
 
@@ -537,6 +543,7 @@ class Reference extends Channel implements Owner {
   }
 }
 
+// TODO Support async behavior
 class Implication extends Channel implements Owner {
   private readonly condition: Field;
   private readonly consequence: Field;
@@ -595,79 +602,88 @@ class Implication extends Channel implements Owner {
 }
 
 class Expression extends Channel implements Owner {
-  private supplier?: Field | Promise<Field>;
+  private readonly args: Array<Field>;
+  private readonly supplier: Field | Promise<Field>;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
 
-    const connectSupplier = (scopeResult: Props) => {
-      const method = scopeResult.getMember(source.methodName);
+    const owner = source.scope && new Field(source.scope, closure);
+    const scope = owner ? owner.getProps() : closure;
 
-      const args = source.args.map((sourceArg) => {
-        const arg = new Field(sourceArg, closure);
-        return arg;
-      });
+    this.args = source.args.map((sourceArg) => {
+      const arg = new Field(sourceArg, closure);
+      return arg;
+    });
 
+    const getSupplier = (method: Property) => {
       if (Abstract.isComponent(method) && method.kind === "method") {
         const parameterizedClosure = new StaticProps(
           method.params.reduce<Record<string, Field>>((acc, param, index) => {
-            acc[param] = args[index];
+            acc[param] = this.args[index];
             return acc;
           }, {}),
           closure,
         );
 
-        this.supplier = new Field(method.result, parameterizedClosure);
-        this.supplier.connect(this);
-      } else if (typeof method === "function") {
-        const createFunctionalSupplier = () => {
-          const supplier = new Field(
-            {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: method(...args),
-              },
-            },
-            new StaticProps({}),
-          );
-
-          supplier.connect(this);
-          return supplier;
-        };
-
-        const maintainSupplier = (supplier: Field) => {
-          args.forEach((arg) => {
-            arg.connectPassively(() => {
-              supplier.handleEvent(method(...args));
-            });
-          });
-
-          return supplier;
-        };
-
-        const expectedArgs = args.filter((arg) => arg.getContent() instanceof Expectation);
-
-        if (expectedArgs.length > 0) {
-          this.supplier = Promise.all(expectedArgs.map((arg) => arg.getProps()))
-            .then(createFunctionalSupplier)
-            .then(maintainSupplier);
-        } else {
-          const supplier = createFunctionalSupplier();
-          maintainSupplier(supplier);
-          this.supplier = supplier;
-        }
-      } else {
-        throw new Error("Cannot express something which is not an abstract method or a function.");
+        const supplier = new Field(method.result, parameterizedClosure);
+        return supplier;
       }
+
+      if (typeof method === "function") {
+        const supplier = new Field(
+          {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value: method(...this.args),
+            },
+          },
+          new StaticProps({}),
+        );
+
+        const updateSupply = () => {
+          const result = method(...this.args);
+          supplier.handleEvent(result);
+        };
+
+        owner?.connectPassively(updateSupply);
+
+        this.args.forEach((arg) => {
+          arg.connectPassively(updateSupply);
+        });
+
+        return supplier;
+      }
+
+      throw new Error("Cannot express something which is not an abstract method or a function.");
     };
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-
-    if (scope instanceof Promise) {
-      scope.then(connectSupplier);
+    if (owner && source.methodName === "isVoid") {
+      this.supplier = getSupplier(owner.isVoid);
+    } else if (scope instanceof Promise) {
+      this.supplier = scope.then((x) => x.getMember(source.methodName)).then(getSupplier);
     } else {
-      connectSupplier(scope);
+      const method = scope.getMember(source.methodName);
+      this.supplier = getSupplier(method);
+    }
+
+    const expectedArgs = this.args.filter((arg) => arg.getContent() instanceof Expectation);
+
+    if (expectedArgs.length > 0) {
+      this.supplier = Promise.all([this.supplier, ...expectedArgs.map((arg) => arg.getProps())]).then(
+        ([supplierValue]) => {
+          supplierValue.connect(this);
+          return supplierValue;
+        },
+      );
+    } else if (this.supplier instanceof Promise) {
+      this.supplier = this.supplier.then((supplierValue) => {
+        supplierValue.connect(this);
+        return supplierValue;
+      });
+    } else {
+      this.supplier.connect(this);
     }
   }
 
@@ -1026,8 +1042,8 @@ class StaticProps implements Props {
   private readonly properties: Record<string, Property>;
   private readonly closure?: Props;
 
-  constructor(properties: Record<string, Property>, closure?: Props) {
-    this.properties = properties;
+  constructor(properties: StaticProps | Record<string, Property>, closure?: Props) {
+    this.properties = properties instanceof StaticProps ? properties.properties : properties;
     this.closure = closure;
   }
 
@@ -1044,6 +1060,7 @@ class StaticProps implements Props {
       return this.closure.getMember(key);
     }
 
+    console.error("this.properties:", this.properties);
     throw new Error(`Prop ${key} not found`);
   }
 
