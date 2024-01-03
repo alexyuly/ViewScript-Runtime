@@ -158,6 +158,8 @@ class Atom extends Publisher<HTMLElement> {
                   contentValue.forEach((field: Field) => {
                     field.connect(handleContentValue);
                   });
+                } else if (contentValue instanceof Field) {
+                  contentValue.connect(handleContentValue);
                 } else if (!(fieldValue === false || fieldValue === null || fieldValue === undefined)) {
                   content.push(contentValue as Node | string);
                 }
