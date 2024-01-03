@@ -68,10 +68,7 @@ class Field extends Channel implements Owner {
     | Expression
     | Expectation;
 
-  readonly getStatus = () => {
-    // TODO: Return VOID | VALID | INVALID;
-  };
-
+  // TODO Avoid this construct, by refactoring props to allow their individual members to be either Property or Promise<Property>:
   readonly isVoid = () => this.getValue() === undefined;
 
   constructor(source: Abstract.Field, closure: Props) {
@@ -235,7 +232,6 @@ class ViewInstance extends Channel<HTMLElement> {
 
     this.props = new StaticProps({}, closure);
 
-    // TODO Make sure outer props can override the default inner props (need to switch the order here)
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
@@ -865,7 +861,7 @@ class Procedure implements Subscriber<Array<Field>> {
   }
 }
 
-// TODO Make sync calls synchronous again...
+// TODO Make sync calls synchronous again... (do this ASAP)
 class Call implements Subscriber<Array<Field>> {
   private readonly action: Promise<Subscriber<Array<Field>>>;
   private readonly constantArgs?: Array<Field>;
