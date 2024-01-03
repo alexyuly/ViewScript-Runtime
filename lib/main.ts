@@ -119,9 +119,9 @@ class Field extends SafeChannel implements Owner {
         break;
       }
       case "conditionalField": {
-        const implication = new ConditionalField(source.content, closure);
-        implication.connect(this);
-        this.content = implication;
+        const conditionalField = new ConditionalField(source.content, closure);
+        conditionalField.connect(this);
+        this.content = conditionalField;
         break;
       }
       default:
@@ -159,60 +159,76 @@ class Field extends SafeChannel implements Owner {
 
 class Expectation extends SafeChannel implements Owner {
   private readonly props: Promise<Props>;
-  private readonly path: Expression;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
   private supplier?: Field;
 
   constructor(source: Abstract.Expectation, closure: Props) {
     super();
 
-    let resolveProps: (props: Props) => void;
-    let rejectProps: (error: unknown) => void;
-
     this.props = new Promise<Props>((resolve, reject) => {
-      resolveProps = resolve;
-      rejectProps = reject;
-    });
+      const path = new Expression(source.path, closure);
 
-    this.path = new Expression(source.path, closure);
-    this.path.connect((resultingValue) => {
-      const attendant = {
-        id: crypto.randomUUID(),
-        promise: Promise.resolve(resultingValue),
-      };
-      this.queue.push(attendant);
-      attendant.promise
-        .then((value) => {
-          const index = this.queue.indexOf(attendant);
-          if (index !== -1) {
-            this.queue.splice(0, index + 1);
+      path.connect((resultingValue) => {
+        const attendant = {
+          id: crypto.randomUUID(),
+          promise: Promise.resolve(resultingValue),
+        };
 
-            if (!this.supplier) {
-              this.supplier = new Field(
-                {
-                  kind: "field",
-                  content: {
-                    kind: "rawValue",
-                    value,
+        this.queue.push(attendant);
+
+        attendant.promise
+          .then((value) => {
+            const index = this.queue.indexOf(attendant);
+
+            if (index !== -1) {
+              this.queue.splice(0, index + 1);
+
+              if (this.supplier) {
+                this.supplier.handleEvent(value);
+              } else {
+                this.supplier = new Field(
+                  {
+                    kind: "field",
+                    content: {
+                      kind: "rawValue",
+                      value,
+                    },
                   },
-                },
-                closure,
-              );
+                  closure,
+                );
 
-              this.supplier.connect(this);
-              resolveProps(this.supplier.getProps() as Props);
+                this.supplier.connect(this);
+                resolve(this.supplier.getProps());
+              }
             }
-          }
-        })
-        .catch((error) => {
-          const index = this.queue.indexOf(attendant);
-          if (index !== -1) {
-            this.queue.splice(index, 1);
-            // TODO fix
-            // this.supplier.handleError(error);
-            rejectProps(error);
-          }
-        });
+          })
+          .catch((error) => {
+            const index = this.queue.indexOf(attendant);
+
+            if (index !== -1) {
+              this.queue.splice(index, 1);
+
+              if (this.supplier) {
+                this.supplier.handleError(error);
+              } else {
+                this.supplier = new Field(
+                  {
+                    kind: "field",
+                    content: {
+                      kind: "rawValue",
+                      value: undefined,
+                    },
+                  },
+                  closure,
+                );
+
+                this.supplier.connect(this);
+                this.supplier.handleError(error);
+                reject(error);
+              }
+            }
+          });
+      });
     });
   }
 
@@ -434,21 +450,19 @@ class RawValue extends Publisher implements Owner {
           }
 
           const typeSafeMethod = method as Abstract.Method;
-          const currentValue = this.getValue();
+          const value = this.getValue();
 
-          const nextValue: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map(
-            (innerArg) => {
-              const parameterizedClosure = new StaticProps(
-                {
-                  [typeSafeMethod.params[0]]: innerArg,
-                },
-                closure,
-              );
+          const nextValue: Array<Field> = (value instanceof Array ? value : [value]).map((innerArg) => {
+            const parameterizedClosure = new StaticProps(
+              {
+                [typeSafeMethod.params[0]]: innerArg,
+              },
+              closure,
+            );
 
-              const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
-              return innerField;
-            },
-          );
+            const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
+            return innerField;
+          });
 
           return nextValue;
         },
