@@ -312,7 +312,7 @@ class Atom extends Publisher<HTMLElement> {
 }
 
 class ViewInstance extends Channel<HTMLElement> {
-  private readonly props;
+  private readonly props: StaticProps;
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props) {
@@ -382,12 +382,10 @@ class ViewInstance extends Channel<HTMLElement> {
 }
 
 class ModelInstance extends SafeChannel implements Owner {
-  private readonly props;
+  private readonly props: StaticProps;
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
     super();
-
-    const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
 
     this.props = new StaticProps({}, closure);
 
@@ -406,7 +404,12 @@ class ModelInstance extends SafeChannel implements Owner {
       }
     });
 
+    const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
+    const resultKeys = Object.keys(source.outerProps).filter((key) => source.outerProps[key].kind === "field");
+
     if (Abstract.isComponent(model) && model.kind === "model") {
+      resultKeys.push(...Object.keys(model.innerProps).filter((key) => model.innerProps[key].kind === "field"));
+
       Object.entries(model.innerProps).forEach(([key, value]) => {
         switch (value.kind) {
           case "method":
@@ -426,8 +429,17 @@ class ModelInstance extends SafeChannel implements Owner {
       });
     }
 
-    // TODO Publish the initial value of the model's serialized contents.
-    // TODO Listen to the model's property changes and publish the serialized contents.
+    const result: Record<string, unknown> = {};
+
+    resultKeys.forEach((key) => {
+      const field = this.props.getMember(key) as Field;
+      field.connect((value) => {
+        result[key] = value;
+        if (resultKeys.every((key) => key in result)) {
+          this.publish(result);
+        }
+      });
+    });
   }
 
   getProps(): Props {
@@ -435,6 +447,7 @@ class ModelInstance extends SafeChannel implements Owner {
   }
 }
 
+// TODO Update props if value changes: for example, if an Expectation rejects but then resolves with updated args.
 class RawValue extends Publisher implements Owner {
   private readonly props: Props;
 
