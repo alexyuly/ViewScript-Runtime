@@ -244,6 +244,10 @@ class ViewInstance extends Channel<HTMLElement> {
     });
 
     Object.entries(view.innerProps).forEach(([key, value]) => {
+      if (key in this.props) {
+        return;
+      }
+
       switch (value.kind) {
         case "method":
           this.props.addMember(key, value);
@@ -284,6 +288,7 @@ class ViewInstance extends Channel<HTMLElement> {
 
 class ModelInstance extends Channel implements Owner {
   private readonly props: StaticProps | Promise<StaticProps>;
+  private readonly serialization: Record<string, unknown> = {};
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
     super();
@@ -311,6 +316,10 @@ class ModelInstance extends Channel implements Owner {
 
     if (Abstract.isComponent(model) && model.kind === "model") {
       Object.entries(model.innerProps).forEach(([key, value]) => {
+        if (key in props) {
+          return;
+        }
+
         switch (value.kind) {
           case "method":
             // TODO Provide proper closure scoping for ModelInstance methods:
@@ -330,38 +339,32 @@ class ModelInstance extends Channel implements Owner {
       });
     }
 
-    const serialization: Record<string, unknown> = {};
-
     const publishInitialValue = () => {
-      const properties = props.getProperties();
-
-      properties.forEach(([key, prop]) => {
-        if (Abstract.isComponent(model) && model.kind === "method") {
+      props.getProperties().forEach(([key, prop]) => {
+        if (Abstract.isComponent(prop) && prop.kind === "method") {
           // TODO Serialize abstract methods
         } else if (prop instanceof Field) {
-          serialization[key] = prop.getValue();
+          this.serialization[key] = prop.getValue();
         } else if (prop instanceof Action) {
           // TODO Serialize actions
         } else if (typeof prop === "function") {
-          serialization[key] = prop;
+          this.serialization[key] = prop;
         } else {
           // TODO throw
         }
       });
 
-      this.publish({ ...serialization });
+      this.publish({ ...this.serialization });
 
       return props;
     };
 
     const publishUpdatedValues = () => {
-      const properties = props.getProperties();
-
-      properties.forEach(([key, prop]) => {
+      props.getProperties().forEach(([key, prop]) => {
         if (prop instanceof Field) {
           prop.connectPassively((propValue) => {
-            serialization[key] = propValue;
-            this.publish({ ...serialization });
+            this.serialization[key] = propValue;
+            this.publish({ ...this.serialization });
           });
         }
       });
