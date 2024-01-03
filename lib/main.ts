@@ -340,15 +340,15 @@ class ModelInstance extends Channel implements Owner {
     }
 
     const publishInitialValue = () => {
-      props.getProperties().forEach(([key, prop]) => {
-        if (Abstract.isComponent(prop) && prop.kind === "method") {
+      props.getOwnProperties().forEach(([key, ownProp]) => {
+        if (Abstract.isComponent(ownProp) && ownProp.kind === "method") {
           // TODO Serialize abstract methods
-        } else if (prop instanceof Field) {
-          this.serialization[key] = prop.getValue();
-        } else if (prop instanceof Action) {
+        } else if (ownProp instanceof Field) {
+          this.serialization[key] = ownProp.getValue();
+        } else if (ownProp instanceof Action) {
           // TODO Serialize actions
-        } else if (typeof prop === "function") {
-          this.serialization[key] = prop;
+        } else if (typeof ownProp === "function") {
+          this.serialization[key] = ownProp;
         } else {
           // TODO throw
         }
@@ -360,10 +360,10 @@ class ModelInstance extends Channel implements Owner {
     };
 
     const publishUpdatedValues = () => {
-      props.getProperties().forEach(([key, prop]) => {
-        if (prop instanceof Field) {
-          prop.connectPassively((propValue) => {
-            this.serialization[key] = propValue;
+      props.getOwnProperties().forEach(([key, ownProp]) => {
+        if (ownProp instanceof Field) {
+          ownProp.connectPassively((ownPropValue) => {
+            this.serialization[key] = ownPropValue;
             this.publish({ ...this.serialization });
           });
         }
@@ -1045,7 +1045,7 @@ class StaticProps implements Props {
     throw new Error(`Prop ${key} not found`);
   }
 
-  getProperties(): Array<[string, Property]> {
+  getOwnProperties(): Array<[string, Property]> {
     return Object.entries(this.properties);
   }
 }
