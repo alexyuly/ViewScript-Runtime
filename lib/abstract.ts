@@ -40,8 +40,8 @@ export namespace Abstract {
   };
 
   // make RESULT
-  // (PARAM0, PARAM1, ETC...) => RESULT
-  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) => RESULT
+  // given (PARAM0, PARAM1, ETC...) make RESULT
+  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) make RESULT
   export type Method = {
     kind: "method";
     params: Array<string>;
@@ -53,19 +53,9 @@ export namespace Abstract {
    */
 
   // CONTENT
-  // CONTENT catch FALLBACK
   export type Field = {
     kind: "field";
-    content: Expectation | Atom | ViewInstance | ModelInstance | RawValue | Reference | Expression | ConditionalField;
-    fallback?: Action;
-  };
-
-  // METHOD-NAME?
-  // METHOD-NAME(ARG)?
-  // METHOD-NAME(ARG0, ARG1, ETC...)?
-  export type Expectation = {
-    kind: "expectation";
-    path: Expression;
+    content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Implication | Expression | Expectation;
   };
 
   // <TAG-NAME> {
@@ -116,6 +106,15 @@ export namespace Abstract {
     fieldName: string;
   };
 
+  // if CONDITION then CONSEQUENCE
+  // if CONDITION then CONSEQUENCE else ALTERNATIVE
+  export type Implication = {
+    kind: "implication";
+    condition: Field;
+    consequence: Field;
+    alternative?: Field | Action;
+  };
+
   // METHOD-NAME()
   // METHOD-NAME(ARG)
   // METHOD-NAME(ARG0, ARG1, ETC...)
@@ -129,13 +128,16 @@ export namespace Abstract {
     args: Array<Field>;
   };
 
-  // if CONDITION then CONSEQUENCE
-  // if CONDITION then CONSEQUENCE else ALTERNATIVE
-  export type ConditionalField = {
-    kind: "conditionalField";
-    condition: Field;
-    consequence: Field;
-    alternative?: Field | Action;
+  // METHOD-NAME?
+  // METHOD-NAME(ARG)?
+  // METHOD-NAME(ARG0, ARG1, ETC...)?
+  // METHOD-NAME? unless EXCEPTION
+  // METHOD-NAME(ARG)? unless EXCEPTION
+  // METHOD-NAME(ARG0, ARG1, ETC...)? unless EXCEPTION
+  export type Expectation = {
+    kind: "expectation";
+    means: Expression;
+    exception?: Action;
   };
 
   /**
@@ -145,14 +147,12 @@ export namespace Abstract {
   // TARGET
   export type Action = {
     kind: "action";
-    target: Procedure | Call | Invocation | ConditionalAction;
+    target: Procedure | Call | Fork | Invocation;
   };
 
   // do { STEPS }
-  // (PARAM0, PARAM1, ETC...) -> STEP
-  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) -> STEP
-  // (PARAM0, PARAM1, ETC...) -> { STEPS }
-  // (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) -> { STEPS }
+  // given (PARAM0, PARAM1, ETC...) do { STEPS }
+  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) do { STEPS }
   export type Procedure = {
     kind: "procedure";
     params: Array<string>;
@@ -172,6 +172,15 @@ export namespace Abstract {
     args?: Array<Field>;
   };
 
+  // do when CONDITION { CONSEQUENCE }
+  // do when CONDITION { CONSEQUENCE } otherwise { ALTERNATIVE }
+  export type Fork = {
+    kind: "fork";
+    condition: Field;
+    consequence: Action;
+    alternative?: Action;
+  };
+
   // await PREREQUISITE
   // await PREREQUISITE [...] STEPS
   // let PARAMETER-NAME = PREREQUISITE [...] STEPS
@@ -182,17 +191,8 @@ export namespace Abstract {
     procedure?: Procedure;
   };
 
-  // when CONDITION then CONSEQUENCE
-  // when CONDITION then CONSEQUENCE else ALTERNATIVE
-  export type ConditionalAction = {
-    kind: "conditionalAction";
-    condition: Field;
-    consequence: Action;
-    alternative?: Action;
-  };
-
   /**
-   * Useful stuff:
+   * Utilities:
    */
 
   export type Component = {

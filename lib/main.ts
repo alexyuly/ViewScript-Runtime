@@ -1,5 +1,5 @@
 import { Abstract } from "./abstract";
-import { Subscriber, Publisher, SafePublisher, Channel, SafeChannel } from "./pubsub";
+import { Subscriber, Publisher, Channel } from "./pubsub";
 
 /**
  * Foundation:
@@ -57,31 +57,21 @@ export class App {
  * Fields:
  */
 
-class Field extends SafeChannel implements Owner {
-  private readonly fallback?: Action;
-
+class Field extends Channel implements Owner {
   private readonly content:
-    | Expectation
     | Atom
     | ViewInstance
     | ModelInstance
     | RawValue
     | Reference
+    | Implication
     | Expression
-    | ConditionalField;
+    | Expectation;
 
   constructor(source: Abstract.Field, closure: Props) {
     super();
 
-    this.fallback = source.fallback && new Action(source.fallback, closure);
-
     switch (source.content.kind) {
-      case "expectation": {
-        const expectation = new Expectation(source.content, closure);
-        expectation.connect(this);
-        this.content = expectation;
-        break;
-      }
       case "atom": {
         const atom = new Atom(source.content, closure);
         atom.connect(this);
@@ -112,16 +102,22 @@ class Field extends SafeChannel implements Owner {
         this.content = reference;
         break;
       }
+      case "implication": {
+        const implication = new Implication(source.content, closure);
+        implication.connect(this);
+        this.content = implication;
+        break;
+      }
       case "expression": {
         const expression = new Expression(source.content, closure);
         expression.connect(this);
         this.content = expression;
         break;
       }
-      case "conditionalField": {
-        const conditionalField = new ConditionalField(source.content, closure);
-        conditionalField.connect(this);
-        this.content = conditionalField;
+      case "expectation": {
+        const expectation = new Expectation(source.content, closure);
+        expectation.connect(this);
+        this.content = expectation;
         break;
       }
       default:
@@ -139,105 +135,6 @@ class Field extends SafeChannel implements Owner {
     }
 
     return this.content.getProps();
-  }
-
-  handleError(error: unknown): void {
-    if (this.fallback) {
-      const errorArg = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value: error,
-          },
-        },
-        new StaticProps({}),
-      );
-
-      this.fallback.handleEvent([errorArg]);
-    } else {
-      super.handleError(error);
-    }
-  }
-}
-
-class Expectation extends SafeChannel implements Owner {
-  private readonly props: Promise<Props>;
-  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
-  private supplier?: Field;
-
-  constructor(source: Abstract.Expectation, closure: Props) {
-    super();
-
-    this.props = new Promise<Props>((resolve, reject) => {
-      const path = new Expression(source.path, closure);
-
-      path.connect((resultingValue) => {
-        const attendant = {
-          id: crypto.randomUUID(),
-          promise: Promise.resolve(resultingValue),
-        };
-
-        this.queue.push(attendant);
-
-        attendant.promise
-          .then((value) => {
-            const index = this.queue.indexOf(attendant);
-
-            if (index !== -1) {
-              this.queue.splice(0, index + 1);
-
-              if (this.supplier) {
-                this.supplier.handleEvent(value);
-              } else {
-                this.supplier = new Field(
-                  {
-                    kind: "field",
-                    content: {
-                      kind: "rawValue",
-                      value,
-                    },
-                  },
-                  closure,
-                );
-
-                this.supplier.connect(this);
-                resolve(this.supplier.getProps());
-              }
-            }
-          })
-          .catch((error) => {
-            const index = this.queue.indexOf(attendant);
-
-            if (index !== -1) {
-              this.queue.splice(index, 1);
-
-              if (this.supplier) {
-                this.supplier.handleError(error);
-              } else {
-                this.supplier = new Field(
-                  {
-                    kind: "field",
-                    content: {
-                      kind: "rawValue",
-                      value: undefined,
-                    },
-                  },
-                  closure,
-                );
-
-                this.supplier.connect(this);
-                this.supplier.handleError(error);
-                reject(error);
-              }
-            }
-          });
-      });
-    });
-  }
-
-  getProps(): Promise<Props> {
-    return this.props;
   }
 }
 
@@ -385,7 +282,7 @@ class ViewInstance extends Channel<HTMLElement> {
   }
 }
 
-class ModelInstance extends SafeChannel implements Owner {
+class ModelInstance extends Channel implements Owner {
   private readonly props: StaticProps;
 
   constructor(source: Abstract.ModelInstance, closure: Props) {
@@ -552,7 +449,7 @@ class RawValue extends Publisher implements Owner {
   }
 }
 
-class Reference extends SafeChannel implements Owner {
+class Reference extends Channel implements Owner {
   private readonly field: Field | Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props) {
@@ -594,88 +491,12 @@ class Reference extends SafeChannel implements Owner {
   }
 }
 
-class Expression extends SafeChannel implements Owner {
-  private supplier?: Field | Promise<Field>;
-
-  constructor(source: Abstract.Expression, closure: Props) {
-    super();
-
-    const connectSupplier = (scopeResult: Props) => {
-      const method = scopeResult.getMember(source.methodName);
-
-      const args = source.args.map((sourceArg) => {
-        const arg = new Field(sourceArg, closure);
-        return arg;
-      });
-
-      if (Abstract.isComponent(method) && method.kind === "method") {
-        const parameterizedClosure = new StaticProps(
-          method.params.reduce<Record<string, Field>>((acc, param, index) => {
-            acc[param] = args[index];
-            return acc;
-          }, {}),
-          closure,
-        );
-
-        this.supplier = new Field(method.result, parameterizedClosure);
-        this.supplier.connect(this);
-      } else if (typeof method === "function") {
-        const callMethod = () => {
-          this.supplier = new Field(
-            {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: method(...args),
-              },
-            },
-            new StaticProps({}),
-          );
-          this.supplier.connect(this);
-        };
-
-        if (args.length === 0) {
-          callMethod();
-        } else {
-          const expectedArgs = args.filter((arg) => arg.getContent() instanceof Expectation);
-
-          if (expectedArgs.length === 0) {
-            callMethod();
-          } else {
-            Promise.all(expectedArgs.map((arg) => arg.getProps())).then(callMethod);
-          }
-        }
-      } else {
-        throw new Error("Cannot express something which is not an abstract method or a function.");
-      }
-    };
-
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-
-    if (scope instanceof Promise) {
-      scope.then(connectSupplier);
-    } else {
-      connectSupplier(scope);
-    }
-  }
-
-  getProps() {
-    if (this.supplier instanceof Promise) {
-      return this.supplier.then((supply) => {
-        return supply.getProps();
-      });
-    }
-
-    return this.supplier!.getProps();
-  }
-}
-
-class ConditionalField extends SafeChannel implements Owner {
+class Implication extends Channel implements Owner {
   private readonly condition: Field;
   private readonly consequence: Field;
   private readonly alternative?: Field | Action;
 
-  constructor(source: Abstract.ConditionalField, closure: Props) {
+  constructor(source: Abstract.Implication, closure: Props) {
     super();
 
     this.condition = new Field(source.condition, closure);
@@ -727,12 +548,190 @@ class ConditionalField extends SafeChannel implements Owner {
   }
 }
 
+class Expression extends Channel implements Owner {
+  private supplier?: Field | Promise<Field>;
+
+  constructor(source: Abstract.Expression, closure: Props) {
+    super();
+
+    const connectSupplier = (scopeResult: Props) => {
+      const method = scopeResult.getMember(source.methodName);
+
+      const args = source.args.map((sourceArg) => {
+        const arg = new Field(sourceArg, closure);
+        return arg;
+      });
+
+      if (Abstract.isComponent(method) && method.kind === "method") {
+        const parameterizedClosure = new StaticProps(
+          method.params.reduce<Record<string, Field>>((acc, param, index) => {
+            acc[param] = args[index];
+            return acc;
+          }, {}),
+          closure,
+        );
+
+        this.supplier = new Field(method.result, parameterizedClosure);
+        this.supplier.connect(this);
+      } else if (typeof method === "function") {
+        // TODO Listen for args and call method when they change
+
+        const createFunctionalSupplier = () => {
+          const supplier = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: method(...args),
+              },
+            },
+            new StaticProps({}),
+          );
+          supplier.connect(this);
+          return supplier;
+        };
+
+        const expectedArgs = args.filter((arg) => arg.getContent() instanceof Expectation);
+
+        if (expectedArgs.length > 0) {
+          this.supplier = Promise.all(expectedArgs.map((arg) => arg.getProps())).then(createFunctionalSupplier);
+        } else {
+          this.supplier = createFunctionalSupplier();
+        }
+      } else {
+        throw new Error("Cannot express something which is not an abstract method or a function.");
+      }
+    };
+
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+
+    if (scope instanceof Promise) {
+      scope.then(connectSupplier);
+    } else {
+      connectSupplier(scope);
+    }
+  }
+
+  getProps() {
+    if (this.supplier instanceof Promise) {
+      return this.supplier.then((supply) => {
+        return supply.getProps();
+      });
+    }
+
+    return this.supplier!.getProps();
+  }
+}
+
+class Expectation extends Channel implements Owner {
+  private readonly props: Promise<Props>;
+  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+
+  private supplier?: Field;
+  private exception?: Action;
+
+  constructor(source: Abstract.Expectation, closure: Props) {
+    super();
+
+    this.exception = source.exception && new Action(source.exception, closure);
+
+    this.props = new Promise<Props>((resolve, reject) => {
+      const means = new Expression(source.means, closure);
+
+      means.connect((resultingValue) => {
+        const attendant = {
+          id: crypto.randomUUID(),
+          promise: Promise.resolve(resultingValue),
+        };
+
+        this.queue.push(attendant);
+
+        attendant.promise
+          .then((value) => {
+            const index = this.queue.indexOf(attendant);
+
+            if (index !== -1) {
+              this.queue.splice(0, index + 1);
+
+              if (this.supplier) {
+                this.supplier.handleEvent(value);
+              } else {
+                this.supplier = new Field(
+                  {
+                    kind: "field",
+                    content: {
+                      kind: "rawValue",
+                      value,
+                    },
+                  },
+                  closure,
+                );
+
+                this.supplier.connect(this);
+                resolve(this.supplier.getProps());
+              }
+            }
+          })
+          .catch((error) => {
+            const index = this.queue.indexOf(attendant);
+
+            if (index !== -1) {
+              this.queue.splice(index, 1);
+
+              if (this.supplier) {
+                this.supplier.handleException(error);
+              } else {
+                this.supplier = new Field(
+                  {
+                    kind: "field",
+                    content: {
+                      kind: "rawValue",
+                      value: undefined,
+                    },
+                  },
+                  closure,
+                );
+
+                this.supplier.connect(this);
+                this.supplier.handleException(error);
+                reject(error);
+              }
+            }
+          });
+      });
+    });
+  }
+
+  getProps(): Promise<Props> {
+    return this.props;
+  }
+
+  handleException(error: unknown): void {
+    if (this.exception) {
+      const errorArg = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: error,
+          },
+        },
+        new StaticProps({}),
+      );
+
+      this.exception.handleEvent([errorArg]);
+    } else {
+      super.handleException(error);
+    }
+  }
+}
+
 /**
  * Actions:
  */
 
 class Action implements Subscriber<Array<Field>> {
-  private readonly target: Procedure | Call | Invocation | ConditionalAction;
+  private readonly target: Procedure | Call | Fork | Invocation;
 
   constructor(source: Abstract.Action, closure: Props) {
     switch (source.target.kind) {
@@ -742,11 +741,11 @@ class Action implements Subscriber<Array<Field>> {
       case "call":
         this.target = new Call(source.target, closure);
         break;
+      case "fork":
+        this.target = new Fork(source.target, closure);
+        break;
       case "invocation":
         this.target = new Invocation(source.target, closure);
-        break;
-      case "conditionalAction":
-        this.target = new ConditionalAction(source.target, closure);
         break;
       default:
         throw new Error(
@@ -839,6 +838,30 @@ class Call implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO update to support alternatives and not exiting early
+class Fork implements Subscriber<void> {
+  private readonly condition: Field;
+  private readonly consequence?: Abstract.Action;
+  private readonly closure: Props;
+
+  constructor(source: Abstract.Fork, closure: Props) {
+    this.condition = new Field(source.condition, closure);
+    this.consequence = source.consequence;
+    this.closure = closure;
+  }
+
+  handleEvent(): boolean {
+    const isConditionMet = this.condition.getValue();
+
+    if (isConditionMet && this.consequence) {
+      const action = new Action(this.consequence, this.closure);
+      action.handleEvent();
+    }
+
+    return Boolean(isConditionMet);
+  }
+}
+
 class Invocation implements Subscriber<void> {
   private readonly prerequisite: Abstract.Field;
   private readonly procedure?: Abstract.Procedure;
@@ -875,32 +898,8 @@ class Invocation implements Subscriber<void> {
   }
 }
 
-// TODO update to support alternatives and not exiting early
-class ConditionalAction implements Subscriber<void> {
-  private readonly condition: Field;
-  private readonly consequence?: Abstract.Action;
-  private readonly closure: Props;
-
-  constructor(source: Abstract.ConditionalAction, closure: Props) {
-    this.condition = new Field(source.condition, closure);
-    this.consequence = source.consequence;
-    this.closure = closure;
-  }
-
-  handleEvent(): boolean {
-    const isConditionMet = this.condition.getValue();
-
-    if (isConditionMet && this.consequence) {
-      const action = new Action(this.consequence, this.closure);
-      action.handleEvent();
-    }
-
-    return Boolean(isConditionMet);
-  }
-}
-
 /**
- * Useful stuff:
+ * Utilities:
  */
 
 interface Owner {

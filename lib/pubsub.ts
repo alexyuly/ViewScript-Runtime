@@ -3,10 +3,10 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  protected subscribers: Array<Subscriber<T>> = [];
+  private subscribers: Array<Subscriber<T>> = [];
   private value?: T;
 
-  connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
+  connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
     const subscriber = typeof target === "function" ? { handleEvent: target } : target;
 
     if (this.value !== undefined) {
@@ -16,66 +16,60 @@ export abstract class Publisher<T = unknown> {
     this.subscribers.push(subscriber);
   }
 
-  disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>) {
+  disconnect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
     this.subscribers = this.subscribers.filter((subscriber) => {
       const compareTo = typeof target === "function" ? subscriber.handleEvent : subscriber;
       return compareTo !== target;
     });
   }
 
-  getValue() {
+  protected getSubscribers(): Array<Subscriber<T>> {
+    return this.subscribers;
+  }
+
+  getValue(): T | undefined {
     return this.value;
   }
 
-  protected publish(event: T) {
-    // Skip redundant messages:
-    if (this.value === event) {
+  protected publish(value: T): void {
+    if (this.value === value) {
       return;
     }
 
-    this.value = event;
+    this.value = value;
 
     this.subscribers.forEach((subscriber) => {
-      subscriber.handleEvent(event);
+      subscriber.handleEvent(value);
     });
   }
 }
 
-export abstract class SafePublisher<T = unknown> extends Publisher<T> {
+export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
   private error?: unknown;
 
-  getError() {
+  getError(): unknown {
     return this.error;
   }
 
-  protected publishError(error: unknown) {
-    // Skip redundant messages:
+  handleEvent(value: T): void {
+    this.publish(value);
+  }
+
+  handleException(error: unknown): void {
+    this.publishError(error);
+  }
+
+  protected publishError(error: unknown): void {
     if (this.error === error) {
       return;
     }
 
     this.error = error;
 
-    this.subscribers.forEach((subscriber) => {
-      if (subscriber instanceof SafeChannel) {
-        subscriber.handleError(error);
+    this.getSubscribers().forEach((subscriber) => {
+      if (subscriber instanceof Channel) {
+        subscriber.handleException(error);
       }
     });
-  }
-}
-
-export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
-  handleEvent(value: T): void {
-    this.publish(value);
-  }
-}
-
-export abstract class SafeChannel<T = unknown> extends SafePublisher<T> implements Subscriber<T> {
-  handleEvent(value: T): void {
-    this.publish(value);
-  }
-
-  handleError(error: unknown): void {
-    this.publishError(error);
   }
 }
