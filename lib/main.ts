@@ -68,7 +68,6 @@ class Field extends Channel implements Owner {
     | Expression
     | Expectation;
 
-  // TODO Can we avoid this construct?
   readonly isVoid = () => this.getValue() === undefined;
 
   constructor(source: Abstract.Field, closure: Props) {
@@ -141,7 +140,7 @@ class Field extends Channel implements Owner {
   }
 }
 
-class Atom extends Publisher<HTMLElement> {
+class Atom extends Publisher<HTMLElement> implements Owner {
   private readonly props = new StaticProps({});
 
   constructor(source: Abstract.Atom, closure: Props) {
@@ -215,9 +214,13 @@ class Atom extends Publisher<HTMLElement> {
 
     this.publish(element);
   }
+
+  getProps() {
+    return this.props;
+  }
 }
 
-class ViewInstance extends Channel<HTMLElement> {
+class ViewInstance extends Channel<HTMLElement> implements Owner {
   private readonly props: StaticProps;
   private readonly stage: Array<Atom | ViewInstance> = [];
 
@@ -287,6 +290,10 @@ class ViewInstance extends Channel<HTMLElement> {
           );
       }
     });
+  }
+
+  getProps() {
+    return this.props;
   }
 }
 
@@ -405,6 +412,10 @@ class RawValue extends Publisher implements Owner {
 
     if (source.value instanceof Array) {
       this.props = new StaticProps({
+        isVoid: () => {
+          const result = this.getValue() === undefined;
+          return result;
+        },
         map: (arg) => {
           const method = arg.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
@@ -414,7 +425,7 @@ class RawValue extends Publisher implements Owner {
           const typeSafeMethod = method as Abstract.Method;
           const value = this.getValue();
 
-          const nextValue: Array<Field> = (value instanceof Array ? value : [value]).map((innerArg) => {
+          const result: Array<Field> = (value instanceof Array ? value : [value]).map((innerArg) => {
             const parameterizedClosure = new StaticProps(
               {
                 [typeSafeMethod.params[0]]: innerArg,
@@ -426,7 +437,7 @@ class RawValue extends Publisher implements Owner {
             return innerField;
           });
 
-          return nextValue;
+          return result;
         },
         push: (arg) => {
           const currentValue = this.getValue();
@@ -463,6 +474,10 @@ class RawValue extends Publisher implements Owner {
       this.publish(hydratedArray);
     } else {
       const props = new StaticProps({
+        isVoid: () => {
+          const result = this.getValue() === undefined;
+          return result;
+        },
         set: (field) => {
           const nextValue = field?.getValue();
           this.publish(nextValue);
@@ -801,10 +816,12 @@ class Expectation extends Channel implements Owner {
  * Actions:
  */
 
-class Action implements Subscriber<Array<Field>> {
+class Action extends Publisher<null> implements Subscriber<null | Array<Field>> {
   private readonly target: Procedure | Call | Fork | Invocation;
 
   constructor(source: Abstract.Action, closure: Props) {
+    super();
+
     switch (source.target.kind) {
       case "procedure":
         this.target = new Procedure(source.target, closure);
@@ -823,19 +840,23 @@ class Action implements Subscriber<Array<Field>> {
           `Action cannot target something of invalid kind: ${(source.target as Abstract.Component).kind}`,
         );
     }
+
+    this.target.connect(this);
   }
 
-  handleEvent(args: Array<Field> = []) {
-    return this.target.handleEvent(args);
+  handleEvent(args?: Array<Field> | null): void {
+    this.target.handleEvent(args ?? []);
   }
 }
 
-class Procedure implements Subscriber<Array<Field>> {
+class Procedure extends Publisher<null> implements Subscriber<null | Array<Field>> {
   private readonly steps: Array<Abstract.Action>;
   private readonly params: Array<string>;
   private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
+    super();
+
     this.steps = source.steps;
     this.params = source.params;
     this.closure = closure;
@@ -850,27 +871,42 @@ class Procedure implements Subscriber<Array<Field>> {
       this.closure,
     );
 
-    for (const step of this.steps) {
+    const actions = this.steps.map((step) => {
       const action = new Action(step, parameterizedClosure);
-      const caughtException = action.handleEvent();
+      return action;
+    });
 
-      if (caughtException) {
-        break;
+    // Build a linked list of actions, each handing off control to the next:
+    actions.forEach((action, index) => {
+      const nextAction = actions[index + 1];
+
+      if (nextAction) {
+        action.connect(() => {
+          nextAction.handleEvent();
+        });
+      } else {
+        action.connect(() => {
+          this.publish(null);
+        });
       }
-    }
+    });
+
+    // Call the first action, to kick things off:
+    actions[0]?.handleEvent();
   }
 }
 
-// TODO Make sync calls synchronous again... (do this ASAP)
-class Call implements Subscriber<Array<Field>> {
-  private readonly action: Promise<Subscriber<Array<Field>>>;
+class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
+  private readonly action:
+    | (Publisher<null> & Subscriber<null | Array<Field>>)
+    | Promise<Publisher<null> & Subscriber<null | Array<Field>>>;
+
   private readonly constantArgs?: Array<Field>;
-  private readonly queue: Array<{ args: Array<Field> }> = [];
 
   constructor(source: Abstract.Call, closure: Props) {
-    const resolvableScope = Promise.resolve(source.scope ? new Field(source.scope, closure).getProps() : closure);
+    super();
 
-    this.action = resolvableScope.then((scope) => {
+    const getAction = (scope: Props) => {
       const action = scope.getMember(source.actionName);
 
       if (action instanceof Action) {
@@ -878,13 +914,24 @@ class Call implements Subscriber<Array<Field>> {
       }
 
       if (typeof action === "function") {
-        return {
-          handleEvent: (args) => action(...args),
-        };
+        return new (class extends Publisher<null> implements Subscriber<null | Array<Field>> {
+          handleEvent(args: Array<Field>) {
+            action(...args);
+            this.publish(null);
+          }
+        })();
       }
 
       throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
-    });
+    };
+
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+
+    if (scope instanceof Promise) {
+      this.action = scope.then(getAction);
+    } else {
+      this.action = getAction(scope);
+    }
 
     this.constantArgs = source.args?.map((sourceArg) => {
       const arg = new Field(sourceArg, closure);
@@ -894,28 +941,30 @@ class Call implements Subscriber<Array<Field>> {
 
   // TODO Wait until args are ready to handle event:
   handleEvent(args: Array<Field>): void {
-    this.queue.push({
-      args: this.constantArgs ?? args,
-    });
+    const handler = (action: Publisher<null> & Subscriber<null | Array<Field>>) => {
+      action.connect(() => {
+        this.publish(null);
+      });
+      action.handleEvent(this.constantArgs ?? args);
+    };
 
-    this.action.then((action) => {
-      let next = this.queue.shift();
-
-      while (next) {
-        action.handleEvent(next.args);
-        next = this.queue.shift();
-      }
-    });
+    if (this.action instanceof Promise) {
+      this.action.then(handler);
+    } else {
+      handler(this.action);
+    }
   }
 }
 
 // TODO update to support alternatives and not exiting early
-class Fork implements Subscriber<void> {
+class Fork extends Publisher<null> implements Subscriber<null> {
   private readonly condition: Field;
   private readonly consequence?: Abstract.Action;
   private readonly closure: Props;
 
   constructor(source: Abstract.Fork, closure: Props) {
+    super();
+
     this.condition = new Field(source.condition, closure);
     this.consequence = source.consequence;
     this.closure = closure;
@@ -933,12 +982,14 @@ class Fork implements Subscriber<void> {
   }
 }
 
-class Invocation implements Subscriber<void> {
+class Invocation extends Publisher<null> implements Subscriber<null> {
   private readonly prerequisite: Abstract.Field;
   private readonly procedure?: Abstract.Procedure;
   private readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
+    super();
+
     this.prerequisite = source.prerequisite;
     this.procedure = source.procedure;
     this.closure = closure;
@@ -963,6 +1014,7 @@ class Invocation implements Subscriber<void> {
         ];
 
         const procedure = new Procedure(this.procedure, this.closure);
+        procedure.connect(this);
         procedure.handleEvent(args);
       }
     });
