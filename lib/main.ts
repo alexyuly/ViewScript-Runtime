@@ -798,14 +798,11 @@ class Expectation extends Channel implements Owner {
  * Actions:
  */
 
-class Action extends Publisher<null> implements Subscriber<null | Array<Field>> {
-  private readonly source: Abstract.Action;
+class Action extends Publisher<null> implements Subscriber<Array<Field>> {
   private readonly target: Procedure | Call | Fork | Invocation;
 
   constructor(source: Abstract.Action, closure: Props) {
     super();
-
-    this.source = source;
 
     switch (source.target.kind) {
       case "procedure":
@@ -832,11 +829,10 @@ class Action extends Publisher<null> implements Subscriber<null | Array<Field>> 
   handleEvent(args?: Array<Field> | null): void {
     this.target.handleEvent(args ?? []);
     this.publish(null);
-    console.log("*** abstract action finished:", this.source);
   }
 }
 
-class Procedure extends Publisher<null> implements Subscriber<null | Array<Field>> {
+class Procedure extends Publisher<null> implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Procedure;
   private readonly closure: Props;
 
@@ -871,7 +867,6 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
       } else {
         action.connect(() => {
           this.publish(null);
-          console.log("*** procedure finished:", this.source);
         });
       }
     });
@@ -880,10 +875,10 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
   }
 }
 
-class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
+class Call extends Publisher<null> implements Subscriber<Array<Field>> {
   private readonly action:
-    | (Publisher<null> & Subscriber<null | Array<Field>>)
-    | Promise<Publisher<null> & Subscriber<null | Array<Field>>>;
+    | (Publisher<null> & Subscriber<Array<Field>>)
+    | Promise<Publisher<null> & Subscriber<Array<Field>>>;
 
   private readonly constantArgs?: Array<Field>;
 
@@ -899,7 +894,7 @@ class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
       }
 
       if (typeof action === "function") {
-        const proxy = new (class extends Publisher<null> implements Subscriber<null | Array<Field>> {
+        const proxy = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
           handleEvent(args: Array<Field>) {
             console.log(`calling ${source.actionName} with args...`, args);
             action(...args);
