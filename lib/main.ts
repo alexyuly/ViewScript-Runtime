@@ -823,12 +823,13 @@ class Action extends Publisher<null> implements Subscriber<Array<Field>> {
         );
     }
 
-    this.target.connect(this);
+    this.target.connect(() => {
+      this.publish(null);
+    });
   }
 
   handleEvent(args?: Array<Field> | null): void {
     this.target.handleEvent(args ?? []);
-    this.publish(null);
   }
 }
 
@@ -889,7 +890,6 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
       const action = scope.getMember(source.actionName);
 
       if (action instanceof Action) {
-        action.connect(this);
         return action;
       }
 
@@ -898,9 +898,9 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
           handleEvent(args: Array<Field>) {
             console.log(`calling ${source.actionName} with args...`, args);
             action(...args);
+            this.publish(null);
           }
         })();
-        proxy.connect(this);
         return proxy;
       }
 
@@ -910,9 +910,18 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
 
     if (scope instanceof Promise) {
-      this.action = scope.then(getAction);
+      this.action = scope.then((scope) => {
+        const action = getAction(scope);
+        action.connect(() => {
+          this.publish(null);
+        });
+        return action;
+      });
     } else {
       this.action = getAction(scope);
+      this.action.connect(() => {
+        this.publish(null);
+      });
     }
 
     this.constantArgs = source.args?.map((sourceArg) => {
