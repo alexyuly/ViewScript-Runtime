@@ -569,8 +569,8 @@ class Implication extends Channel implements Owner {
 }
 
 class Expression extends Channel implements Owner {
-  private readonly args: Array<Field>;
   private readonly producer: Field | Promise<Field>;
+  private readonly args: Array<Field>;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
@@ -637,16 +637,14 @@ class Expression extends Channel implements Owner {
     const expectedArgs = this.args.filter((arg) => arg.getContent() instanceof Expectation);
 
     if (expectedArgs.length > 0) {
-      this.producer = Promise.all([this.producer, ...expectedArgs.map((arg) => arg.getProps())]).then(
-        ([supplierValue]) => {
-          supplierValue.connect(this);
-          return supplierValue;
-        },
-      );
+      this.producer = Promise.all([this.producer, ...expectedArgs.map((arg) => arg.getProps())]).then(([field]) => {
+        field.connect(this);
+        return field;
+      });
     } else if (this.producer instanceof Promise) {
-      this.producer = this.producer.then((supplierValue) => {
-        supplierValue.connect(this);
-        return supplierValue;
+      this.producer = this.producer.then((field) => {
+        field.connect(this);
+        return field;
       });
     } else {
       this.producer.connect(this);
@@ -655,12 +653,12 @@ class Expression extends Channel implements Owner {
 
   getProps() {
     if (this.producer instanceof Promise) {
-      return this.producer.then((supply) => {
-        return supply.getProps();
+      return this.producer.then((field) => {
+        return field.getProps();
       });
     }
 
-    return this.producer!.getProps();
+    return this.producer.getProps();
   }
 }
 
@@ -850,7 +848,7 @@ class Procedure extends Publisher<null> implements Subscriber<Array<Field>> {
 }
 
 class Call extends Publisher<null> implements Subscriber<Array<Field>> {
-  private readonly action:
+  private readonly consumer:
     | (Publisher<null> & Subscriber<Array<Field>>)
     | Promise<Publisher<null> & Subscriber<Array<Field>>>;
 
@@ -889,9 +887,9 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
     const scope = owner ? owner.getProps() : closure;
 
     if (scope instanceof Promise) {
-      this.action = scope.then(getConsumer);
+      this.consumer = scope.then(getConsumer);
     } else {
-      this.action = getConsumer(scope);
+      this.consumer = getConsumer(scope);
     }
 
     this.constantArgs = source.args?.map((sourceArg) => {
@@ -906,13 +904,15 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
     const expectedArgs = finalArgs.filter((arg) => arg.getContent() instanceof Expectation);
 
     if (expectedArgs.length > 0) {
-      Promise.all([this.action, ...expectedArgs.map((arg) => arg.getProps())]).then(([action]) =>
-        action.handleEvent(finalArgs),
+      Promise.all([this.consumer, ...expectedArgs.map((arg) => arg.getProps())]).then(([consumer]) =>
+        consumer.handleEvent(finalArgs),
       );
-    } else if (this.action instanceof Promise) {
-      this.action.then((x) => x.handleEvent(finalArgs));
+    } else if (this.consumer instanceof Promise) {
+      this.consumer.then((consumer) => {
+        consumer.handleEvent(finalArgs);
+      });
     } else {
-      this.action.handleEvent(finalArgs);
+      this.consumer.handleEvent(finalArgs);
     }
   }
 }
