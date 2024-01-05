@@ -451,6 +451,11 @@ class RawValue extends Publisher implements Owner {
         this.props = new StaticProps({ set }, closure);
 
         if (typeof source.value === "boolean") {
+          this.props.addMember("not", () => {
+            const currentValue = this.getValue();
+            const result = !currentValue;
+            return result;
+          });
           this.props.addMember("toggle", () => {
             const nextValue = !this.getValue();
             this.publish(nextValue);
