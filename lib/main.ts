@@ -149,6 +149,7 @@ class Atom extends Publisher<HTMLElement> implements Owner {
                 } else if (contentValue instanceof Field) {
                   contentValue.connect(handleContentValue);
                 } else if (!(fieldValue === false || fieldValue === null || fieldValue === undefined)) {
+                  // TODO Don't push -- assign to a specific index instead (to allow for async fields)?
                   content.push(contentValue as Node | string);
                 }
               };
@@ -504,20 +505,7 @@ class Reference extends Channel implements Owner {
   constructor(source: Abstract.Reference, closure: Props) {
     super();
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
-
-    if (scope instanceof Promise) {
-      this.field = scope.then((scopeResult) => {
-        const field = scopeResult.getMember(source.fieldName);
-
-        if (!(field instanceof Field)) {
-          throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
-        }
-
-        field.connect(this);
-        return field;
-      });
-    } else {
+    const getField = (scope: Props) => {
       const field = scope.getMember(source.fieldName);
 
       if (!(field instanceof Field)) {
@@ -525,7 +513,15 @@ class Reference extends Channel implements Owner {
       }
 
       field.connect(this);
-      this.field = field;
+      return field;
+    };
+
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+
+    if (scope instanceof Promise) {
+      this.field = scope.then(getField);
+    } else {
+      this.field = getField(scope);
     }
   }
 
