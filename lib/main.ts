@@ -889,39 +889,35 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
     const getAction = (scope: Props) => {
       const action = scope.getMember(source.actionName);
 
-      if (action instanceof Action) {
-        return action;
-      }
+      let proxy: Publisher<null> & Subscriber<Array<Field>>;
 
-      if (typeof action === "function") {
-        const proxy = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
+      if (action instanceof Action) {
+        proxy = action;
+      } else if (typeof action === "function") {
+        proxy = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
           handleEvent(args: Array<Field>) {
             console.log(`calling ${source.actionName} with args...`, args);
             action(...args);
             this.publish(null);
           }
         })();
-        return proxy;
+      } else {
+        throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
       }
 
-      throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
+      proxy.connect(() => {
+        this.publish(null);
+      });
+
+      return proxy;
     };
 
     const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
 
     if (scope instanceof Promise) {
-      this.action = scope.then((scope) => {
-        const action = getAction(scope);
-        action.connect(() => {
-          this.publish(null);
-        });
-        return action;
-      });
+      this.action = scope.then(getAction);
     } else {
       this.action = getAction(scope);
-      this.action.connect(() => {
-        this.publish(null);
-      });
     }
 
     this.constantArgs = source.args?.map((sourceArg) => {
