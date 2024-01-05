@@ -392,17 +392,18 @@ class ModelInstance extends Channel implements Owner {
 
 // TODO Update props if value changes: for example, if an Expectation rejects but then resolves with updated args.
 class RawValue extends Publisher implements Owner {
-  private readonly props: Props;
+  private readonly props: StaticProps;
 
   constructor(source: Abstract.RawValue, closure: Props) {
     super();
 
+    const set = (arg: Field) => {
+      const nextValue = arg?.getValue();
+      this.publish(nextValue);
+    };
+
     if (source.value instanceof Array) {
       this.props = new StaticProps({
-        isVoid: () => {
-          const result = this.getValue() === undefined;
-          return result;
-        },
         map: (arg) => {
           const method = arg.getValue();
           if (!(Abstract.isComponent(method) && method.kind === "method")) {
@@ -431,10 +432,7 @@ class RawValue extends Publisher implements Owner {
           const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
           this.publish(nextValue);
         },
-        set: (arg) => {
-          const nextValue = arg?.getValue();
-          this.publish(nextValue);
-        },
+        set,
       });
 
       const hydratedArray: Array<Field> = source.value.map((value) => {
@@ -460,34 +458,23 @@ class RawValue extends Publisher implements Owner {
 
       this.publish(hydratedArray);
     } else {
-      const props = new StaticProps({
-        isVoid: () => {
-          const result = this.getValue() === undefined;
-          return result;
-        },
-        set: (field) => {
-          const nextValue = field?.getValue();
-          this.publish(nextValue);
-        },
-      });
-
       if (Abstract.isRawObject(source.value)) {
-        this.props = new StaticProps(props, new RawObjectProps(source.value));
+        this.props = new StaticProps({ set }, new RawObjectProps(source.value));
       } else {
+        this.props = new StaticProps({ set }, closure);
+
         if (typeof source.value === "boolean") {
-          props.addMember("toggle", () => {
+          this.props.addMember("toggle", () => {
             const nextValue = !this.getValue();
             this.publish(nextValue);
           });
         } else if (typeof source.value === "string") {
-          props.addMember("plus", (field) => {
+          this.props.addMember("plus", (field) => {
             const currentValue = this.getValue();
             const result = `${currentValue}${field.getValue()}`;
             return result;
           });
         }
-
-        this.props = props;
       }
 
       this.publish(source.value);
@@ -596,7 +583,7 @@ class Implication extends Channel implements Owner {
 
 class Expression extends Channel implements Owner {
   private readonly args: Array<Field>;
-  private readonly supplier: Field | Promise<Field>;
+  private readonly producer: Field | Promise<Field>;
 
   constructor(source: Abstract.Expression, closure: Props) {
     super();
@@ -609,7 +596,9 @@ class Expression extends Channel implements Owner {
       return arg;
     });
 
-    const getSupplier = (method: Property) => {
+    const getProducer = (method: Property) => {
+      let producer: Field;
+
       if (Abstract.isComponent(method) && method.kind === "method") {
         const parameterizedClosure = new StaticProps(
           method.params.reduce<Record<string, Field>>((acc, param, index) => {
@@ -619,12 +608,9 @@ class Expression extends Channel implements Owner {
           closure,
         );
 
-        const supplier = new Field(method.result, parameterizedClosure);
-        return supplier;
-      }
-
-      if (typeof method === "function") {
-        const supplier = new Field(
+        producer = new Field(method.result, parameterizedClosure);
+      } else if (typeof method === "function") {
+        producer = new Field(
           {
             kind: "field",
             content: {
@@ -637,7 +623,7 @@ class Expression extends Channel implements Owner {
 
         const updateSupply = () => {
           const result = method(...this.args);
-          supplier.handleEvent(result);
+          producer.handleEvent(result);
         };
 
         owner?.connectPassively(updateSupply);
@@ -645,49 +631,49 @@ class Expression extends Channel implements Owner {
         this.args.forEach((arg) => {
           arg.connectPassively(updateSupply);
         });
-
-        return supplier;
+      } else {
+        throw new Error("Cannot express something which is not an abstract method or a function.");
       }
 
-      throw new Error("Cannot express something which is not an abstract method or a function.");
+      return producer;
     };
 
     if (owner && source.methodName === "isVoid") {
-      this.supplier = getSupplier(owner.isVoid);
+      this.producer = getProducer(owner.isVoid);
     } else if (scope instanceof Promise) {
-      this.supplier = scope.then((x) => x.getMember(source.methodName)).then(getSupplier);
+      this.producer = scope.then((x) => x.getMember(source.methodName)).then(getProducer);
     } else {
       const method = scope.getMember(source.methodName);
-      this.supplier = getSupplier(method);
+      this.producer = getProducer(method);
     }
 
     const expectedArgs = this.args.filter((arg) => arg.getContent() instanceof Expectation);
 
     if (expectedArgs.length > 0) {
-      this.supplier = Promise.all([this.supplier, ...expectedArgs.map((arg) => arg.getProps())]).then(
+      this.producer = Promise.all([this.producer, ...expectedArgs.map((arg) => arg.getProps())]).then(
         ([supplierValue]) => {
           supplierValue.connect(this);
           return supplierValue;
         },
       );
-    } else if (this.supplier instanceof Promise) {
-      this.supplier = this.supplier.then((supplierValue) => {
+    } else if (this.producer instanceof Promise) {
+      this.producer = this.producer.then((supplierValue) => {
         supplierValue.connect(this);
         return supplierValue;
       });
     } else {
-      this.supplier.connect(this);
+      this.producer.connect(this);
     }
   }
 
   getProps() {
-    if (this.supplier instanceof Promise) {
-      return this.supplier.then((supply) => {
+    if (this.producer instanceof Promise) {
+      return this.producer.then((supply) => {
         return supply.getProps();
       });
     }
 
-    return this.supplier!.getProps();
+    return this.producer!.getProps();
   }
 }
 
@@ -695,7 +681,7 @@ class Expectation extends Channel implements Owner {
   private readonly props: Promise<Props>;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
-  private supplier?: Field;
+  private producer?: Field;
   private exception?: Action;
 
   constructor(source: Abstract.Expectation, closure: Props) {
@@ -721,10 +707,10 @@ class Expectation extends Channel implements Owner {
             if (index !== -1) {
               this.queue.splice(0, index + 1);
 
-              if (this.supplier) {
-                this.supplier.handleEvent(value);
+              if (this.producer) {
+                this.producer.handleEvent(value);
               } else {
-                this.supplier = new Field(
+                this.producer = new Field(
                   {
                     kind: "field",
                     content: {
@@ -735,8 +721,8 @@ class Expectation extends Channel implements Owner {
                   closure,
                 );
 
-                this.supplier.connect(this);
-                resolve(this.supplier.getProps());
+                this.producer.connect(this);
+                resolve(this.producer.getProps());
               }
             }
           })
@@ -746,10 +732,10 @@ class Expectation extends Channel implements Owner {
             if (index !== -1) {
               this.queue.splice(index, 1);
 
-              if (this.supplier) {
-                this.supplier.handleException(error);
+              if (this.producer) {
+                this.producer.handleException(error);
               } else {
-                this.supplier = new Field(
+                this.producer = new Field(
                   {
                     kind: "field",
                     content: {
@@ -760,8 +746,8 @@ class Expectation extends Channel implements Owner {
                   closure,
                 );
 
-                this.supplier.connect(this);
-                this.supplier.handleException(error);
+                this.producer.connect(this);
+                this.producer.handleException(error);
                 reject(error);
               }
             }
@@ -886,15 +872,15 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
   constructor(source: Abstract.Call, closure: Props) {
     super();
 
-    const getAction = (scope: Props) => {
+    const getConsumer = (scope: Props) => {
       const action = scope.getMember(source.actionName);
 
-      let proxy: Publisher<null> & Subscriber<Array<Field>>;
+      let consumer: Publisher<null> & Subscriber<Array<Field>>; // TODO Use type Action for consumer, instead?
 
       if (action instanceof Action) {
-        proxy = action;
+        consumer = action;
       } else if (typeof action === "function") {
-        proxy = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
+        consumer = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
           handleEvent(args: Array<Field>) {
             console.log(`calling ${source.actionName} with args...`, args);
             action(...args);
@@ -905,19 +891,20 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
         throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
       }
 
-      proxy.connect(() => {
+      consumer.connect(() => {
         this.publish(null);
       });
 
-      return proxy;
+      return consumer;
     };
 
-    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
+    const owner = source.scope && new Field(source.scope, closure);
+    const scope = owner ? owner.getProps() : closure;
 
     if (scope instanceof Promise) {
-      this.action = scope.then(getAction);
+      this.action = scope.then(getConsumer);
     } else {
-      this.action = getAction(scope);
+      this.action = getConsumer(scope);
     }
 
     this.constantArgs = source.args?.map((sourceArg) => {
