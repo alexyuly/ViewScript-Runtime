@@ -337,12 +337,16 @@ class ModelInstance extends Channel implements Owner {
       });
     }
 
-    const publishInitialValue = () => {
+    const connectProps = () => {
       props.getOwnProperties().forEach(([key, ownProp]) => {
         if (Abstract.isComponent(ownProp) && ownProp.kind === "method") {
           // TODO Serialize abstract methods
         } else if (ownProp instanceof Field) {
           this.serialization[key] = ownProp.getValue();
+          ownProp.connectPassively((ownPropValue) => {
+            this.serialization[key] = ownPropValue;
+            this.publish({ ...this.serialization });
+          });
         } else if (ownProp instanceof Action) {
           // TODO Serialize actions
         } else if (typeof ownProp === "function") {
@@ -357,31 +361,14 @@ class ModelInstance extends Channel implements Owner {
       return props;
     };
 
-    const publishUpdatedValues = () => {
-      props.getOwnProperties().forEach(([key, ownProp]) => {
-        if (ownProp instanceof Field) {
-          ownProp.connectPassively((ownPropValue) => {
-            this.serialization[key] = ownPropValue;
-            this.publish({ ...this.serialization });
-          });
-        }
-      });
-
-      return props;
-    };
-
     const expectedProps = Object.values(props).filter(
       (prop) => prop instanceof Field && prop.getContent() instanceof Expectation,
     );
 
     if (expectedProps.length > 0) {
-      this.props = Promise.all(expectedProps.map((prop) => prop.getProps()))
-        .then(publishInitialValue)
-        .then(publishUpdatedValues);
+      this.props = Promise.all(expectedProps.map((prop) => prop.getProps())).then(connectProps);
     } else {
-      publishInitialValue();
-      publishUpdatedValues();
-      this.props = props;
+      this.props = connectProps();
     }
   }
 
@@ -956,6 +943,7 @@ class Fork extends Publisher<null> implements Subscriber<null> {
   }
 }
 
+// TODO Fix to fit the new Action design...
 class Invocation extends Publisher<null> implements Subscriber<null> {
   private readonly prerequisite: Abstract.Field;
   private readonly procedure?: Abstract.Procedure;
