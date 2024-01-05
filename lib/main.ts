@@ -452,8 +452,7 @@ class RawValue extends Publisher implements Owner {
 
         if (typeof source.value === "boolean") {
           this.props.addMember("not", () => {
-            const currentValue = this.getValue();
-            const result = !currentValue;
+            const result = !this.getValue();
             return result;
           });
           this.props.addMember("toggle", () => {
@@ -462,8 +461,7 @@ class RawValue extends Publisher implements Owner {
           });
         } else if (typeof source.value === "string") {
           this.props.addMember("plus", (field) => {
-            const currentValue = this.getValue();
-            const result = `${currentValue}${field.getValue()}`;
+            const result = `${this.getValue()}${field.getValue()}`;
             return result;
           });
         }
@@ -613,15 +611,15 @@ class Expression extends Channel implements Owner {
           new StaticProps({}),
         );
 
-        const updateSupply = () => {
+        const updateProducer = () => {
           const result = method(...this.args);
           producer.handleEvent(result);
         };
 
-        owner?.connectPassively(updateSupply);
+        owner?.connectPassively(updateProducer);
 
         this.args.forEach((arg) => {
-          arg.connectPassively(updateSupply);
+          arg.connectPassively(updateProducer);
         });
       } else {
         throw new Error("Cannot express something which is not an abstract method or a function.");
