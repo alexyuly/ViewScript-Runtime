@@ -75,56 +75,42 @@ class Field extends Channel implements Owner {
 
     switch (source.content.kind) {
       case "atom": {
-        const atom = new Atom(source.content, closure);
-        atom.connect(this);
-        this.content = atom;
+        this.content = new Atom(source.content, closure);
         break;
       }
       case "viewInstance": {
-        const viewInstance = new ViewInstance(source.content, closure);
-        viewInstance.connect(this);
-        this.content = viewInstance;
+        this.content = new ViewInstance(source.content, closure);
         break;
       }
       case "modelInstance": {
-        const modelInstance = new ModelInstance(source.content, closure);
-        modelInstance.connect(this);
-        this.content = modelInstance;
+        this.content = new ModelInstance(source.content, closure);
         break;
       }
       case "rawValue": {
-        const rawValue = new RawValue(source.content, closure);
-        rawValue.connect(this);
-        this.content = rawValue;
+        this.content = new RawValue(source.content, closure);
         break;
       }
       case "reference": {
-        const reference = new Reference(source.content, closure);
-        reference.connect(this);
-        this.content = reference;
+        this.content = new Reference(source.content, closure);
         break;
       }
       case "implication": {
-        const implication = new Implication(source.content, closure);
-        implication.connect(this);
-        this.content = implication;
+        this.content = new Implication(source.content, closure);
         break;
       }
       case "expression": {
-        const expression = new Expression(source.content, closure);
-        expression.connect(this);
-        this.content = expression;
+        this.content = new Expression(source.content, closure);
         break;
       }
       case "expectation": {
-        const expectation = new Expectation(source.content, closure);
-        expectation.connect(this);
-        this.content = expectation;
+        this.content = new Expectation(source.content, closure);
         break;
       }
       default:
         throw new Error(`Cannot field some content of invalid kind: ${(source.content as Abstract.Component).kind}`);
     }
+
+    this.content.connect(this);
   }
 
   getContent() {
