@@ -817,10 +817,13 @@ class Expectation extends Channel implements Owner {
  */
 
 class Action extends Publisher<null> implements Subscriber<null | Array<Field>> {
+  private readonly source: Abstract.Action;
   private readonly target: Procedure | Call | Fork | Invocation;
 
   constructor(source: Abstract.Action, closure: Props) {
     super();
+
+    this.source = source;
 
     switch (source.target.kind) {
       case "procedure":
@@ -846,32 +849,32 @@ class Action extends Publisher<null> implements Subscriber<null | Array<Field>> 
 
   handleEvent(args?: Array<Field> | null): void {
     this.target.handleEvent(args ?? []);
+    this.publish(null);
+    console.log("*** abstract action finished:", this.source);
   }
 }
 
 class Procedure extends Publisher<null> implements Subscriber<null | Array<Field>> {
-  private readonly steps: Array<Abstract.Action>;
-  private readonly params: Array<string>;
+  private readonly source: Abstract.Procedure;
   private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
     super();
 
-    this.steps = source.steps;
-    this.params = source.params;
+    this.source = source;
     this.closure = closure;
   }
 
   handleEvent(args: Array<Field>): void {
     const parameterizedClosure = new StaticProps(
-      this.params.reduce<Record<string, Field>>((acc, param, index) => {
+      this.source.params.reduce<Record<string, Field>>((acc, param, index) => {
         acc[param] = args[index];
         return acc;
       }, {}),
       this.closure,
     );
 
-    const actions = this.steps.map((step) => {
+    const actions = this.source.steps.map((step) => {
       const action = new Action(step, parameterizedClosure);
       return action;
     });
@@ -887,6 +890,7 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
       } else {
         action.connect(() => {
           this.publish(null);
+          console.log("*** procedure finished:", this.source);
         });
       }
     });
@@ -897,6 +901,7 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
 }
 
 class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
+  private readonly source: Abstract.Call;
   private readonly action:
     | (Publisher<null> & Subscriber<null | Array<Field>>)
     | Promise<Publisher<null> & Subscriber<null | Array<Field>>>;
@@ -906,20 +911,25 @@ class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
   constructor(source: Abstract.Call, closure: Props) {
     super();
 
+    this.source = source;
+
     const getAction = (scope: Props) => {
       const action = scope.getMember(source.actionName);
 
       if (action instanceof Action) {
+        action.connect(this);
         return action;
       }
 
       if (typeof action === "function") {
-        return new (class extends Publisher<null> implements Subscriber<null | Array<Field>> {
+        const proxy = new (class extends Publisher<null> implements Subscriber<null | Array<Field>> {
           handleEvent(args: Array<Field>) {
+            console.log(`calling ${source.actionName} with args...`, args);
             action(...args);
-            this.publish(null);
           }
         })();
+        proxy.connect(this);
+        return proxy;
       }
 
       throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
@@ -939,19 +949,20 @@ class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
     });
   }
 
-  // TODO Wait until args are ready to handle event:
-  handleEvent(args: Array<Field>): void {
-    const handler = (action: Publisher<null> & Subscriber<null | Array<Field>>) => {
-      action.connect(() => {
-        this.publish(null);
-      });
-      action.handleEvent(this.constantArgs ?? args);
-    };
+  handleEvent(args?: Array<Field> | null): void {
+    const finalArgs = this.constantArgs ?? args ?? [];
 
-    if (this.action instanceof Promise) {
-      this.action.then(handler);
+    const expectedArgs = finalArgs.filter((arg) => arg.getContent() instanceof Expectation);
+
+    if (expectedArgs.length > 0) {
+      Promise.all([this.action, ...expectedArgs.map((arg) => arg.getProps())]).then(([action]) =>
+        action.handleEvent(finalArgs),
+      );
+    } else if (this.action instanceof Promise) {
+      this.action.then((x) => x.handleEvent(finalArgs));
     } else {
-      handler(this.action);
+      console.log("hi");
+      this.action.handleEvent(finalArgs);
     }
   }
 }
@@ -1039,7 +1050,7 @@ type Property =
   | Abstract.Method
   | Field
   | Action
-  | ((...args: Array<Field>) => unknown); // TODO Allow any args here, not just Fields? For native model instance serialization integration?
+  | ((...args: Array<Field>) => unknown); // TODO Allow any args here, not just Fields, in order to integrate JS functions with ModelInstances?
 
 class RawObjectProps implements Props {
   private readonly value: any;
@@ -1108,7 +1119,6 @@ class StaticProps implements Props {
       return this.closure.getMember(key);
     }
 
-    console.error("this.properties:", this.properties);
     throw new Error(`Prop ${key} not found`);
   }
 
