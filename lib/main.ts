@@ -361,7 +361,7 @@ class ModelInstance extends Channel implements Owner {
         } else if (typeof ownProp === "function") {
           this.serialization[key] = ownProp;
         } else {
-          // TODO throw
+          // TODO Throw?
         }
       });
 
@@ -879,7 +879,6 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
       return action;
     });
 
-    // Build a linked list of actions, each handing off control to the next:
     actions.forEach((action, index) => {
       const nextAction = actions[index + 1];
 
@@ -895,13 +894,11 @@ class Procedure extends Publisher<null> implements Subscriber<null | Array<Field
       }
     });
 
-    // Call the first action, to kick things off:
     actions[0]?.handleEvent();
   }
 }
 
 class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
-  private readonly source: Abstract.Call;
   private readonly action:
     | (Publisher<null> & Subscriber<null | Array<Field>>)
     | Promise<Publisher<null> & Subscriber<null | Array<Field>>>;
@@ -910,8 +907,6 @@ class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
 
   constructor(source: Abstract.Call, closure: Props) {
     super();
-
-    this.source = source;
 
     const getAction = (scope: Props) => {
       const action = scope.getMember(source.actionName);
@@ -961,13 +956,12 @@ class Call extends Publisher<null> implements Subscriber<null | Array<Field>> {
     } else if (this.action instanceof Promise) {
       this.action.then((x) => x.handleEvent(finalArgs));
     } else {
-      console.log("hi");
       this.action.handleEvent(finalArgs);
     }
   }
 }
 
-// TODO update to support alternatives and not exiting early
+// TODO Update to support alternatives and not exiting early
 class Fork extends Publisher<null> implements Subscriber<null> {
   private readonly condition: Field;
   private readonly consequence?: Abstract.Action;
@@ -1050,7 +1044,7 @@ type Property =
   | Abstract.Method
   | Field
   | Action
-  | ((...args: Array<Field>) => unknown); // TODO Allow any args here, not just Fields, in order to integrate JS functions with ModelInstances?
+  | ((...args: Array<Field>) => unknown); // TODO Allow any type of args here, to integrate JS functions with ModelInstances?
 
 class RawObjectProps implements Props {
   private readonly value: any;
