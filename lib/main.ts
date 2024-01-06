@@ -555,6 +555,7 @@ class Implication extends Channel implements Owner {
         }
       });
     }
+    // TODO Don't allow actions as alternatives -- add the new Producer/Possibility types instead
   }
 
   getProps() {
@@ -851,23 +852,26 @@ class Procedure extends Publisher<null> implements Subscriber<Array<Field>> {
 }
 
 class Call extends Publisher<null> implements Subscriber<Array<Field>> {
-  private readonly consumer:
-    | (Publisher<null> & Subscriber<Array<Field>>)
-    | Promise<Publisher<null> & Subscriber<Array<Field>>>;
-
-  private readonly constantArgs?: Array<Field>;
+  private readonly source: Abstract.Call;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Call, closure: Props) {
     super();
 
+    this.source = source;
+    this.closure = closure;
+  }
+
+  handleEvent(args: Array<Field>): void {
     const getConsumer = (scope: Props) => {
-      const action = scope.getMember(source.actionName);
+      const action = scope.getMember(this.source.actionName);
 
       let consumer: Publisher<null> & Subscriber<Array<Field>>; // TODO Use type Action for consumer, instead?
 
       if (action instanceof Action) {
         consumer = action;
       } else if (typeof action === "function") {
+        let source = this.source;
         consumer = new (class extends Publisher<null> implements Subscriber<Array<Field>> {
           handleEvent(args: Array<Field>) {
             console.log(`calling ${source.actionName} with args...`, args);
@@ -876,7 +880,7 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
           }
         })();
       } else {
-        throw new Error(`Cannot call something which is not an action or function: ${source.actionName}`);
+        throw new Error(`Cannot call something which is not an action or function: ${this.source.actionName}`);
       }
 
       consumer.connect(() => {
@@ -886,85 +890,97 @@ class Call extends Publisher<null> implements Subscriber<Array<Field>> {
       return consumer;
     };
 
-    const owner = source.scope && new Field(source.scope, closure);
-    const scope = owner ? owner.getProps() : closure;
+    const owner = this.source.scope && new Field(this.source.scope, this.closure);
+    const scope = owner ? owner.getProps() : this.closure;
+
+    let consumer: (Publisher<null> & Subscriber<Array<Field>>) | Promise<Publisher<null> & Subscriber<Array<Field>>>;
 
     if (scope instanceof Promise) {
-      this.consumer = scope.then(getConsumer);
+      consumer = scope.then(getConsumer);
     } else {
-      this.consumer = getConsumer(scope);
+      consumer = getConsumer(scope);
     }
 
-    this.constantArgs = source.args?.map((sourceArg) => {
-      const arg = new Field(sourceArg, closure);
-      return arg;
-    });
-  }
+    const calledArgs =
+      this.source.args?.map((sourceArg) => {
+        const arg = new Field(sourceArg, this.closure);
+        return arg;
+      }) ?? args;
 
-  handleEvent(args?: Array<Field> | null): void {
-    const finalArgs = this.constantArgs ?? args ?? [];
-
-    const expectedArgs = finalArgs.filter((arg) => arg.getContent() instanceof Expectation);
+    const expectedArgs = calledArgs.filter((arg) => arg.getContent() instanceof Expectation);
 
     if (expectedArgs.length > 0) {
-      Promise.all([this.consumer, ...expectedArgs.map((arg) => arg.getProps())]).then(([consumer]) =>
-        consumer.handleEvent(finalArgs),
+      Promise.all([consumer, ...expectedArgs.map((arg) => arg.getProps())]).then(([consumer]) =>
+        consumer.handleEvent(calledArgs),
       );
-    } else if (this.consumer instanceof Promise) {
-      this.consumer.then((consumer) => {
-        consumer.handleEvent(finalArgs);
+    } else if (consumer instanceof Promise) {
+      consumer.then((consumer) => {
+        consumer.handleEvent(calledArgs);
       });
     } else {
-      this.consumer.handleEvent(finalArgs);
+      consumer.handleEvent(calledArgs);
     }
   }
 }
 
-// TODO Update to support alternatives and not exiting early
 class Fork extends Publisher<null> implements Subscriber<null> {
-  private readonly condition: Field;
-  private readonly consequence?: Abstract.Action;
+  private readonly source: Abstract.Fork;
   private readonly closure: Props;
 
   constructor(source: Abstract.Fork, closure: Props) {
     super();
 
-    this.condition = new Field(source.condition, closure);
-    this.consequence = source.consequence;
+    this.source = source;
     this.closure = closure;
   }
 
-  handleEvent(): boolean {
-    const isConditionMet = this.condition.getValue();
+  handleEvent(): void {
+    const condition = new Field(this.source.condition, this.closure);
+    const consequence = new Action(this.source.consequence, this.closure);
+    consequence.connect(() => {
+      this.publish(null);
+    });
 
-    if (isConditionMet && this.consequence) {
-      const action = new Action(this.consequence, this.closure);
-      action.handleEvent();
+    let alternative: Action | undefined;
+
+    if (this.source.alternative) {
+      alternative = new Action(this.source.alternative, this.closure);
+      alternative.connect(() => {
+        this.publish(null);
+      });
     }
 
-    return Boolean(isConditionMet);
+    const handleEvent = () => {
+      const isConditionMet = condition.getValue();
+      (isConditionMet ? consequence : alternative)?.handleEvent();
+    };
+
+    const isExpectedCondition = condition instanceof Expectation;
+
+    if (isExpectedCondition) {
+      Promise.resolve(condition.getProps()).then(handleEvent);
+    } else {
+      handleEvent();
+    }
   }
 }
 
-// TODO Fix to fit the new Action design...
 class Invocation extends Publisher<null> implements Subscriber<null> {
-  private readonly prerequisite: Abstract.Field;
-  private readonly procedure?: Abstract.Procedure;
+  private readonly source: Abstract.Invocation;
   private readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
     super();
 
-    this.prerequisite = source.prerequisite;
-    this.procedure = source.procedure;
+    this.source = source;
     this.closure = closure;
   }
 
   handleEvent(): void {
-    const prerequisite = new Field(this.prerequisite, this.closure);
+    const prerequisite = new Field(this.source.prerequisite, this.closure);
 
     prerequisite.connect((prerequisiteValue) => {
-      if (this.procedure) {
+      if (this.source.procedure) {
         const args = [
           new Field(
             {
@@ -978,9 +994,13 @@ class Invocation extends Publisher<null> implements Subscriber<null> {
           ),
         ];
 
-        const procedure = new Procedure(this.procedure, this.closure);
-        procedure.connect(this);
+        const procedure = new Procedure(this.source.procedure, this.closure);
+        procedure.connect(() => {
+          this.publish(null);
+        });
         procedure.handleEvent(args);
+      } else {
+        this.publish(null);
       }
     });
   }
