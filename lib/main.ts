@@ -952,7 +952,13 @@ class Fork extends Publisher<null> implements Subscriber<null> {
 
     const handleEvent = () => {
       const isConditionMet = condition.getValue();
-      (isConditionMet ? consequence : alternative)?.handleEvent();
+      if (isConditionMet) {
+        consequence.handleEvent();
+      } else if (alternative) {
+        alternative.handleEvent();
+      } else {
+        this.publish(null);
+      }
     };
 
     const isExpectedCondition = condition instanceof Expectation;
