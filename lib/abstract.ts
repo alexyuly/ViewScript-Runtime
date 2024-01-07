@@ -40,6 +40,7 @@ export namespace Abstract {
   };
 
   // return RESULT
+  // given PARAM return RESULT
   // given (PARAM0, PARAM1, ETC...) return RESULT
   // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) return RESULT
   export type Method = {
@@ -176,6 +177,7 @@ export namespace Abstract {
   };
 
   // do { STEPS }
+  // given PARAM do { STEPS }
   // given (PARAM0, PARAM1, ETC...) do { STEPS }
   // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) do { STEPS }
   export type Procedure = {
@@ -206,10 +208,10 @@ export namespace Abstract {
     alternative?: Action;
   };
 
-  // until REQUEST
-  // until REQUEST [...] RESPONSE-STEPS
+  // await REQUEST
+  // await REQUEST [...] RESPONSE-STEPS
   // let RESPONSE-PARAM = REQUEST [...] RESPONSE-STEPS
-  // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
+  // (The bracketed ellipsis represents a new line separating the request from the response's steps.)
   export type Invocation = {
     kind: "invocation";
     request: Field;
@@ -232,3 +234,7 @@ export namespace Abstract {
     return typeof value === "object" && value !== null && !(value instanceof Array);
   }
 }
+
+// THINGS TO CONSIDER:
+// - Eliminate syntax that adds no meaning to the code.
+// - Shift the paradigm from "sync vs. async" to "blocking vs. non-blocking" or "sequential vs. parallel".
