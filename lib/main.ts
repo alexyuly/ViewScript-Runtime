@@ -851,6 +851,7 @@ class Procedure extends Publisher<null> implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO Fix so that each call only happens once when fired -- instead of once, then twice, then three times, etc.
 class Call extends Publisher<null> implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Call;
   private readonly closure: Props;
@@ -1106,3 +1107,6 @@ class StaticProps implements Props {
     return Object.entries(this.properties);
   }
 }
+
+// TODO Field exception handling
+// TODO Update Procedures to be able to yield values from fields -- and to produce the content of fields

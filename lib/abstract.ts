@@ -39,9 +39,9 @@ export namespace Abstract {
     innerProps: Record<string, Method | Field | Action>;
   };
 
-  // make RESULT
-  // given (PARAM0, PARAM1, ETC...) make RESULT
-  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) make RESULT
+  // return RESULT
+  // given (PARAM0, PARAM1, ETC...) return RESULT
+  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) return RESULT
   export type Method = {
     kind: "method";
     params: Array<string>;
@@ -53,9 +53,20 @@ export namespace Abstract {
    */
 
   // CONTENT
+  // maybe CONTENT or FALLBACK
   export type Field = {
     kind: "field";
-    content: Atom | ViewInstance | ModelInstance | RawValue | Reference | Implication | Expression | Expectation;
+    content:
+      | Atom
+      | ViewInstance
+      | ModelInstance
+      | RawValue
+      | Reference
+      | Implication
+      | Expression
+      | Expectation
+      | Production;
+    fallback?: Action;
   };
 
   // <TAG-NAME> {
@@ -89,9 +100,16 @@ export namespace Abstract {
   };
 
   // VALUE
-  // [ FIELDS ]
+  // [FIELD0, FIELD1, ETC...]
+  // [
+  //   FIELD0
+  //   FIELD1
+  //   ETC...
+  // ]
   // object {
-  //   PROP-NAME: FIELD
+  //   PROP-NAME0: FIELD0
+  //   PROP-NAME1: FIELD1
+  //   ETC...
   // }
   export type RawValue = {
     kind: "rawValue";
@@ -112,7 +130,7 @@ export namespace Abstract {
     kind: "implication";
     condition: Field;
     consequence: Field;
-    alternative?: Field | Action;
+    alternative?: Field;
   };
 
   // METHOD-NAME()
@@ -131,13 +149,18 @@ export namespace Abstract {
   // METHOD-NAME?
   // METHOD-NAME(ARG)?
   // METHOD-NAME(ARG0, ARG1, ETC...)?
-  // METHOD-NAME? unless EXCEPTION
-  // METHOD-NAME(ARG)? unless EXCEPTION
-  // METHOD-NAME(ARG0, ARG1, ETC...)? unless EXCEPTION
   export type Expectation = {
     kind: "expectation";
     means: Expression;
-    exception?: Action;
+  };
+
+  // yield {
+  //   yield FIELD-STEP
+  //   ACTION-STEP
+  // }
+  export type Production = {
+    kind: "production";
+    steps: Array<Field | Action>;
   };
 
   /**
@@ -145,9 +168,11 @@ export namespace Abstract {
    */
 
   // TARGET
+  // try TARGET catch FALLBACK
   export type Action = {
     kind: "action";
     target: Procedure | Call | Fork | Invocation;
+    fallback?: Action;
   };
 
   // do { STEPS }
@@ -172,8 +197,8 @@ export namespace Abstract {
     args?: Array<Field>;
   };
 
-  // do when CONDITION { CONSEQUENCE }
-  // do when CONDITION { CONSEQUENCE } otherwise { ALTERNATIVE }
+  // when CONDITION { CONSEQUENCE }
+  // when CONDITION { CONSEQUENCE } otherwise { ALTERNATIVE }
   export type Fork = {
     kind: "fork";
     condition: Field;
@@ -181,14 +206,14 @@ export namespace Abstract {
     alternative?: Action;
   };
 
-  // await PREREQUISITE
-  // await PREREQUISITE [...] STEPS
-  // let PARAMETER-NAME = PREREQUISITE [...] STEPS
+  // until REQUEST
+  // until REQUEST [...] RESPONSE-STEPS
+  // let RESPONSE-PARAM = REQUEST [...] RESPONSE-STEPS
   // (The bracketed ellipsis represents a new line separating the prerequisite from the procedure's steps.)
   export type Invocation = {
     kind: "invocation";
-    prerequisite: Field;
-    procedure?: Procedure;
+    request: Field;
+    response?: Procedure;
   };
 
   /**
