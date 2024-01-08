@@ -661,21 +661,10 @@ class Expression extends Channel implements Owner {
       this.producer = getProducer(method);
     }
 
-    const expectedArgs = this.args.filter((arg) => arg.getContent() instanceof Expectation);
-
-    if (expectedArgs.length > 0) {
-      this.producer = Promise.all([this.producer, ...expectedArgs.map((arg) => arg.getProps())]).then(([field]) => {
-        field.connect(this);
-        return field;
-      });
-    } else if (this.producer instanceof Promise) {
-      this.producer = this.producer.then((field) => {
-        field.connect(this);
-        return field;
-      });
-    } else {
-      this.producer.connect(this);
-    }
+    this.producer = Promise.all([this.producer, ...this.args.map((arg) => arg.getProps())]).then(([field]) => {
+      field.connect(this);
+      return field;
+    });
   }
 
   getProps() {
@@ -689,6 +678,8 @@ class Expression extends Channel implements Owner {
   }
 }
 
+// TODO Fix the initial calls that happens with undefined args after latest refactor...
+// TODO Fix so that each call only happens once when fired -- instead of once, then twice, then three times, etc.
 class Expectation extends Channel implements Owner {
   private readonly props: Promise<Props>;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
@@ -701,10 +692,10 @@ class Expectation extends Channel implements Owner {
     this.props = new Promise<Props>((resolve, reject) => {
       const means = new Expression(source.means, closure);
 
-      means.connect((resultingValue) => {
+      Promise.resolve(means.getProps()).then(() => {
         const attendant = {
           id: crypto.randomUUID(),
-          promise: Promise.resolve(resultingValue),
+          promise: Promise.resolve(means.getValue()),
         };
 
         this.queue.push(attendant);
@@ -783,7 +774,7 @@ class Action implements Subscriber<Array<Field>> {
     this.closure = closure;
   }
 
-  handleEvent(args: Array<Field>): void | Promise<void> {
+  async handleEvent(args: Array<Field>): Promise<void> {
     let target: Procedure | Call | Fork | Invocation;
 
     switch (this.source.target.kind) {
@@ -818,7 +809,7 @@ class Procedure implements Subscriber<Array<Field>> {
     this.closure = closure;
   }
 
-  handleEvent(args: Array<Field>): void | Promise<void> {
+  async handleEvent(args: Array<Field>) {
     const parameterizedClosure = new StaticProps(
       this.source.params.reduce<Record<string, Field>>((acc, param, index) => {
         acc[param] = args[index];
@@ -832,25 +823,17 @@ class Procedure implements Subscriber<Array<Field>> {
       return action;
     });
 
-    function loop(action?: Action): void | Promise<void> {
+    async function loop(action?: Action) {
       if (action) {
-        const tailCall = action.handleEvent(args);
-
-        if (tailCall instanceof Promise) {
-          return tailCall.then(() => {
-            loop(actions.shift());
-          });
-        }
-
-        return loop(actions.shift());
+        await action.handleEvent(args);
+        loop(actions.shift());
       }
     }
 
-    return loop(actions.shift());
+    loop(actions.shift());
   }
 }
 
-// TODO Fix so that each call only happens once when fired -- instead of once, then twice, then three times, etc.
 class Call implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Call;
   private readonly closure: Props;
@@ -860,61 +843,36 @@ class Call implements Subscriber<Array<Field>> {
     this.closure = closure;
   }
 
-  handleEvent(args: Array<Field>): void | Promise<void> {
-    const getConsumer = (scope: Props) => {
-      const action = scope.getMember(this.source.actionName);
-
-      let consumer: Subscriber<Array<Field>>;
-
-      if (action instanceof Action) {
-        consumer = action;
-      } else if (typeof action === "function") {
-        let source = this.source;
-        consumer = {
-          handleEvent(calledArgs: Array<Field>) {
-            console.log(`calling ${source.actionName} with args...`, calledArgs);
-            action(...calledArgs);
-          },
-        };
-      } else {
-        throw new Error(`Cannot call something which is not an action or function: ${this.source.actionName}`);
-      }
-
-      return consumer;
-    };
-
+  async handleEvent(args: Array<Field>) {
     const owner = this.source.scope && new Field(this.source.scope, this.closure);
-    const scope = owner ? owner.getProps() : this.closure;
+    const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
+    const action = scope.getMember(this.source.actionName);
 
-    let consumer: Subscriber<Array<Field>> | Promise<Subscriber<Array<Field>>>;
+    let callTarget: Subscriber<Array<Field>>;
 
-    if (scope instanceof Promise) {
-      consumer = scope.then(getConsumer);
+    if (action instanceof Action) {
+      callTarget = action;
+    } else if (typeof action === "function") {
+      let source = this.source;
+      callTarget = {
+        handleEvent(calledArgs: Array<Field>) {
+          console.log(`calling ${source.actionName} with args...`, calledArgs);
+          action(...calledArgs);
+        },
+      };
     } else {
-      consumer = getConsumer(scope);
+      throw new Error(`Cannot call something which is not an action or function: ${this.source.actionName}`);
     }
 
-    const calledArgs =
+    const callArgs =
       this.source.args?.map((sourceArg) => {
         const arg = new Field(sourceArg, this.closure);
         return arg;
       }) ?? args;
 
-    const expectedArgs = calledArgs.filter((arg) => arg.getContent() instanceof Expectation);
+    await Promise.all(callArgs.map((arg) => arg.getProps()));
 
-    if (expectedArgs.length > 0) {
-      return Promise.all([consumer, ...expectedArgs.map((arg) => arg.getProps())]).then(([consumer]) =>
-        consumer.handleEvent(calledArgs),
-      );
-    }
-
-    if (consumer instanceof Promise) {
-      return consumer.then((consumer) => {
-        consumer.handleEvent(calledArgs);
-      });
-    }
-
-    return consumer.handleEvent(calledArgs);
+    callTarget.handleEvent(callArgs);
   }
 }
 
@@ -927,35 +885,20 @@ class Fork implements Subscriber<void> {
     this.closure = closure;
   }
 
-  handleEvent(): void | Promise<void> {
+  async handleEvent() {
     const condition = new Field(this.source.condition, this.closure);
-    const consequence = new Action(this.source.consequence, this.closure);
+    await Promise.resolve(condition.getProps());
 
-    let alternative: Action | undefined;
+    const isConditionMet = condition.getValue();
+    if (isConditionMet) {
+      const consequence = new Action(this.source.consequence, this.closure);
+      return consequence.handleEvent([]);
+    }
 
     if (this.source.alternative) {
-      alternative = new Action(this.source.alternative, this.closure);
+      const alternative = new Action(this.source.alternative, this.closure);
+      return alternative.handleEvent([]);
     }
-
-    const handleEvent = () => {
-      const isConditionMet = condition.getValue();
-
-      if (isConditionMet) {
-        return consequence.handleEvent([]);
-      }
-
-      if (alternative) {
-        return alternative.handleEvent([]);
-      }
-    };
-
-    const isExpectedCondition = condition instanceof Expectation;
-
-    if (isExpectedCondition) {
-      return Promise.resolve(condition.getProps()).then(handleEvent);
-    }
-
-    return handleEvent();
   }
 }
 
@@ -968,45 +911,27 @@ class Invocation implements Subscriber<void> {
     this.closure = closure;
   }
 
-  handleEvent(): void | Promise<void> {
-    const handleEvent = (requestedValue: unknown) => {
-      if (this.source.response) {
-        const args = [
-          new Field(
-            {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: requestedValue,
-              },
-            },
-            new StaticProps({}),
-          ),
-        ];
-
-        const response = new Procedure(this.source.response, this.closure);
-        return response.handleEvent(args);
-      }
-    };
-
+  async handleEvent() {
     const request = new Field(this.source.request, this.closure);
-    const isExpectedRequest = request.getContent() instanceof Expectation;
+    await Promise.resolve(request.getProps());
 
-    if (isExpectedRequest) {
-      return new Promise((resolve, reject) => {
-        request.connect((requestedValue) => {
-          const tailCall = handleEvent(requestedValue);
+    if (this.source.response) {
+      const args = [
+        new Field(
+          {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value: request.getValue(),
+            },
+          },
+          new StaticProps({}),
+        ),
+      ];
 
-          if (tailCall instanceof Promise) {
-            tailCall.then(resolve).catch(reject);
-          } else {
-            resolve();
-          }
-        });
-      });
+      const response = new Procedure(this.source.response, this.closure);
+      return response.handleEvent(args);
     }
-
-    return handleEvent(request.getValue());
   }
 }
 
