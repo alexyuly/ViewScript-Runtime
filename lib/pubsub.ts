@@ -1,5 +1,5 @@
 export interface Subscriber<T = unknown> {
-  handleEvent(value: T): void;
+  handleEvent(value: T): void | Promise<void>;
 }
 
 export abstract class Publisher<T = unknown> {
@@ -43,6 +43,7 @@ export abstract class Publisher<T = unknown> {
   }
 }
 
+// TODO How is this going to work for action error handling?
 export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
   private error?: unknown;
 

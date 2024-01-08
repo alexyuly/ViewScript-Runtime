@@ -235,6 +235,6 @@ export namespace Abstract {
   }
 }
 
-// THINGS TO CONSIDER:
+// THINGS TO CONSIDER...
 // - Eliminate syntax that adds no meaning to the code.
 // - Shift the paradigm from "sync vs. async" to "blocking vs. non-blocking" or "sequential vs. parallel".
