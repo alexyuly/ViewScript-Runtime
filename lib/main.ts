@@ -67,7 +67,7 @@ class Field extends Channel implements Owner {
     | Implication
     | Expression
     | Expectation;
-  // | Production;
+  // | Generator;
 
   private fallback?: Action;
 
@@ -109,8 +109,8 @@ class Field extends Channel implements Owner {
         this.content = new Expectation(source.content, closure);
         break;
       }
-      // case "production": {
-      //   this.content = new Production(source.content, closure);
+      // case "generator": {
+      //   this.content = new Generator(source.content, closure);
       //   break;
       // }
       default:
@@ -611,7 +611,7 @@ class Expression extends Channel implements Owner {
     });
 
     const getProducer = (method: Property) => {
-      let producer: Field;
+      let producer: Field | Promise<Field>;
 
       if (Abstract.isComponent(method) && method.kind === "method") {
         const parameterizedClosure = new StaticProps(
@@ -624,26 +624,30 @@ class Expression extends Channel implements Owner {
 
         producer = new Field(method.result, parameterizedClosure);
       } else if (typeof method === "function") {
-        producer = new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: method(...this.args),
+        producer = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
+          const producerField = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: method(...this.args),
+              },
             },
-          },
-          new StaticProps({}),
-        );
+            new StaticProps({}),
+          );
 
-        const updateProducer = () => {
-          const result = method(...this.args);
-          producer.handleEvent(result);
-        };
+          const updateProducer = () => {
+            const result = method(...this.args);
+            producerField.handleEvent(result);
+          };
 
-        owner?.connectPassively(updateProducer);
+          owner?.connectPassively(updateProducer);
 
-        this.args.forEach((arg) => {
-          arg.connectPassively(updateProducer);
+          this.args.forEach((arg) => {
+            arg.connectPassively(updateProducer);
+          });
+
+          return producerField;
         });
       } else {
         throw new Error("Cannot express something which is not an abstract method or a function.");
@@ -761,6 +765,60 @@ class Expectation extends Channel implements Owner {
   }
 }
 
+// TODO - WIP
+// class Generator extends Publisher implements Owner {
+//   private field: Field | Promise<Field>;
+//   private readonly source: Abstract.Generator;
+//   private readonly closure: Props;
+
+//   constructor(source: Abstract.Generator, closure: Props) {
+//     super();
+
+//     this.source = source;
+//     this.closure = closure;
+
+//     // TODO Subscribe to fields and call handleEvent when they change
+//   }
+
+//   getProps() {
+//     if (this.field instanceof Promise) {
+//       return this.field.then((fieldResult) => {
+//         return fieldResult.getProps();
+//       });
+//     }
+
+//     return this.field.getProps();
+//   }
+
+//   async handleEvent() {
+//     const steps = this.source.steps.map((step) => {
+//       switch (step.kind) {
+//         case "field":
+//           return new Field(step, this.closure);
+//         case "action":
+//           return new Action(step, this.closure);
+//         default:
+//           throw new Error(`Procedure cannot have a step of invalid kind: ${(step as Abstract.Component).kind}`);
+//       }
+//     });
+
+//     const loop = async (step?: Field | Action) => {
+//       if (step instanceof Field) {
+//         await step.getProps();
+
+//         this.publish(step.getValue());
+//         loop(steps.shift());
+//       } else if (step instanceof Action) {
+//         await step.handleEvent([]);
+
+//         loop(steps.shift());
+//       }
+//     };
+
+//     loop(steps.shift());
+//   }
+// }
+
 /**
  * Actions:
  */
@@ -800,11 +858,13 @@ class Action implements Subscriber<Array<Field>> {
   }
 }
 
-class Procedure implements Subscriber<Array<Field>> {
+class Procedure extends Publisher implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Procedure;
   private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
+    super();
+
     this.source = source;
     this.closure = closure;
   }
@@ -818,19 +878,33 @@ class Procedure implements Subscriber<Array<Field>> {
       this.closure,
     );
 
-    const actions = this.source.steps.map((step) => {
-      const action = new Action(step, parameterizedClosure);
-      return action;
+    const steps = this.source.steps.map((step) => {
+      switch (step.kind) {
+        case "field":
+          return new Field(step, parameterizedClosure);
+        case "action":
+          return new Action(step, parameterizedClosure);
+        default:
+          throw new Error(`Procedure cannot have a step of invalid kind: ${(step as Abstract.Component).kind}`);
+      }
     });
 
-    async function loop(action?: Action) {
-      if (action) {
-        await action.handleEvent(args);
-        loop(actions.shift());
-      }
-    }
+    const loop = async (step?: Field | Action) => {
+      if (step instanceof Field) {
+        await step.getProps();
 
-    loop(actions.shift());
+        this.publish(step.getValue());
+        loop(steps.shift());
+      } else if (step instanceof Action) {
+        const isFirstStep = step === steps[0];
+        const stepArgs = isFirstStep ? args : [];
+        await step.handleEvent(stepArgs);
+
+        loop(steps.shift());
+      }
+    };
+
+    loop(steps.shift());
   }
 }
 

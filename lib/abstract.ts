@@ -66,7 +66,7 @@ export namespace Abstract {
       | Implication
       | Expression
       | Expectation
-      | Production;
+      | Generator;
     fallback?: Action;
   };
 
@@ -155,12 +155,12 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // yield {
+  // generate {
   //   yield FIELD-STEP
   //   ACTION-STEP
   // }
-  export type Production = {
-    kind: "production";
+  export type Generator = {
+    kind: "generator";
     steps: Array<Field | Action>;
   };
 
@@ -183,7 +183,7 @@ export namespace Abstract {
   export type Procedure = {
     kind: "procedure";
     params: Array<string>;
-    steps: Array<Action>;
+    steps: Array<Field | Action>;
   };
 
   // ACTION-NAME!
