@@ -420,23 +420,23 @@ class RawValue extends Publisher implements Owner {
     if (source.value instanceof Array) {
       this.props = new StaticProps({
         map: (arg) => {
-          const method = arg.getValue();
-          if (!(Abstract.isComponent(method) && method.kind === "method")) {
+          const argValue = arg.getValue();
+          if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
             throw new Error("Cannot map an array with an arg which is not a method.");
           }
 
-          const typeSafeMethod = method as Abstract.Method;
+          const method = argValue as Abstract.Method;
           const value = this.getValue();
 
           const result: Array<Field> = (value instanceof Array ? value : [value]).map((innerArg) => {
-            const parameterizedClosure = new StaticProps(
+            const closureWithParams = new StaticProps(
               {
-                [typeSafeMethod.params[0]]: innerArg,
+                [method.params[0]]: innerArg,
               },
               closure,
             );
 
-            const innerField = new Field(typeSafeMethod.result, parameterizedClosure);
+            const innerField = new Field(method.result, closureWithParams);
             return innerField;
           });
 
@@ -614,7 +614,7 @@ class Expression extends Channel implements Owner {
       let result: Field;
 
       if (Abstract.isComponent(method) && method.kind === "method") {
-        const parameterizedClosure = new StaticProps(
+        const closureWithParams = new StaticProps(
           method.params.reduce<Record<string, Field>>((acc, param, index) => {
             acc[param] = this.args[index];
             return acc;
@@ -622,7 +622,7 @@ class Expression extends Channel implements Owner {
           closure,
         );
 
-        result = new Field(method.result, parameterizedClosure);
+        result = new Field(method.result, closureWithParams);
       } else if (typeof method === "function") {
         result = new Field(
           {
@@ -813,7 +813,7 @@ class Procedure extends Publisher implements Subscriber<Array<Field>> {
   }
 
   async handleEvent(args: Array<Field>) {
-    const parameterizedClosure = new StaticProps(
+    const closureWithParams = new StaticProps(
       this.source.params.reduce<Record<string, Field>>((acc, param, index) => {
         acc[param] = args[index];
         return acc;
@@ -824,30 +824,28 @@ class Procedure extends Publisher implements Subscriber<Array<Field>> {
     const steps = this.source.steps.map((step) => {
       switch (step.kind) {
         case "field":
-          return new Field(step, parameterizedClosure);
+          return new Field(step, closureWithParams);
         case "action":
-          return new Action(step, parameterizedClosure);
+          return new Action(step, closureWithParams);
         default:
           throw new Error(`Procedure cannot have a step of invalid kind: ${(step as Abstract.Component).kind}`);
       }
     });
 
-    const loop = async (step?: Field | Action) => {
+    const run = async (step?: Field | Action) => {
       if (step instanceof Field) {
         await step.getProps();
-
         this.publish(step.getValue());
-        loop(steps.shift());
+        run(steps.shift());
       } else if (step instanceof Action) {
         const isFirstStep = step === steps[0];
         const stepArgs = isFirstStep ? args : [];
         await step.handleEvent(stepArgs);
-
-        loop(steps.shift());
+        run(steps.shift());
       }
     };
 
-    loop(steps.shift());
+    run(steps.shift());
   }
 }
 
@@ -1046,6 +1044,3 @@ class StaticProps implements Props {
     return Object.entries(this.properties);
   }
 }
-
-// TODO Field exception handling
-// TODO Update Procedures to be able to yield values from fields -- and to produce the content of fields
