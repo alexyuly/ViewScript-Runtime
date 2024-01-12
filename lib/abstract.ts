@@ -66,7 +66,7 @@ export namespace Abstract {
       | Implication
       | Expression
       | Expectation
-      | Generator;
+      | Stream;
     fallback?: Action;
   };
 
@@ -155,12 +155,12 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // generate {
+  // stream {
   //   yield FIELD-STEP
   //   ACTION-STEP
   // }
-  export type Generator = {
-    kind: "generator";
+  export type Stream = {
+    kind: "stream";
     steps: Array<Field | Action>;
   };
 

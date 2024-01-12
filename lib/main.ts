@@ -66,8 +66,8 @@ class Field extends Channel implements Owner {
     | Reference
     | Implication
     | Expression
-    | Expectation;
-  // | Generator;
+    | Expectation
+    | Stream;
 
   private fallback?: Action;
 
@@ -109,10 +109,10 @@ class Field extends Channel implements Owner {
         this.content = new Expectation(source.content, closure);
         break;
       }
-      // case "generator": {
-      //   this.content = new Generator(source.content, closure);
-      //   break;
-      // }
+      case "stream": {
+        this.content = new Stream(source.content, closure);
+        break;
+      }
       default:
         throw new Error(`Cannot field some content of invalid kind: ${(source.content as Abstract.Component).kind}`);
     }
@@ -624,6 +624,7 @@ class Expression extends Channel implements Owner {
 
         result = new Field(method.result, closureWithParams);
       } else if (typeof method === "function") {
+        console.log(`initializing expression of native function ${source.methodName} with args...`, this.args);
         result = new Field(
           {
             kind: "field",
@@ -636,10 +637,13 @@ class Expression extends Channel implements Owner {
         );
 
         const updateProducer = () => {
+          console.log(`updating expression of native function ${source.methodName} with args...`, this.args);
           const nextValue = method(...this.args);
           result.handleEvent(nextValue);
         };
 
+        // TODO Disconnect these if the Expression is used in actions:
+        // (Same goes for other kinds of field content...)
         owner?.connectPassively(updateProducer);
 
         this.args.forEach((arg) => {
@@ -762,6 +766,20 @@ class Expectation extends Channel implements Owner {
   }
 }
 
+class Stream extends Channel implements Owner {
+  constructor(source: Abstract.Stream, closure: Props) {
+    super();
+
+    // TODO
+    throw new Error("Not yet implemented");
+  }
+
+  getProps(): Promise<Props> {
+    // TODO
+    throw new Error("Not yet implemented");
+  }
+}
+
 /**
  * Actions:
  */
@@ -871,7 +889,7 @@ class Call implements Subscriber<Array<Field>> {
       let source = this.source;
       callTarget = {
         handleEvent(calledArgs: Array<Field>) {
-          console.log(`calling ${source.actionName} with args...`, calledArgs);
+          console.log(`calling native function ${source.actionName} with args...`, calledArgs);
           action(...calledArgs);
         },
       };
