@@ -642,8 +642,6 @@ class Expression extends Channel implements Owner {
           result.handleEvent(nextValue);
         };
 
-        // TODO Disconnect these if the Expression is used in actions:
-        // (Same goes for other kinds of field content...)
         owner?.connectPassively(updateProducer);
 
         this.args.forEach((arg) => {
@@ -683,8 +681,6 @@ class Expression extends Channel implements Owner {
   }
 }
 
-// TODO Fix the initial calls that happens with undefined args after latest refactor...
-// TODO Fix so that each call only happens once when fired -- instead of once, then twice, then three times, etc.
 class Expectation extends Channel implements Owner {
   private readonly props: Promise<Props>;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
@@ -766,6 +762,7 @@ class Expectation extends Channel implements Owner {
   }
 }
 
+// TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
 class Stream extends Channel implements Owner {
   constructor(source: Abstract.Stream, closure: Props) {
     super();
@@ -784,6 +781,7 @@ class Stream extends Channel implements Owner {
  * Actions:
  */
 
+// TODO Disconnect all fields within the action, after it has run.
 class Action implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Action;
   private readonly closure: Props;
