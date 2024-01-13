@@ -561,7 +561,7 @@ class Implication extends Channel implements Owner {
       this.publish(impliedValue);
     });
 
-    // TODO Why can't we passively connect the consequence and alternative fields?
+    // TODO Why can't we connectPassively the consequence and alternative fields?
     this.consequence = new Field(source.consequence, closure);
     this.consequence.connect((impliedValue) => {
       const isConditionMet = this.condition.getValue();
@@ -817,6 +817,7 @@ class Procedure implements Subscriber<void> {
   async handleEvent() {
     const steps = [...this.source.steps];
 
+    // TODO Abort the remaining steps if one throws an error.
     const run = async (step?: (typeof steps)[number]) => {
       if (!step) {
         return;
