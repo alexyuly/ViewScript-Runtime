@@ -815,26 +815,34 @@ class Procedure implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const steps = this.source.steps.map((step) => {
+    const steps = [...this.source.steps];
+
+    const run = async (step?: (typeof steps)[number]) => {
+      if (!step) {
+        return;
+      }
+
+      let executor: Subscriber<void>;
+
       switch (step.kind) {
         case "procedure":
-          return new Procedure(step, this.closure);
+          executor = new Procedure(step, this.closure);
+          break;
         case "call":
-          return new Call(step, this.closure);
+          executor = new Call(step, this.closure);
+          break;
         case "decision":
-          return new Decision(step, this.closure);
+          executor = new Decision(step, this.closure);
+          break;
         case "resolution":
-          return new Resolution(step, this.closure);
+          executor = new Resolution(step, this.closure);
+          break;
         default:
-          throw new Error(`Cannot instantiate procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
+          throw new Error(`Cannot run procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
       }
-    });
 
-    const run = async (step?: Subscriber<void>) => {
-      if (step) {
-        await step.handleEvent();
-        run(steps.shift());
-      }
+      await executor.handleEvent();
+      run(steps.shift());
     };
 
     run(steps.shift());
