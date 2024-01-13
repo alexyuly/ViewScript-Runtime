@@ -66,7 +66,7 @@ export namespace Abstract {
       | Implication
       | Expression
       | Expectation
-      | Stream;
+      | Producer;
     fallback?: Action;
   };
 
@@ -155,10 +155,10 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // stream { STEPS }
-  export type Stream = {
-    kind: "stream";
-    steps: Array<Stream | Call | Fork | Request | Field>;
+  // from { STEPS }
+  export type Producer = {
+    kind: "producer";
+    steps: Array<Field | Procedure | Call | Fork | Request>;
   };
 
   /**

@@ -67,7 +67,7 @@ class Field extends Channel implements Owner {
     | Implication
     | Expression
     | Expectation
-    | Stream;
+    | Producer;
 
   private fallback?: Action;
 
@@ -109,8 +109,8 @@ class Field extends Channel implements Owner {
         this.content = new Expectation(source.content, closure);
         break;
       }
-      case "stream": {
-        this.content = new Stream(source.content, closure);
+      case "producer": {
+        this.content = new Producer(source.content, closure);
         break;
       }
       default:
@@ -763,8 +763,8 @@ class Expectation extends Channel implements Owner {
 }
 
 // TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
-class Stream extends Channel implements Owner {
-  constructor(source: Abstract.Stream, closure: Props) {
+class Producer extends Channel implements Owner {
+  constructor(source: Abstract.Producer, closure: Props) {
     super();
 
     // TODO
@@ -792,7 +792,7 @@ class Action implements Subscriber<Array<Field>> {
   }
 
   async handleEvent(args: Array<Field>): Promise<void> {
-    let target: Procedure | Call | Fork | Invocation;
+    let target: Procedure | Call | Fork | Request;
 
     switch (this.source.target.kind) {
       case "procedure":
@@ -804,8 +804,8 @@ class Action implements Subscriber<Array<Field>> {
       case "fork":
         target = new Fork(this.source.target, this.closure);
         break;
-      case "invocation":
-        target = new Invocation(this.source.target, this.closure);
+      case "request":
+        target = new Request(this.source.target, this.closure);
         break;
       default:
         throw new Error(
@@ -817,7 +817,7 @@ class Action implements Subscriber<Array<Field>> {
   }
 }
 
-class Procedure extends Publisher implements Subscriber<Array<Field>> {
+class Procedure {
   private readonly source: Abstract.Procedure;
   private readonly closure: Props;
 
@@ -865,7 +865,7 @@ class Procedure extends Publisher implements Subscriber<Array<Field>> {
   }
 }
 
-class Call implements Subscriber<Array<Field>> {
+class Call {
   private readonly source: Abstract.Call;
   private readonly closure: Props;
 
@@ -907,7 +907,7 @@ class Call implements Subscriber<Array<Field>> {
   }
 }
 
-class Fork implements Subscriber<void> {
+class Fork {
   private readonly source: Abstract.Fork;
   private readonly closure: Props;
 
@@ -933,11 +933,11 @@ class Fork implements Subscriber<void> {
   }
 }
 
-class Invocation implements Subscriber<void> {
-  private readonly source: Abstract.Invocation;
+class Request {
+  private readonly source: Abstract.Request;
   private readonly closure: Props;
 
-  constructor(source: Abstract.Invocation, closure: Props) {
+  constructor(source: Abstract.Request, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
