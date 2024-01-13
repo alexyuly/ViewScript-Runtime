@@ -158,7 +158,7 @@ export namespace Abstract {
   // from { STEPS }
   export type Producer = {
     kind: "producer";
-    steps: Array<Field | Procedure | Call | Fork | Request>;
+    steps: Array<Field | Procedure | Call | Decision | Resolution>;
   };
 
   /**
@@ -179,7 +179,7 @@ export namespace Abstract {
   // do { STEPS } or FALLBACK
   export type Procedure = {
     kind: "procedure";
-    steps: Array<Procedure | Call | Fork | Request>;
+    steps: Array<Procedure | Call | Decision | Resolution>;
     fallback?: Action;
   };
 
@@ -198,20 +198,20 @@ export namespace Abstract {
 
   // if CONDITION then CONSEQUENCE
   // if CONDITION then CONSEQUENCE else ALTERNATIVE
-  export type Fork = {
-    kind: "fork";
+  export type Decision = {
+    kind: "decision";
     condition: Field;
     consequence: Procedure;
     alternative?: Procedure;
   };
 
-  // await RESOLVER
-  // await RESOLVER
-  // let PARAM = RESOLVER
-  export type Request = {
-    kind: "request";
-    param?: string;
-    resolver: Field;
+  // await QUESTION
+  // await QUESTION
+  // let RESOLVER-PARAM = QUESTION \n RESOLVER-HANDLER
+  export type Resolution = {
+    kind: "resolution";
+    question: Field;
+    resolver?: Action;
   };
 
   /**

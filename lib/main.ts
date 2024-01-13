@@ -792,43 +792,6 @@ class Action implements Subscriber<Array<Field>> {
   }
 
   async handleEvent(args: Array<Field>): Promise<void> {
-    let target: Procedure | Call | Fork | Request;
-
-    switch (this.source.target.kind) {
-      case "procedure":
-        target = new Procedure(this.source.target, this.closure);
-        break;
-      case "call":
-        target = new Call(this.source.target, this.closure);
-        break;
-      case "fork":
-        target = new Fork(this.source.target, this.closure);
-        break;
-      case "request":
-        target = new Request(this.source.target, this.closure);
-        break;
-      default:
-        throw new Error(
-          `Action cannot target something of invalid kind: ${(this.source.target as Abstract.Component).kind}`,
-        );
-    }
-
-    return target.handleEvent(args);
-  }
-}
-
-class Procedure {
-  private readonly source: Abstract.Procedure;
-  private readonly closure: Props;
-
-  constructor(source: Abstract.Procedure, closure: Props) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-  }
-
-  async handleEvent(args: Array<Field>) {
     const closureWithParams = new StaticProps(
       this.source.params.reduce<Record<string, Field>>((acc, param, index) => {
         acc[param] = args[index];
@@ -837,26 +800,39 @@ class Procedure {
       this.closure,
     );
 
+    const handler = new Procedure(this.source.handler, closureWithParams);
+    return handler.handleEvent();
+  }
+}
+
+class Procedure implements Subscriber<void> {
+  private readonly source: Abstract.Procedure;
+  private readonly closure: Props;
+
+  constructor(source: Abstract.Procedure, closure: Props) {
+    this.source = source;
+    this.closure = closure;
+  }
+
+  async handleEvent() {
     const steps = this.source.steps.map((step) => {
       switch (step.kind) {
-        case "field":
-          return new Field(step, closureWithParams);
-        case "action":
-          return new Action(step, closureWithParams);
+        case "procedure":
+          return new Procedure(step, this.closure);
+        case "call":
+          return new Call(step, this.closure);
+        case "decision":
+          return new Decision(step, this.closure);
+        case "resolution":
+          return new Resolution(step, this.closure);
         default:
-          throw new Error(`Procedure cannot have a step of invalid kind: ${(step as Abstract.Component).kind}`);
+          throw new Error(`Cannot instantiate procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
       }
     });
 
-    const run = async (step?: Field | Action) => {
-      if (step instanceof Field) {
-        await step.getProps();
-        this.publish(step.getValue());
-        run(steps.shift());
-      } else if (step instanceof Action) {
-        const isFirstStep = step === steps[0];
-        const stepArgs = isFirstStep ? args : [];
-        await step.handleEvent(stepArgs);
+    const run = async (step?: Subscriber<void>) => {
+      if (step) {
+        await step.handleEvent();
         run(steps.shift());
       }
     };
@@ -865,7 +841,7 @@ class Procedure {
   }
 }
 
-class Call {
+class Call implements Subscriber<void> {
   private readonly source: Abstract.Call;
   private readonly closure: Props;
 
@@ -874,7 +850,7 @@ class Call {
     this.closure = closure;
   }
 
-  async handleEvent(args: Array<Field>) {
+  async handleEvent() {
     const owner = this.source.scope && new Field(this.source.scope, this.closure);
     const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
     const action = scope.getMember(this.source.actionName);
@@ -895,11 +871,10 @@ class Call {
       throw new Error(`Cannot call something which is not an action or function: ${this.source.actionName}`);
     }
 
-    const callArgs =
-      this.source.args?.map((sourceArg) => {
-        const arg = new Field(sourceArg, this.closure);
-        return arg;
-      }) ?? args;
+    const callArgs = this.source.args.map((sourceArg) => {
+      const arg = new Field(sourceArg, this.closure);
+      return arg;
+    });
 
     await Promise.all(callArgs.map((arg) => arg.getProps()));
 
@@ -907,11 +882,11 @@ class Call {
   }
 }
 
-class Fork {
-  private readonly source: Abstract.Fork;
+class Decision implements Subscriber<void> {
+  private readonly source: Abstract.Decision;
   private readonly closure: Props;
 
-  constructor(source: Abstract.Fork, closure: Props) {
+  constructor(source: Abstract.Decision, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
@@ -922,46 +897,46 @@ class Fork {
 
     const isConditionMet = condition.getValue();
     if (isConditionMet) {
-      const consequence = new Action(this.source.consequence, this.closure);
-      return consequence.handleEvent([]);
+      const consequence = new Procedure(this.source.consequence, this.closure);
+      return consequence.handleEvent();
     }
 
     if (this.source.alternative) {
-      const alternative = new Action(this.source.alternative, this.closure);
-      return alternative.handleEvent([]);
+      const alternative = new Procedure(this.source.alternative, this.closure);
+      return alternative.handleEvent();
     }
   }
 }
 
-class Request {
-  private readonly source: Abstract.Request;
+class Resolution implements Subscriber<void> {
+  private readonly source: Abstract.Resolution;
   private readonly closure: Props;
 
-  constructor(source: Abstract.Request, closure: Props) {
+  constructor(source: Abstract.Resolution, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
 
   async handleEvent() {
-    const request = new Field(this.source.request, this.closure);
-    await Promise.resolve(request.getProps());
+    const question = new Field(this.source.question, this.closure);
+    await Promise.resolve(question.getProps());
 
-    if (this.source.response) {
+    if (this.source.resolver) {
       const args = [
         new Field(
           {
             kind: "field",
             content: {
               kind: "rawValue",
-              value: request.getValue(),
+              value: question.getValue(),
             },
           },
           new StaticProps({}),
         ),
       ];
 
-      const response = new Procedure(this.source.response, this.closure);
-      return response.handleEvent(args);
+      const resolver = new Action(this.source.resolver, this.closure);
+      return resolver.handleEvent(args);
     }
   }
 }
