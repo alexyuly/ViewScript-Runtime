@@ -147,7 +147,7 @@ export namespace Abstract {
     args: Array<Field>;
   };
 
-  // METHOD-NAME?
+  // METHOD-NAME()?
   // METHOD-NAME(ARG)?
   // METHOD-NAME(ARG0, ARG1, ETC...)?
   export type Expectation = {
@@ -155,67 +155,63 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // stream {
-  //   yield FIELD-STEP
-  //   ACTION-STEP
-  // }
+  // stream { STEPS }
   export type Stream = {
     kind: "stream";
-    steps: Array<Field | Action>;
+    steps: Array<Stream | Call | Fork | Request | Field>;
   };
 
   /**
    * Actions:
    */
 
-  // TARGET
-  // try TARGET catch FALLBACK
+  // HANDLER
+  // given PARAM HANDLER
+  // given (PARAM0, PARAM1, ETC...) HANDLER
+  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) HANDLER
   export type Action = {
     kind: "action";
-    target: Procedure | Call | Fork | Invocation;
-    fallback?: Action;
+    params: Array<string>;
+    handler: Procedure;
   };
 
   // do { STEPS }
-  // given PARAM do { STEPS }
-  // given (PARAM0, PARAM1, ETC...) do { STEPS }
-  // given (PARAM0: TYPE0, PARAM1: TYPE1, ETC...) do { STEPS }
+  // do { STEPS } or FALLBACK
   export type Procedure = {
     kind: "procedure";
-    params: Array<string>;
-    steps: Array<Field | Action>;
+    steps: Array<Procedure | Call | Fork | Request>;
+    fallback?: Action;
   };
 
-  // ACTION-NAME!
-  // ACTION-NAME(ARG)!
-  // ACTION-NAME(ARG0, ARG1, ETC...)!
-  // SCOPE.ACTION-NAME!
-  // SCOPE.ACTION-NAME(ARG)!
-  // SCOPE.ACTION-NAME(ARG0, ARG1, ETC...)!
+  // ACTION-NAME
+  // ACTION-NAME(ARG)
+  // ACTION-NAME(ARG0, ARG1, ETC...)
+  // SCOPE.ACTION-NAME
+  // SCOPE.ACTION-NAME(ARG)
+  // SCOPE.ACTION-NAME(ARG0, ARG1, ETC...)
   export type Call = {
     kind: "call";
     scope?: Field;
     actionName: string;
-    args?: Array<Field>;
+    args: Array<Field>;
   };
 
-  // when CONDITION { CONSEQUENCE }
-  // when CONDITION { CONSEQUENCE } otherwise { ALTERNATIVE }
+  // if CONDITION then CONSEQUENCE
+  // if CONDITION then CONSEQUENCE else ALTERNATIVE
   export type Fork = {
     kind: "fork";
     condition: Field;
-    consequence: Action;
-    alternative?: Action;
+    consequence: Procedure;
+    alternative?: Procedure;
   };
 
-  // await REQUEST
-  // await REQUEST [...] RESPONSE-STEPS
-  // let RESPONSE-PARAM = REQUEST [...] RESPONSE-STEPS
-  // (The bracketed ellipsis represents a new line separating the request from the response's steps.)
-  export type Invocation = {
-    kind: "invocation";
-    request: Field;
-    response?: Procedure;
+  // await RESOLVER
+  // await RESOLVER
+  // let PARAM = RESOLVER
+  export type Request = {
+    kind: "request";
+    param?: string;
+    resolver: Field;
   };
 
   /**
@@ -234,7 +230,3 @@ export namespace Abstract {
     return typeof value === "object" && value !== null && !(value instanceof Array);
   }
 }
-
-// THINGS TO CONSIDER...
-// - Eliminate syntax that adds no meaning to the code.
-// - Shift the paradigm from "sync vs. async" to "blocking vs. non-blocking" or "sequential vs. parallel".
