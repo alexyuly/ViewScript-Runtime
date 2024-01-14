@@ -73,44 +73,44 @@ class Field extends Channel implements Owner {
 
   readonly isVoid = () => this.getValue() === undefined;
 
-  constructor(source: Abstract.Field, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Field, closure: Props) {
+    super();
 
     switch (source.content.kind) {
       case "atom": {
-        this.content = new Atom(source.content, closure, isOneTime);
+        this.content = new Atom(source.content, closure);
         break;
       }
       case "viewInstance": {
-        this.content = new ViewInstance(source.content, closure, isOneTime);
+        this.content = new ViewInstance(source.content, closure);
         break;
       }
       case "modelInstance": {
-        this.content = new ModelInstance(source.content, closure, isOneTime);
+        this.content = new ModelInstance(source.content, closure);
         break;
       }
       case "rawValue": {
-        this.content = new RawValue(source.content, closure, isOneTime);
+        this.content = new RawValue(source.content, closure);
         break;
       }
       case "reference": {
-        this.content = new Reference(source.content, closure, isOneTime);
+        this.content = new Reference(source.content, closure);
         break;
       }
       case "implication": {
-        this.content = new Implication(source.content, closure, isOneTime);
+        this.content = new Implication(source.content, closure);
         break;
       }
       case "expression": {
-        this.content = new Expression(source.content, closure, isOneTime);
+        this.content = new Expression(source.content, closure);
         break;
       }
       case "expectation": {
-        this.content = new Expectation(source.content, closure, isOneTime);
+        this.content = new Expectation(source.content, closure);
         break;
       }
       case "producer": {
-        this.content = new Producer(source.content, closure, isOneTime);
+        this.content = new Producer(source.content, closure);
         break;
       }
       default:
@@ -145,7 +145,6 @@ class Field extends Channel implements Owner {
           },
         },
         new StaticProps({}),
-        true,
       );
 
       this.fallback.handleEvent([errorArg]);
@@ -158,15 +157,15 @@ class Field extends Channel implements Owner {
 class Atom extends Publisher<HTMLElement> implements Owner {
   private readonly props = new StaticProps({});
 
-  constructor(source: Abstract.Atom, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Atom, closure: Props) {
+    super();
 
     const element = document.createElement(source.tagName);
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field": {
-          const field = new Field(value, closure, isOneTime);
+          const field = new Field(value, closure);
           field.connect((fieldValue) => {
             if (key === "content") {
               const content: Array<Node | string> = [];
@@ -213,7 +212,6 @@ class Atom extends Publisher<HTMLElement> implements Owner {
                 },
               },
               new StaticProps({}),
-              isOneTime,
             );
 
             action.handleEvent([eventArg]);
@@ -241,8 +239,8 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
   private readonly props: StaticProps;
   private readonly stage: Array<Atom | ViewInstance> = [];
 
-  constructor(source: Abstract.ViewInstance, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.ViewInstance, closure: Props) {
+    super();
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
@@ -255,7 +253,7 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
-          this.props.addMember(key, new Field(value, closure, isOneTime));
+          this.props.addMember(key, new Field(value, closure));
           break;
         case "action":
           this.props.addMember(key, new Action(value, closure));
@@ -277,7 +275,7 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
           this.props.addMember(key, value);
           break;
         case "field":
-          this.props.addMember(key, new Field(value, this.props, isOneTime));
+          this.props.addMember(key, new Field(value, this.props));
           break;
         case "action":
           this.props.addMember(key, new Action(value, this.props));
@@ -318,8 +316,8 @@ class ModelInstance extends Channel implements Owner {
   private readonly props: StaticProps | Promise<StaticProps>;
   private readonly serialization: Record<string, unknown> = {};
 
-  constructor(source: Abstract.ModelInstance, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.ModelInstance, closure: Props) {
+    super();
 
     const props = new StaticProps({}, closure);
 
@@ -327,7 +325,7 @@ class ModelInstance extends Channel implements Owner {
       switch (value.kind) {
         // TODO Allow methods to be passed in as outer props, here
         case "field":
-          props.addMember(key, new Field(value, closure, isOneTime));
+          props.addMember(key, new Field(value, closure));
           break;
         case "action":
           props.addMember(key, new Action(value, closure));
@@ -354,7 +352,7 @@ class ModelInstance extends Channel implements Owner {
             props.addMember(key, value);
             break;
           case "field":
-            props.addMember(key, new Field(value, props, isOneTime));
+            props.addMember(key, new Field(value, props));
             break;
           case "action":
             props.addMember(key, new Action(value, props));
@@ -411,8 +409,8 @@ class ModelInstance extends Channel implements Owner {
 class RawValue extends Publisher implements Owner {
   private readonly props: StaticProps;
 
-  constructor(source: Abstract.RawValue, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.RawValue, closure: Props) {
+    super();
 
     const set = (arg: Field) => {
       const nextValue = arg?.getValue();
@@ -438,7 +436,7 @@ class RawValue extends Publisher implements Owner {
               closure,
             );
 
-            const innerField = new Field(method.result, closureWithParams, isOneTime);
+            const innerField = new Field(method.result, closureWithParams);
             return innerField;
           });
 
@@ -456,7 +454,7 @@ class RawValue extends Publisher implements Owner {
         let field: Field;
 
         if (Abstract.isComponent(value) && value.kind === "field") {
-          field = new Field(value as Abstract.Field, closure, isOneTime);
+          field = new Field(value as Abstract.Field, closure);
         } else {
           field = new Field(
             {
@@ -467,7 +465,6 @@ class RawValue extends Publisher implements Owner {
               },
             },
             new StaticProps({}),
-            isOneTime,
           );
         }
 
@@ -510,8 +507,8 @@ class RawValue extends Publisher implements Owner {
 class Reference extends Channel implements Owner {
   private readonly field: Field | Promise<Field>;
 
-  constructor(source: Abstract.Reference, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Reference, closure: Props) {
+    super();
 
     const getField = (scope: Props) => {
       const field = scope.getMember(source.fieldName);
@@ -524,7 +521,7 @@ class Reference extends Channel implements Owner {
       return field;
     };
 
-    const scope = source.scope ? new Field(source.scope, closure, isOneTime).getProps() : closure;
+    const scope = source.scope ? new Field(source.scope, closure).getProps() : closure;
 
     if (scope instanceof Promise) {
       this.field = scope.then(getField);
@@ -549,10 +546,10 @@ class Implication extends Channel implements Owner {
   private readonly consequence: Field;
   private readonly alternative?: Field | Action;
 
-  constructor(source: Abstract.Implication, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Implication, closure: Props) {
+    super();
 
-    this.condition = new Field(source.condition, closure, isOneTime);
+    this.condition = new Field(source.condition, closure);
     this.condition.connect((isConditionMet) => {
       const impliedField = isConditionMet
         ? this.consequence
@@ -565,7 +562,7 @@ class Implication extends Channel implements Owner {
     });
 
     // TODO Why can't we connectPassively the consequence and alternative fields?
-    this.consequence = new Field(source.consequence, closure, isOneTime);
+    this.consequence = new Field(source.consequence, closure);
     this.consequence.connect((impliedValue) => {
       const isConditionMet = this.condition.getValue();
       if (isConditionMet) {
@@ -574,7 +571,7 @@ class Implication extends Channel implements Owner {
     });
 
     if (Abstract.isComponent(source.alternative) && source.alternative.kind === "field") {
-      this.alternative = new Field(source.alternative, closure, isOneTime);
+      this.alternative = new Field(source.alternative, closure);
       this.alternative.connect((impliedValue) => {
         const isConditionMet = this.condition.getValue();
         if (!isConditionMet) {
@@ -602,14 +599,14 @@ class Expression extends Channel implements Owner {
   private readonly producer: Field | Promise<Field>;
   private readonly args: Array<Field>;
 
-  constructor(source: Abstract.Expression, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Expression, closure: Props) {
+    super();
 
-    const owner = source.scope && new Field(source.scope, closure, isOneTime);
+    const owner = source.scope && new Field(source.scope, closure);
     const scope = owner ? owner.getProps() : closure;
 
     this.args = source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, closure, isOneTime);
+      const arg = new Field(sourceArg, closure);
       return arg;
     });
 
@@ -625,7 +622,7 @@ class Expression extends Channel implements Owner {
           closure,
         );
 
-        result = new Field(method.result, closureWithParams, isOneTime);
+        result = new Field(method.result, closureWithParams);
       } else if (typeof method === "function") {
         console.log(`initializing expression of native function ${source.methodName} with args...`, this.args);
         result = new Field(
@@ -637,7 +634,6 @@ class Expression extends Channel implements Owner {
             },
           },
           new StaticProps({}),
-          isOneTime,
         );
 
         const updateProducer = () => {
@@ -691,8 +687,8 @@ class Expectation extends Channel implements Owner {
 
   private producer?: Field;
 
-  constructor(source: Abstract.Expectation, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Expectation, closure: Props) {
+    super();
 
     this.props = new Promise<Props>((resolve, reject) => {
       const means = new Expression(source.means, closure);
@@ -724,7 +720,6 @@ class Expectation extends Channel implements Owner {
                     },
                   },
                   closure,
-                  isOneTime,
                 );
 
                 this.producer.connect(this);
@@ -750,7 +745,6 @@ class Expectation extends Channel implements Owner {
                     },
                   },
                   closure,
-                  isOneTime,
                 );
 
                 this.producer.connect(this);
@@ -770,8 +764,8 @@ class Expectation extends Channel implements Owner {
 
 // TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
 class Producer extends Channel implements Owner {
-  constructor(source: Abstract.Producer, closure: Props, isOneTime: boolean = false) {
-    super(isOneTime);
+  constructor(source: Abstract.Producer, closure: Props) {
+    super();
 
     // TODO
     throw new Error("Not yet implemented");
@@ -866,7 +860,7 @@ class Call implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const owner = this.source.scope && new Field(this.source.scope, this.closure, true);
+    const owner = this.source.scope && new Field(this.source.scope, this.closure);
     const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
     const action = scope.getMember(this.source.actionName);
 
@@ -887,7 +881,7 @@ class Call implements Subscriber<void> {
     }
 
     const callArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, true);
+      const arg = new Field(sourceArg, this.closure);
       return arg;
     });
 
@@ -907,7 +901,7 @@ class Decision implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const condition = new Field(this.source.condition, this.closure, true);
+    const condition = new Field(this.source.condition, this.closure);
     await Promise.resolve(condition.getProps());
 
     const isConditionMet = condition.getValue();
@@ -933,7 +927,7 @@ class Resolution implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const question = new Field(this.source.question, this.closure, true);
+    const question = new Field(this.source.question, this.closure);
     await Promise.resolve(question.getProps());
 
     if (this.source.resolver) {
@@ -947,7 +941,6 @@ class Resolution implements Subscriber<void> {
             },
           },
           new StaticProps({}),
-          true,
         ),
       ];
 
@@ -1016,7 +1009,6 @@ class RawObjectProps implements Props {
         },
       },
       new StaticProps({}),
-      true,
     );
 
     return memberField;
