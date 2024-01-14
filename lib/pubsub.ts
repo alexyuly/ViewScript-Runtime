@@ -3,7 +3,7 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  private readonly subscribers: Array<Subscriber<T>> = [];
+  protected readonly subscribers: Array<Subscriber<T>> = [];
   private value?: T;
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
@@ -20,10 +20,6 @@ export abstract class Publisher<T = unknown> {
     this.subscribers.push(subscriber);
 
     return subscriber;
-  }
-
-  protected getSubscribers(): Array<Subscriber<T>> {
-    return this.subscribers;
   }
 
   getValue(): T | undefined {
@@ -66,7 +62,7 @@ export abstract class Channel<T = unknown> extends Publisher<T> implements Subsc
 
     this.error = error;
 
-    this.getSubscribers().forEach((subscriber) => {
+    this.subscribers.forEach((subscriber) => {
       if (subscriber instanceof Channel) {
         subscriber.handleException(error);
       }
