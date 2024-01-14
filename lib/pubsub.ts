@@ -3,8 +3,13 @@ export interface Subscriber<T = unknown> {
 }
 
 export abstract class Publisher<T = unknown> {
-  private readonly subscribers: Array<Subscriber<T>> = [];
+  protected readonly isOneTime: boolean;
+  protected readonly subscribers: Array<Subscriber<T>> = [];
   private value?: T;
+
+  constructor(isOneTime: boolean = false) {
+    this.isOneTime = isOneTime;
+  }
 
   connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
     const subscriber = this.connectPassively(target);
@@ -22,10 +27,6 @@ export abstract class Publisher<T = unknown> {
     return subscriber;
   }
 
-  protected getSubscribers(): Array<Subscriber<T>> {
-    return this.subscribers;
-  }
-
   getValue(): T | undefined {
     return this.value;
   }
@@ -40,12 +41,20 @@ export abstract class Publisher<T = unknown> {
     this.subscribers.forEach((subscriber) => {
       subscriber.handleEvent(value);
     });
+
+    if (this.isOneTime) {
+      this.subscribers.length = 0;
+    }
   }
 }
 
 // TODO How is this going to work for action error handling?
 export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
   private error?: unknown;
+
+  constructor(isOneTime: boolean = false) {
+    super(isOneTime);
+  }
 
   getError(): unknown {
     return this.error;
@@ -66,10 +75,14 @@ export abstract class Channel<T = unknown> extends Publisher<T> implements Subsc
 
     this.error = error;
 
-    this.getSubscribers().forEach((subscriber) => {
+    this.subscribers.forEach((subscriber) => {
       if (subscriber instanceof Channel) {
         subscriber.handleException(error);
       }
     });
+
+    if (this.isOneTime) {
+      this.subscribers.length = 0;
+    }
   }
 }
