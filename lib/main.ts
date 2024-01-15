@@ -579,13 +579,13 @@ class Implication extends Channel implements Owner {
 
 class Expression extends Channel implements Owner {
   private readonly proxy: Field | Promise<Field>;
+  private readonly scope?: Field;
   private readonly args: Array<Field>;
 
   constructor(source: Abstract.Expression, closure: Props, context: Context) {
     super();
 
-    const owner = source.scope && new Field(source.scope, closure, context);
-    const scope = owner ? owner.getProps() : closure;
+    this.scope = source.scope && new Field(source.scope, closure, context);
 
     this.args = source.args.map((sourceArg) => {
       const arg = new Field(sourceArg, closure, context);
@@ -629,7 +629,7 @@ class Expression extends Channel implements Owner {
             result.handleEvent(nextValue);
           };
 
-          owner?.connectPassively(updateResult);
+          this.scope?.connectPassively(updateResult);
 
           this.args.forEach((arg) => {
             arg.connectPassively(updateResult);
@@ -644,15 +644,12 @@ class Expression extends Channel implements Owner {
     };
 
     this.proxy = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
-      let proxy: Field | Promise<Field>;
-
-      if (owner && source.methodName === "isVoid") {
-        proxy = getResult(owner.isVoid);
-      } else if (scope instanceof Promise) {
-        proxy = scope.then((x) => getResult(x.getMember(source.methodName)));
-      } else {
-        proxy = getResult(scope.getMember(source.methodName));
+      if (this.scope && source.methodName === "isVoid") {
+        return getResult(this.scope.isVoid);
       }
+
+      const scopeProps = Promise.resolve(this.scope ? this.scope.getProps() : closure);
+      const proxy = scopeProps.then((props) => getResult(props.getMember(source.methodName)));
 
       return proxy;
     });
@@ -670,49 +667,49 @@ class Expression extends Channel implements Owner {
 }
 
 class Expectation extends Channel implements Owner {
-  private proxy?: Field;
-  private readonly props: Promise<Props>;
+  private proxy: Promise<Field>;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
 
   constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
 
-    this.props = new Promise<Props>((resolve, reject) => {
-      const means = new Expression(source.means, closure, context);
+    let proxy: Field | undefined;
+    let resolveProxy: (value: Field | Promise<Field>) => void;
 
-      Promise.resolve(means.getProps()).then(() => {
-        const attendant = {
-          id: crypto.randomUUID(),
-          promise: Promise.resolve(means.getValue()),
-        };
+    this.proxy = new Promise((resolve) => {
+      resolveProxy = resolve;
+    });
 
-        this.queue.push(attendant);
+    const means = new Expression(source.means, closure, context);
 
-        attendant.promise
+    means.connect((meansValue) => {
+      const attendant = {
+        id: crypto.randomUUID(),
+        promise: Promise.resolve(meansValue)
           .then((value) => {
             const index = this.queue.indexOf(attendant);
 
             if (index !== -1) {
               this.queue.splice(0, index + 1);
+            }
 
-              if (this.proxy) {
-                this.proxy.handleEvent(value);
-              } else {
-                this.proxy = new Field(
-                  {
-                    kind: "field",
-                    content: {
-                      kind: "rawValue",
-                      value,
-                    },
+            if (proxy) {
+              proxy.handleEvent(value);
+            } else {
+              proxy = new Field(
+                {
+                  kind: "field",
+                  content: {
+                    kind: "rawValue",
+                    value,
                   },
-                  closure,
-                  context,
-                );
+                },
+                closure,
+                context,
+              );
 
-                this.proxy.connect(this);
-                resolve(this.proxy.getProps());
-              }
+              proxy.connect(this);
+              resolveProxy(proxy);
             }
           })
           .catch((error) => {
@@ -720,34 +717,20 @@ class Expectation extends Channel implements Owner {
 
             if (index !== -1) {
               this.queue.splice(index, 1);
-
-              if (this.proxy) {
-                this.proxy.handleException(error);
-              } else {
-                this.proxy = new Field(
-                  {
-                    kind: "field",
-                    content: {
-                      kind: "rawValue",
-                      value: undefined,
-                    },
-                  },
-                  closure,
-                  context,
-                );
-
-                this.proxy.connect(this);
-                this.proxy.handleException(error);
-                reject(error);
-              }
             }
-          });
-      });
+
+            this.handleException(error);
+          }),
+      };
+
+      this.queue.push(attendant);
     });
   }
 
-  getProps(): Promise<Props> {
-    return this.props;
+  async getProps(): Promise<Props> {
+    return this.proxy.then((field) => {
+      return field.getProps();
+    });
   }
 }
 
