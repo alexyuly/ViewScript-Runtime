@@ -33,14 +33,14 @@ export class App {
     this.stage = source.stage.map((component) => {
       switch (component.kind) {
         case "atom": {
-          const atom = new Atom(component, this.props);
+          const atom = new Atom(component, this.props, false);
           atom.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
           return atom;
         }
         case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props);
+          const viewInstance = new ViewInstance(component, this.props, false);
           viewInstance.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
@@ -766,7 +766,7 @@ class Expectation extends Channel implements Owner {
 
 // TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
 class Producer extends Channel implements Owner {
-  constructor(source: Abstract.Producer, closure: Props) {
+  constructor(source: Abstract.Producer, closure: Props, isByValue: boolean) {
     super();
 
     // TODO
