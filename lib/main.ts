@@ -18,7 +18,7 @@ export class App {
           this.props.addMember(key, value);
           break;
         case "field":
-          this.props.addMember(key, new Field(value, this.props, false));
+          this.props.addMember(key, new Field(value, this.props, { isStatic: false }));
           break;
         case "action":
           this.props.addMember(key, new Action(value, this.props));
@@ -33,14 +33,14 @@ export class App {
     this.stage = source.stage.map((component) => {
       switch (component.kind) {
         case "atom": {
-          const atom = new Atom(component, this.props, false);
+          const atom = new Atom(component, this.props, { isStatic: false });
           atom.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
           return atom;
         }
         case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props, false);
+          const viewInstance = new ViewInstance(component, this.props, { isStatic: false });
           viewInstance.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
@@ -73,44 +73,44 @@ class Field extends Channel implements Owner {
 
   readonly isVoid = () => this.getValue() === undefined;
 
-  constructor(source: Abstract.Field, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Field, closure: Props, context: Context) {
     super();
 
     switch (source.content.kind) {
       case "atom": {
-        this.content = new Atom(source.content, closure, isByValue);
+        this.content = new Atom(source.content, closure, context);
         break;
       }
       case "viewInstance": {
-        this.content = new ViewInstance(source.content, closure, isByValue);
+        this.content = new ViewInstance(source.content, closure, context);
         break;
       }
       case "modelInstance": {
-        this.content = new ModelInstance(source.content, closure, isByValue);
+        this.content = new ModelInstance(source.content, closure, context);
         break;
       }
       case "rawValue": {
-        this.content = new RawValue(source.content, closure, isByValue);
+        this.content = new RawValue(source.content, closure, context);
         break;
       }
       case "reference": {
-        this.content = new Reference(source.content, closure, isByValue);
+        this.content = new Reference(source.content, closure, context);
         break;
       }
       case "implication": {
-        this.content = new Implication(source.content, closure, isByValue);
+        this.content = new Implication(source.content, closure, context);
         break;
       }
       case "expression": {
-        this.content = new Expression(source.content, closure, isByValue);
+        this.content = new Expression(source.content, closure, context);
         break;
       }
       case "expectation": {
-        this.content = new Expectation(source.content, closure, isByValue);
+        this.content = new Expectation(source.content, closure, context);
         break;
       }
       case "producer": {
-        this.content = new Producer(source.content, closure, isByValue);
+        this.content = new Producer(source.content, closure);
         break;
       }
       default:
@@ -145,7 +145,7 @@ class Field extends Channel implements Owner {
           },
         },
         new StaticProps({}),
-        false,
+        { isStatic: true },
       );
 
       this.fallback.handleEvent([errorArg]);
@@ -158,7 +158,7 @@ class Field extends Channel implements Owner {
 class Atom extends Publisher<HTMLElement> implements Owner {
   private readonly props = new StaticProps({});
 
-  constructor(source: Abstract.Atom, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Atom, closure: Props, context: Context) {
     super();
 
     const element = document.createElement(source.tagName);
@@ -166,7 +166,7 @@ class Atom extends Publisher<HTMLElement> implements Owner {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field": {
-          const field = new Field(value, closure, isByValue);
+          const field = new Field(value, closure, context);
           field.connect((fieldValue) => {
             if (key === "content") {
               const content: Array<Node | string> = [];
@@ -213,7 +213,7 @@ class Atom extends Publisher<HTMLElement> implements Owner {
                 },
               },
               new StaticProps({}),
-              false,
+              { isStatic: true },
             );
 
             action.handleEvent([eventArg]);
@@ -241,7 +241,7 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
   private readonly props: StaticProps;
   private readonly stage: Array<Atom | ViewInstance> = [];
 
-  constructor(source: Abstract.ViewInstance, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.ViewInstance, closure: Props, context: Context) {
     super();
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
@@ -255,7 +255,7 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "field":
-          this.props.addMember(key, new Field(value, closure, isByValue));
+          this.props.addMember(key, new Field(value, closure, context));
           break;
         case "action":
           this.props.addMember(key, new Action(value, closure));
@@ -277,7 +277,7 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
           this.props.addMember(key, value);
           break;
         case "field":
-          this.props.addMember(key, new Field(value, this.props, isByValue));
+          this.props.addMember(key, new Field(value, this.props, context));
           break;
         case "action":
           this.props.addMember(key, new Action(value, this.props));
@@ -292,12 +292,12 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
     this.stage = view.stage.map((component) => {
       switch (component.kind) {
         case "atom": {
-          const atom = new Atom(component, this.props, isByValue);
+          const atom = new Atom(component, this.props, context);
           atom.connect(this);
           return atom;
         }
         case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props, isByValue);
+          const viewInstance = new ViewInstance(component, this.props, context);
           viewInstance.connect(this);
           return viewInstance;
         }
@@ -315,10 +315,10 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
 }
 
 class ModelInstance extends Channel implements Owner {
-  private readonly props: StaticProps | Promise<StaticProps>;
+  private readonly props: Promise<StaticProps>;
   private readonly serialization: Record<string, unknown> = {};
 
-  constructor(source: Abstract.ModelInstance, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.ModelInstance, closure: Props, context: Context) {
     super();
 
     const props = new StaticProps({}, closure);
@@ -327,7 +327,7 @@ class ModelInstance extends Channel implements Owner {
       switch (value.kind) {
         // TODO Allow methods to be passed in as outer props, here
         case "field":
-          props.addMember(key, new Field(value, closure, isByValue));
+          props.addMember(key, new Field(value, closure, context));
           break;
         case "action":
           props.addMember(key, new Action(value, closure));
@@ -354,7 +354,7 @@ class ModelInstance extends Channel implements Owner {
             props.addMember(key, value);
             break;
           case "field":
-            props.addMember(key, new Field(value, props, isByValue));
+            props.addMember(key, new Field(value, props, context));
             break;
           case "action":
             props.addMember(key, new Action(value, props));
@@ -396,7 +396,7 @@ class ModelInstance extends Channel implements Owner {
     });
   }
 
-  getProps() {
+  getProps(): Promise<StaticProps> {
     return this.props;
   }
 }
@@ -405,7 +405,7 @@ class ModelInstance extends Channel implements Owner {
 class RawValue extends Publisher implements Owner {
   private readonly props: StaticProps;
 
-  constructor(source: Abstract.RawValue, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
 
     const set = (arg: Field) => {
@@ -432,7 +432,7 @@ class RawValue extends Publisher implements Owner {
               closure,
             );
 
-            const innerField = new Field(method.result, closureWithParams, isByValue);
+            const innerField = new Field(method.result, closureWithParams, context);
             return innerField;
           });
 
@@ -450,7 +450,7 @@ class RawValue extends Publisher implements Owner {
         let field: Field;
 
         if (Abstract.isComponent(value) && value.kind === "field") {
-          field = new Field(value as Abstract.Field, closure, isByValue);
+          field = new Field(value as Abstract.Field, closure, context);
         } else {
           field = new Field(
             {
@@ -461,7 +461,7 @@ class RawValue extends Publisher implements Owner {
               },
             },
             new StaticProps({}),
-            isByValue,
+            context,
           );
         }
 
@@ -504,7 +504,7 @@ class RawValue extends Publisher implements Owner {
 class Reference extends Channel implements Owner {
   private readonly field: Field | Promise<Field>;
 
-  constructor(source: Abstract.Reference, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
 
     const getField = (scope: Props) => {
@@ -518,7 +518,7 @@ class Reference extends Channel implements Owner {
       return field;
     };
 
-    const scope = source.scope ? new Field(source.scope, closure, isByValue).getProps() : closure;
+    const scope = source.scope ? new Field(source.scope, closure, context).getProps() : closure;
 
     if (scope instanceof Promise) {
       this.field = scope.then(getField);
@@ -543,52 +543,37 @@ class Implication extends Channel implements Owner {
   private readonly consequence: Field;
   private readonly alternative?: Field;
 
-  constructor(source: Abstract.Implication, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Implication, closure: Props, context: Context) {
     super();
 
-    this.condition = new Field(source.condition, closure, isByValue);
-    this.condition.connect((isConditionMet) => {
-      const impliedField = isConditionMet
-        ? this.consequence
-        : this.alternative instanceof Field
-        ? this.alternative
-        : undefined;
+    this.condition = new Field(source.condition, closure, context);
+    this.condition.connectPassively(this);
 
-      const impliedValue = impliedField?.getValue();
-      this.publish(impliedValue);
-    });
-
-    // TODO Why can't we connectPassively the consequence and alternative fields?
-    this.consequence = new Field(source.consequence, closure, isByValue);
-    this.consequence.connect((impliedValue) => {
-      const isConditionMet = this.condition.getValue();
-      if (isConditionMet) {
-        this.publish(impliedValue);
-      }
-    });
+    this.consequence = new Field(source.consequence, closure, context);
+    this.consequence.connectPassively(this);
 
     if (source.alternative) {
-      this.alternative = new Field(source.alternative, closure, isByValue);
-      this.alternative.connect((impliedValue) => {
-        const isConditionMet = this.condition.getValue();
-        if (!isConditionMet) {
-          this.publish(impliedValue);
-        }
-      });
+      this.alternative = new Field(source.alternative, closure, context);
+      this.alternative.connectPassively(this);
     }
+
+    this.handleEvent();
   }
 
   getProps() {
-    const isConditionMet = this.condition.getValue();
-
-    const impliedField = isConditionMet
-      ? this.consequence
-      : this.alternative instanceof Field
-      ? this.alternative
-      : undefined;
-
+    const conditionalValue = this.condition.getValue();
+    const impliedField = conditionalValue ? this.consequence : this.alternative ?? undefined;
     const impliedProps = impliedField?.getProps() ?? new StaticProps({});
+
     return impliedProps;
+  }
+
+  handleEvent() {
+    const conditionalValue = this.condition.getValue();
+    const impliedField = conditionalValue ? this.consequence : this.alternative ?? undefined;
+    const impliedValue = impliedField?.getValue();
+
+    super.handleEvent(impliedValue);
   }
 }
 
@@ -596,14 +581,14 @@ class Expression extends Channel implements Owner {
   private readonly producer: Field | Promise<Field>;
   private readonly args: Array<Field>;
 
-  constructor(source: Abstract.Expression, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Expression, closure: Props, context: Context) {
     super();
 
-    const owner = source.scope && new Field(source.scope, closure, isByValue);
+    const owner = source.scope && new Field(source.scope, closure, context);
     const scope = owner ? owner.getProps() : closure;
 
     this.args = source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, closure, isByValue);
+      const arg = new Field(sourceArg, closure, context);
       return arg;
     });
 
@@ -619,7 +604,7 @@ class Expression extends Channel implements Owner {
           closure,
         );
 
-        result = new Field(method.result, closureWithParams, isByValue);
+        result = new Field(method.result, closureWithParams, { isStatic: true });
       } else if (typeof method === "function") {
         console.log(`initializing expression of native function ${source.methodName} with args...`, this.args);
         result = new Field(
@@ -631,10 +616,10 @@ class Expression extends Channel implements Owner {
             },
           },
           new StaticProps({}),
-          false,
+          { isStatic: true },
         );
 
-        if (!isByValue) {
+        if (!context.isStatic) {
           const updateProducer = () => {
             console.log(`updating expression of native function ${source.methodName} with args...`, this.args);
             const nextValue = method(...this.args);
@@ -687,11 +672,11 @@ class Expectation extends Channel implements Owner {
 
   private producer?: Field;
 
-  constructor(source: Abstract.Expectation, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
 
     this.props = new Promise<Props>((resolve, reject) => {
-      const means = new Expression(source.means, closure, isByValue);
+      const means = new Expression(source.means, closure, context);
 
       Promise.resolve(means.getProps()).then(() => {
         const attendant = {
@@ -720,7 +705,7 @@ class Expectation extends Channel implements Owner {
                     },
                   },
                   closure,
-                  false,
+                  context,
                 );
 
                 this.producer.connect(this);
@@ -746,7 +731,7 @@ class Expectation extends Channel implements Owner {
                     },
                   },
                   closure,
-                  false,
+                  context,
                 );
 
                 this.producer.connect(this);
@@ -766,7 +751,7 @@ class Expectation extends Channel implements Owner {
 
 // TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
 class Producer extends Channel implements Owner {
-  constructor(source: Abstract.Producer, closure: Props, isByValue: boolean) {
+  constructor(source: Abstract.Producer, closure: Props) {
     super();
 
     // TODO
@@ -859,7 +844,7 @@ class Call implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const owner = this.source.scope && new Field(this.source.scope, this.closure, true);
+    const owner = this.source.scope && new Field(this.source.scope, this.closure, { isStatic: true });
     const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
     const action = scope.getMember(this.source.actionName);
 
@@ -880,7 +865,7 @@ class Call implements Subscriber<void> {
     }
 
     const callArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, true);
+      const arg = new Field(sourceArg, this.closure, { isStatic: true });
       return arg;
     });
 
@@ -900,7 +885,7 @@ class Decision implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const condition = new Field(this.source.condition, this.closure, true);
+    const condition = new Field(this.source.condition, this.closure, { isStatic: true });
     await Promise.resolve(condition.getProps());
 
     const isConditionMet = condition.getValue();
@@ -926,7 +911,7 @@ class Invocation implements Subscriber<void> {
 
   async handleEvent() {
     const invocationArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, true);
+      const arg = new Field(sourceArg, this.closure, { isStatic: true });
       return arg;
     });
 
@@ -998,7 +983,7 @@ class RawObjectProps implements Props {
         },
       },
       new StaticProps({}),
-      false,
+      { isStatic: true },
     );
 
     return memberField;
@@ -1034,3 +1019,7 @@ class StaticProps implements Props {
     return Object.entries(this.properties);
   }
 }
+
+type Context = {
+  isStatic: boolean;
+};
