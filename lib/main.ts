@@ -18,7 +18,7 @@ export class App {
           this.props.addMember(key, value);
           break;
         case "field":
-          this.props.addMember(key, new Field(value, this.props, { isStatic: false }));
+          this.props.addMember(key, new Field(value, this.props, { isTransient: false }));
           break;
         case "action":
           this.props.addMember(key, new Action(value, this.props));
@@ -33,14 +33,14 @@ export class App {
     this.stage = source.stage.map((component) => {
       switch (component.kind) {
         case "atom": {
-          const atom = new Atom(component, this.props, { isStatic: false });
+          const atom = new Atom(component, this.props, { isTransient: false });
           atom.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
           return atom;
         }
         case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props, { isStatic: false });
+          const viewInstance = new ViewInstance(component, this.props, { isTransient: false });
           viewInstance.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
@@ -145,7 +145,7 @@ class Field extends Channel implements Owner {
           },
         },
         new StaticProps({}),
-        { isStatic: true },
+        { isTransient: true },
       );
 
       this.fallback.handleEvent([errorArg]);
@@ -213,7 +213,7 @@ class Atom extends Publisher<HTMLElement> implements Owner {
                 },
               },
               new StaticProps({}),
-              { isStatic: true },
+              { isTransient: true },
             );
 
             action.handleEvent([eventArg]);
@@ -604,32 +604,35 @@ class Expression extends Channel implements Owner {
           closure,
         );
 
-        result = new Field(method.result, closureWithParams, { isStatic: true });
+        result = new Field(method.result, closureWithParams, { isTransient: true });
       } else if (typeof method === "function") {
-        console.log(`initializing expression of native function ${source.methodName} with args...`, this.args);
+        console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, this.args);
+        const value = method(...this.args);
+        console.log(`...returned:`, value);
         result = new Field(
           {
             kind: "field",
             content: {
               kind: "rawValue",
-              value: method(...this.args),
+              value,
             },
           },
           new StaticProps({}),
-          { isStatic: true },
+          { isTransient: true },
         );
 
-        if (!context.isStatic) {
-          const updateProducer = () => {
-            console.log(`updating expression of native function ${source.methodName} with args...`, this.args);
+        if (!context.isTransient) {
+          const updateResult = () => {
+            console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, this.args);
             const nextValue = method(...this.args);
+            console.log(`...returned:`, nextValue);
             result.handleEvent(nextValue);
           };
 
-          owner?.connectPassively(updateProducer);
+          owner?.connectPassively(updateResult);
 
           this.args.forEach((arg) => {
-            arg.connectPassively(updateProducer);
+            arg.connectPassively(updateResult);
           });
         }
       } else {
@@ -843,7 +846,7 @@ class Call implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const owner = this.source.scope && new Field(this.source.scope, this.closure, { isStatic: true });
+    const owner = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
     const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
     const action = scope.getMember(this.source.actionName);
 
@@ -855,8 +858,9 @@ class Call implements Subscriber<void> {
       let source = this.source;
       callTarget = {
         handleEvent(calledArgs: Array<Field>) {
-          console.log(`calling native function ${source.actionName} with args...`, calledArgs);
-          action(...calledArgs);
+          console.log(`Calling JavaScript function \`${source.actionName}\` with args:`, calledArgs);
+          const returnValue = action(...calledArgs);
+          console.log(`...returned (ignored value):`, returnValue);
         },
       };
     } else {
@@ -864,7 +868,7 @@ class Call implements Subscriber<void> {
     }
 
     const callArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, { isStatic: true });
+      const arg = new Field(sourceArg, this.closure, { isTransient: true });
       return arg;
     });
 
@@ -884,7 +888,7 @@ class Decision implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const condition = new Field(this.source.condition, this.closure, { isStatic: true });
+    const condition = new Field(this.source.condition, this.closure, { isTransient: true });
     await Promise.resolve(condition.getProps());
 
     const conditionalValue = condition.getValue();
@@ -910,7 +914,7 @@ class Invocation implements Subscriber<void> {
 
   async handleEvent() {
     const invocationArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, { isStatic: true });
+      const arg = new Field(sourceArg, this.closure, { isTransient: true });
       return arg;
     });
 
@@ -982,7 +986,7 @@ class RawObjectProps implements Props {
         },
       },
       new StaticProps({}),
-      { isStatic: true },
+      { isTransient: true },
     );
 
     return memberField;
@@ -1020,5 +1024,5 @@ class StaticProps implements Props {
 }
 
 type Context = {
-  isStatic: boolean;
+  isTransient: boolean;
 };
