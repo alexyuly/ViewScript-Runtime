@@ -578,7 +578,7 @@ class Implication extends Channel implements Owner {
 }
 
 class Expression extends Channel implements Owner {
-  private readonly producer: Field | Promise<Field>;
+  private readonly proxy: Field | Promise<Field>;
   private readonly args: Array<Field>;
 
   constructor(source: Abstract.Expression, closure: Props, context: Context) {
@@ -640,37 +640,36 @@ class Expression extends Channel implements Owner {
       return result;
     };
 
-    this.producer = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
-      let producer: Field | Promise<Field>;
+    this.proxy = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
+      let proxy: Field | Promise<Field>;
 
       if (owner && source.methodName === "isVoid") {
-        producer = getResult(owner.isVoid);
+        proxy = getResult(owner.isVoid);
       } else if (scope instanceof Promise) {
-        producer = scope.then((x) => getResult(x.getMember(source.methodName)));
+        proxy = scope.then((x) => getResult(x.getMember(source.methodName)));
       } else {
-        producer = getResult(scope.getMember(source.methodName));
+        proxy = getResult(scope.getMember(source.methodName));
       }
 
-      return producer;
+      return proxy;
     });
   }
 
   getProps() {
-    if (this.producer instanceof Promise) {
-      return this.producer.then((field) => {
+    if (this.proxy instanceof Promise) {
+      return this.proxy.then((field) => {
         return field.getProps();
       });
     }
 
-    return this.producer.getProps();
+    return this.proxy.getProps();
   }
 }
 
 class Expectation extends Channel implements Owner {
+  private proxy?: Field;
   private readonly props: Promise<Props>;
   private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
-
-  private producer?: Field;
 
   constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
@@ -693,10 +692,10 @@ class Expectation extends Channel implements Owner {
             if (index !== -1) {
               this.queue.splice(0, index + 1);
 
-              if (this.producer) {
-                this.producer.handleEvent(value);
+              if (this.proxy) {
+                this.proxy.handleEvent(value);
               } else {
-                this.producer = new Field(
+                this.proxy = new Field(
                   {
                     kind: "field",
                     content: {
@@ -708,8 +707,8 @@ class Expectation extends Channel implements Owner {
                   context,
                 );
 
-                this.producer.connect(this);
-                resolve(this.producer.getProps());
+                this.proxy.connect(this);
+                resolve(this.proxy.getProps());
               }
             }
           })
@@ -719,10 +718,10 @@ class Expectation extends Channel implements Owner {
             if (index !== -1) {
               this.queue.splice(index, 1);
 
-              if (this.producer) {
-                this.producer.handleException(error);
+              if (this.proxy) {
+                this.proxy.handleException(error);
               } else {
-                this.producer = new Field(
+                this.proxy = new Field(
                   {
                     kind: "field",
                     content: {
@@ -734,8 +733,8 @@ class Expectation extends Channel implements Owner {
                   context,
                 );
 
-                this.producer.connect(this);
-                this.producer.handleException(error);
+                this.proxy.connect(this);
+                this.proxy.handleException(error);
                 reject(error);
               }
             }
@@ -888,9 +887,9 @@ class Decision implements Subscriber<void> {
     const condition = new Field(this.source.condition, this.closure, { isStatic: true });
     await Promise.resolve(condition.getProps());
 
-    const isConditionMet = condition.getValue();
+    const conditionalValue = condition.getValue();
 
-    if (isConditionMet) {
+    if (conditionalValue) {
       const consequence = new Procedure(this.source.consequence, this.closure);
       consequence.handleEvent();
     } else if (this.source.alternative) {
