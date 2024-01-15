@@ -6,10 +6,13 @@ import { Subscriber, Publisher, Channel } from "./pubsub";
  */
 
 export class App {
-  private readonly props = new StaticProps({}, new RawObjectProps(window));
-  private readonly stage: Array<Atom | ViewInstance> = [];
+  readonly source: Abstract.App;
+  readonly props = new StaticProps({}, new RawObjectProps(window));
+  readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
+    this.source = source;
+
     Object.entries(source.innerProps).forEach(([key, value]) => {
       switch (value.kind) {
         case "view":
@@ -58,7 +61,9 @@ export class App {
  */
 
 class Field extends Channel implements Owner {
-  private readonly content:
+  readonly source: Abstract.Field;
+
+  readonly content:
     | Atom
     | ViewInstance
     | ModelInstance
@@ -69,12 +74,14 @@ class Field extends Channel implements Owner {
     | Expectation
     | Producer;
 
-  private fallback?: Action;
+  readonly fallback?: Action;
 
   readonly isVoid = () => this.getValue() === undefined;
 
   constructor(source: Abstract.Field, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     switch (source.content.kind) {
       case "atom": {
@@ -156,10 +163,13 @@ class Field extends Channel implements Owner {
 }
 
 class Atom extends Publisher<HTMLElement> implements Owner {
-  private readonly props = new StaticProps({});
+  readonly source: Abstract.Atom;
+  readonly props = new StaticProps({});
 
   constructor(source: Abstract.Atom, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     const element = document.createElement(source.tagName);
 
@@ -238,11 +248,14 @@ class Atom extends Publisher<HTMLElement> implements Owner {
 }
 
 class ViewInstance extends Channel<HTMLElement> implements Owner {
-  private readonly props: StaticProps;
-  private readonly stage: Array<Atom | ViewInstance> = [];
+  readonly source: Abstract.ViewInstance;
+  readonly props: StaticProps;
+  readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
@@ -315,11 +328,14 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
 }
 
 class ModelInstance extends Channel implements Owner {
-  private readonly props: Promise<StaticProps>;
-  private readonly serialization: Record<string, unknown> = {};
+  readonly source: Abstract.ModelInstance;
+  readonly props: Promise<StaticProps>;
+  readonly serialization: Record<string, unknown> = {};
 
   constructor(source: Abstract.ModelInstance, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     const props = new StaticProps({}, closure);
 
@@ -403,10 +419,13 @@ class ModelInstance extends Channel implements Owner {
 
 // TODO Update props if value changes: for example, if an Expectation rejects but then resolves with updated args.
 class RawValue extends Publisher implements Owner {
-  private readonly props: StaticProps;
+  readonly source: Abstract.RawValue;
+  readonly props: StaticProps;
 
   constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     const set = (arg: Field) => {
       const nextValue = arg?.getValue();
@@ -502,10 +521,13 @@ class RawValue extends Publisher implements Owner {
 }
 
 class Reference extends Channel implements Owner {
-  private readonly field: Field | Promise<Field>;
+  readonly source: Abstract.Reference;
+  readonly field: Field | Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     const getField = (scope: Props) => {
       const field = scope.getMember(source.fieldName);
@@ -539,12 +561,15 @@ class Reference extends Channel implements Owner {
 }
 
 class Implication extends Channel implements Owner {
-  private readonly condition: Field;
-  private readonly consequence: Field;
-  private readonly alternative?: Field;
+  readonly source: Abstract.Implication;
+  readonly condition: Field;
+  readonly consequence: Field;
+  readonly alternative?: Field;
 
   constructor(source: Abstract.Implication, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     this.condition = new Field(source.condition, closure, context);
     this.condition.connectPassively(this);
@@ -578,12 +603,15 @@ class Implication extends Channel implements Owner {
 }
 
 class Expression extends Channel implements Owner {
-  private readonly proxy: Field | Promise<Field>;
-  private readonly scope?: Field;
-  private readonly args: Array<Field>;
+  readonly source: Abstract.Expression;
+  readonly proxy: Field | Promise<Field>;
+  readonly scope?: Field;
+  readonly args: Array<Field>;
 
   constructor(source: Abstract.Expression, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     this.scope = source.scope && new Field(source.scope, closure, context);
 
@@ -667,11 +695,15 @@ class Expression extends Channel implements Owner {
 }
 
 class Expectation extends Channel implements Owner {
-  private proxy: Promise<Field>;
-  private readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+  readonly source: Abstract.Expectation;
+  readonly proxy: Promise<Field>;
+  readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+  readonly means: Expression;
 
   constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
+
+    this.source = source;
 
     let proxy: Field | undefined;
     let resolveProxy: (value: Field | Promise<Field>) => void;
@@ -680,9 +712,9 @@ class Expectation extends Channel implements Owner {
       resolveProxy = resolve;
     });
 
-    const means = new Expression(source.means, closure, context);
+    this.means = new Expression(source.means, closure, context);
 
-    means.connect((meansValue) => {
+    this.means.connect((meansValue) => {
       const attendant = {
         id: crypto.randomUUID(),
         promise: Promise.resolve(meansValue)
@@ -736,8 +768,12 @@ class Expectation extends Channel implements Owner {
 
 // TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
 class Producer extends Channel implements Owner {
+  readonly source: Abstract.Producer;
+
   constructor(source: Abstract.Producer, closure: Props) {
     super();
+
+    this.source = source;
 
     // TODO
     throw new Error("Not yet implemented");
@@ -754,8 +790,8 @@ class Producer extends Channel implements Owner {
  */
 
 class Action implements Subscriber<Array<Field>> {
-  private readonly source: Abstract.Action;
-  private readonly closure: Props;
+  readonly source: Abstract.Action;
+  readonly closure: Props;
 
   constructor(source: Abstract.Action, closure: Props) {
     this.source = source;
@@ -777,8 +813,8 @@ class Action implements Subscriber<Array<Field>> {
 }
 
 class Procedure implements Subscriber<void> {
-  private readonly source: Abstract.Procedure;
-  private readonly closure: Props;
+  readonly source: Abstract.Procedure;
+  readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
     this.source = source;
@@ -820,8 +856,8 @@ class Procedure implements Subscriber<void> {
 }
 
 class Call implements Subscriber<void> {
-  private readonly source: Abstract.Call;
-  private readonly closure: Props;
+  readonly source: Abstract.Call;
+  readonly closure: Props;
 
   constructor(source: Abstract.Call, closure: Props) {
     this.source = source;
@@ -862,8 +898,8 @@ class Call implements Subscriber<void> {
 }
 
 class Decision implements Subscriber<void> {
-  private readonly source: Abstract.Decision;
-  private readonly closure: Props;
+  readonly source: Abstract.Decision;
+  readonly closure: Props;
 
   constructor(source: Abstract.Decision, closure: Props) {
     this.source = source;
@@ -887,8 +923,8 @@ class Decision implements Subscriber<void> {
 }
 
 class Invocation implements Subscriber<void> {
-  private readonly source: Abstract.Invocation;
-  private readonly closure: Props;
+  readonly source: Abstract.Invocation;
+  readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
     this.source = source;
@@ -931,7 +967,7 @@ type Property =
   | ((...args: Array<Field>) => unknown); // TODO Allow any type of args here, to integrate JS functions with ModelInstances?
 
 class RawObjectProps implements Props {
-  private readonly value: any;
+  readonly value: any;
 
   constructor(value: object) {
     this.value = value;
@@ -977,8 +1013,8 @@ class RawObjectProps implements Props {
 }
 
 class StaticProps implements Props {
-  private readonly properties: Record<string, Property>;
-  private readonly closure?: Props;
+  readonly properties: Record<string, Property>;
+  readonly closure?: Props;
 
   constructor(properties: StaticProps | Record<string, Property>, closure?: Props) {
     this.properties = properties instanceof StaticProps ? properties.properties : properties;
