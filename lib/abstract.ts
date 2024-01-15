@@ -158,7 +158,7 @@ export namespace Abstract {
   // from { STEPS }
   export type Producer = {
     kind: "producer";
-    steps: Array<Field | Procedure | Call | Decision | Resolution>;
+    steps: Array<Field | Procedure | Call | Decision | Invocation>;
   };
 
   /**
@@ -179,7 +179,7 @@ export namespace Abstract {
   // do { STEPS } or FALLBACK
   export type Procedure = {
     kind: "procedure";
-    steps: Array<Procedure | Call | Decision | Resolution>;
+    steps: Array<Procedure | Call | Decision | Invocation>;
     fallback?: Action;
   };
 
@@ -205,13 +205,14 @@ export namespace Abstract {
     alternative?: Procedure;
   };
 
-  // await QUESTION
-  // await QUESTION
-  // let RESOLVER-PARAM = QUESTION \n RESOLVER-HANDLER
-  export type Resolution = {
-    kind: "resolution";
-    question: Field;
-    resolver?: Action;
+  // await ARG0
+  // await ARG0 \n await ARG1 \n [ETC...]
+  // let TARGET-PARAM0 = ARG0 \n TARGET-HANDLER
+  // let TARGET-PARAM0 = ARG0 \n let TARGET-PARAM1 = ARG1 \n [ETC...] \n TARGET-HANDLER
+  export type Invocation = {
+    kind: "invocation";
+    args: Array<Field>;
+    target?: Action;
   };
 
   /**

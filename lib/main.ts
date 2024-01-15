@@ -365,7 +365,11 @@ class ModelInstance extends Channel implements Owner {
       });
     }
 
-    const connectProps = () => {
+    this.props = Promise.all(
+      props
+        .getOwnProperties()
+        .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getProps() : Promise.resolve())),
+    ).then(() => {
       props.getOwnProperties().forEach(([key, ownProp]) => {
         if (Abstract.isComponent(ownProp) && ownProp.kind === "method") {
           // TODO Serialize abstract methods
@@ -387,17 +391,7 @@ class ModelInstance extends Channel implements Owner {
       this.publish({ ...this.serialization });
 
       return props;
-    };
-
-    const expectedProps = Object.values(props).filter(
-      (prop) => prop instanceof Field && prop.getContent() instanceof Expectation,
-    );
-
-    if (expectedProps.length > 0) {
-      this.props = Promise.all(expectedProps.map((prop) => prop.getProps())).then(connectProps);
-    } else {
-      this.props = connectProps();
-    }
+    });
   }
 
   getProps() {
@@ -544,7 +538,7 @@ class Reference extends Channel implements Owner {
 class Implication extends Channel implements Owner {
   private readonly condition: Field;
   private readonly consequence: Field;
-  private readonly alternative?: Field | Action;
+  private readonly alternative?: Field;
 
   constructor(source: Abstract.Implication, closure: Props) {
     super();
@@ -570,7 +564,7 @@ class Implication extends Channel implements Owner {
       }
     });
 
-    if (Abstract.isComponent(source.alternative) && source.alternative.kind === "field") {
+    if (source.alternative) {
       this.alternative = new Field(source.alternative, closure);
       this.alternative.connect((impliedValue) => {
         const isConditionMet = this.condition.getValue();
@@ -781,7 +775,6 @@ class Producer extends Channel implements Owner {
  * Actions:
  */
 
-// TODO Disconnect all fields within the action, after it has run.
 class Action implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Action;
   private readonly closure: Props;
@@ -801,7 +794,7 @@ class Action implements Subscriber<Array<Field>> {
     );
 
     const handler = new Procedure(this.source.handler, closureWithParams);
-    return handler.handleEvent();
+    handler.handleEvent();
   }
 }
 
@@ -819,31 +812,29 @@ class Procedure implements Subscriber<void> {
 
     // TODO Abort the remaining steps if one throws an error.
     const run = async (step?: (typeof steps)[number]) => {
-      if (!step) {
-        return;
+      if (step) {
+        let executor: Subscriber<void>;
+
+        switch (step.kind) {
+          case "procedure":
+            executor = new Procedure(step, this.closure);
+            break;
+          case "call":
+            executor = new Call(step, this.closure);
+            break;
+          case "decision":
+            executor = new Decision(step, this.closure);
+            break;
+          case "invocation":
+            executor = new Invocation(step, this.closure);
+            break;
+          default:
+            throw new Error(`Cannot run procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
+        }
+
+        await executor.handleEvent();
+        run(steps.shift());
       }
-
-      let executor: Subscriber<void>;
-
-      switch (step.kind) {
-        case "procedure":
-          executor = new Procedure(step, this.closure);
-          break;
-        case "call":
-          executor = new Call(step, this.closure);
-          break;
-        case "decision":
-          executor = new Decision(step, this.closure);
-          break;
-        case "resolution":
-          executor = new Resolution(step, this.closure);
-          break;
-        default:
-          throw new Error(`Cannot run procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
-      }
-
-      await executor.handleEvent();
-      run(steps.shift());
     };
 
     run(steps.shift());
@@ -905,47 +896,37 @@ class Decision implements Subscriber<void> {
     await Promise.resolve(condition.getProps());
 
     const isConditionMet = condition.getValue();
+
     if (isConditionMet) {
       const consequence = new Procedure(this.source.consequence, this.closure);
-      return consequence.handleEvent();
-    }
-
-    if (this.source.alternative) {
+      consequence.handleEvent();
+    } else if (this.source.alternative) {
       const alternative = new Procedure(this.source.alternative, this.closure);
-      return alternative.handleEvent();
+      alternative.handleEvent();
     }
   }
 }
 
-class Resolution implements Subscriber<void> {
-  private readonly source: Abstract.Resolution;
+class Invocation implements Subscriber<void> {
+  private readonly source: Abstract.Invocation;
   private readonly closure: Props;
 
-  constructor(source: Abstract.Resolution, closure: Props) {
+  constructor(source: Abstract.Invocation, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
 
   async handleEvent() {
-    const question = new Field(this.source.question, this.closure);
-    await Promise.resolve(question.getProps());
+    const invocationArgs = this.source.args.map((sourceArg) => {
+      const arg = new Field(sourceArg, this.closure);
+      return arg;
+    });
 
-    if (this.source.resolver) {
-      const args = [
-        new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value: question.getValue(),
-            },
-          },
-          new StaticProps({}),
-        ),
-      ];
+    await Promise.all(invocationArgs.map((arg) => arg.getProps()));
 
-      const resolver = new Action(this.source.resolver, this.closure);
-      return resolver.handleEvent(args);
+    if (this.source.target) {
+      const target = new Action(this.source.target, this.closure);
+      target.handleEvent(invocationArgs);
     }
   }
 }
