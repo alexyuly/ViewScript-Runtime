@@ -697,7 +697,7 @@ class Expression extends Channel implements Owner {
 class Expectation extends Channel implements Owner {
   readonly source: Abstract.Expectation;
   readonly proxy: Promise<Field>;
-  readonly queue: Array<{ id: string; promise: Promise<unknown> }> = [];
+  readonly queue: Array<Promise<unknown>> = [];
   readonly means: Expression;
 
   constructor(source: Abstract.Expectation, closure: Props, context: Context) {
@@ -713,17 +713,15 @@ class Expectation extends Channel implements Owner {
     });
 
     this.means = new Expression(source.means, closure, context);
-
     this.means.connect((meansValue) => {
-      const attendant = {
-        id: crypto.randomUUID(),
-        promise: Promise.resolve(meansValue)
-          .then((value) => {
-            const index = this.queue.indexOf(attendant);
+      const attendant = Promise.resolve(meansValue)
+        .then((value) => {
+          // SUCCESS
+          const index = this.queue.indexOf(attendant);
 
-            if (index !== -1) {
-              this.queue.splice(0, index + 1);
-            }
+          if (index !== -1) {
+            // Remove all attendants up to and including this one:
+            this.queue.splice(0, index + 1);
 
             if (proxy) {
               proxy.handleEvent(value);
@@ -743,17 +741,17 @@ class Expectation extends Channel implements Owner {
               proxy.connect(this);
               resolveProxy(proxy);
             }
-          })
-          .catch((error) => {
-            const index = this.queue.indexOf(attendant);
+          }
+        })
+        .catch((error) => {
+          // REJECTION
+          const index = this.queue.indexOf(attendant);
 
-            if (index !== -1) {
-              this.queue.splice(index, 1);
-            }
-
+          if (index !== -1) {
+            this.queue.splice(index, 1);
             this.handleException(error);
-          }),
-      };
+          }
+        });
 
       this.queue.push(attendant);
     });
