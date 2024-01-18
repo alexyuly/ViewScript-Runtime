@@ -54,7 +54,7 @@ export namespace Abstract {
    */
 
   // CONTENT
-  // maybe CONTENT or FALLBACK
+  // CONTENT otherwise FALLBACK
   export type Field = {
     kind: "field";
     content:
@@ -66,7 +66,7 @@ export namespace Abstract {
       | Implication
       | Expression
       | Expectation
-      | Producer;
+      | Emitter;
     fallback?: Action;
   };
 
@@ -156,8 +156,8 @@ export namespace Abstract {
   };
 
   // from { STEPS }
-  export type Producer = {
-    kind: "producer";
+  export type Emitter = {
+    kind: "emitter";
     steps: Array<Field | Procedure | Call | Decision | Invocation>;
   };
 
@@ -176,7 +176,7 @@ export namespace Abstract {
   };
 
   // do { STEPS }
-  // do { STEPS } or FALLBACK
+  // do { STEPS } otherwise FALLBACK
   export type Procedure = {
     kind: "procedure";
     steps: Array<Procedure | Call | Decision | Invocation>;

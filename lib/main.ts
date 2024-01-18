@@ -73,7 +73,7 @@ class Field extends Channel implements Owner {
     | Implication
     | Expression
     | Expectation
-    | Producer;
+    | Emitter;
 
   readonly isVoid = () => this.getValue() === undefined;
 
@@ -116,8 +116,8 @@ class Field extends Channel implements Owner {
         this.content = new Expectation(source.content, closure, context);
         break;
       }
-      case "producer": {
-        this.content = new Producer(source.content, closure);
+      case "emitter": {
+        this.content = new Emitter(source.content, closure);
         break;
       }
       default:
@@ -788,12 +788,12 @@ class Expectation extends Channel implements Owner {
   }
 }
 
-class Producer extends Channel implements Owner, Subscriber<void> {
-  readonly source: Abstract.Producer;
+class Emitter extends Channel implements Owner, Subscriber<void> {
+  readonly source: Abstract.Emitter;
   readonly closure: Props;
   readonly proxy: Field;
 
-  constructor(source: Abstract.Producer, closure: Props) {
+  constructor(source: Abstract.Emitter, closure: Props) {
     super();
 
     this.source = source;
@@ -1108,5 +1108,5 @@ class StaticProps implements Props {
 
 type Context = {
   isTransient: boolean;
-  listener?: Producer;
+  listener?: Emitter;
 };
