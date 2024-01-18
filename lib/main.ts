@@ -62,6 +62,7 @@ export class App {
 
 class Field extends Channel implements Owner {
   readonly source: Abstract.Field;
+  readonly closure: Props;
 
   readonly content:
     | Atom
@@ -74,14 +75,13 @@ class Field extends Channel implements Owner {
     | Expectation
     | Producer;
 
-  readonly fallback?: Action;
-
   readonly isVoid = () => this.getValue() === undefined;
 
   constructor(source: Abstract.Field, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
 
     switch (source.content.kind) {
       case "atom": {
@@ -126,7 +126,9 @@ class Field extends Channel implements Owner {
 
     this.content.connect(this);
 
-    this.fallback = source.fallback && new Action(source.fallback, closure);
+    if (context.listener) {
+      this.connect(context.listener);
+    }
   }
 
   getContent() {
@@ -142,7 +144,8 @@ class Field extends Channel implements Owner {
   }
 
   handleException(error: unknown): void {
-    if (this.fallback) {
+    if (this.source.fallback) {
+      const fallback = this.source.fallback && new Action(this.source.fallback, this.closure);
       const errorArg = new Field(
         {
           kind: "field",
@@ -155,7 +158,7 @@ class Field extends Channel implements Owner {
         { isTransient: true },
       );
 
-      this.fallback.handleEvent([errorArg]);
+      fallback.handleEvent([errorArg]);
     } else {
       super.handleException(error);
     }
@@ -417,22 +420,34 @@ class ModelInstance extends Channel implements Owner {
   }
 }
 
-// TODO Update props if value changes: for example, if an Expectation rejects but then resolves with updated args.
-class RawValue extends Publisher implements Owner {
+class RawValue extends Channel implements Owner {
   readonly source: Abstract.RawValue;
-  readonly props: StaticProps;
+  readonly closure: Props;
+  readonly context: Context;
+
+  private props?: StaticProps;
 
   constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
+    this.handleEvent(this.source.value);
+  }
+
+  getProps(): Props {
+    return this.props ?? new StaticProps({});
+  }
+
+  handleEvent(nextValue: unknown): void {
     const set = (arg: Field) => {
       const nextValue = arg?.getValue();
-      this.publish(nextValue);
+      this.handleEvent(nextValue);
     };
 
-    if (source.value instanceof Array) {
+    if (nextValue instanceof Array) {
       this.props = new StaticProps({
         map: (arg) => {
           const argValue = arg.getValue();
@@ -441,46 +456,48 @@ class RawValue extends Publisher implements Owner {
           }
 
           const method = argValue as Abstract.Method;
-          const value = this.getValue();
+          const currentValue = this.getValue();
 
-          const result: Array<Field> = (value instanceof Array ? value : [value]).map((innerArg) => {
-            const closureWithParams = new StaticProps(
-              {
-                [method.params[0]]: innerArg,
-              },
-              closure,
-            );
+          const result: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map(
+            (innerArg) => {
+              const closureWithParams = new StaticProps(
+                {
+                  [method.params[0]]: innerArg,
+                },
+                this.closure,
+              );
 
-            const innerField = new Field(method.result, closureWithParams, context);
-            return innerField;
-          });
+              const innerField = new Field(method.result, closureWithParams, this.context);
+              return innerField;
+            },
+          );
 
           return result;
         },
         push: (arg) => {
           const currentValue = this.getValue();
           const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
-          this.publish(nextValue);
+          this.handleEvent(nextValue);
         },
         set,
       });
 
-      const hydratedArray: Array<Field> = source.value.map((value) => {
+      const hydratedArray: Array<Field> = nextValue.map((arrayElement) => {
         let field: Field;
 
-        if (Abstract.isComponent(value) && value.kind === "field") {
-          field = new Field(value as Abstract.Field, closure, context);
+        if (Abstract.isComponent(arrayElement) && arrayElement.kind === "field") {
+          field = new Field(arrayElement as Abstract.Field, this.closure, this.context);
         } else {
           field = new Field(
             {
               kind: "field",
               content: {
                 kind: "rawValue",
-                value,
+                value: arrayElement,
               },
             },
             new StaticProps({}),
-            context,
+            this.context,
           );
         }
 
@@ -489,21 +506,21 @@ class RawValue extends Publisher implements Owner {
 
       this.publish(hydratedArray);
     } else {
-      if (Abstract.isRawObject(source.value)) {
-        this.props = new StaticProps({ set }, new RawObjectProps(source.value));
+      if (Abstract.isRawObject(nextValue)) {
+        this.props = new StaticProps({ set }, new RawObjectProps(nextValue));
       } else {
-        this.props = new StaticProps({ set }, closure);
+        this.props = new StaticProps({ set }, this.closure);
 
-        if (typeof source.value === "boolean") {
+        if (typeof nextValue === "boolean") {
           this.props.addMember("not", () => {
             const result = !this.getValue();
             return result;
           });
           this.props.addMember("toggle", () => {
             const nextValue = !this.getValue();
-            this.publish(nextValue);
+            this.handleEvent(nextValue);
           });
-        } else if (typeof source.value === "string") {
+        } else if (typeof nextValue === "string") {
           this.props.addMember("plus", (field) => {
             const result = `${this.getValue()}${field.getValue()}`;
             return result;
@@ -511,18 +528,15 @@ class RawValue extends Publisher implements Owner {
         }
       }
 
-      this.publish(source.value);
+      this.publish(nextValue);
     }
-  }
-
-  getProps(): Props {
-    return this.props;
   }
 }
 
 class Reference extends Channel implements Owner {
   readonly source: Abstract.Reference;
-  readonly field: Field | Promise<Field>;
+
+  private field?: Field | Promise<Field>;
 
   constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
@@ -540,12 +554,23 @@ class Reference extends Channel implements Owner {
       return field;
     };
 
-    const scope = source.scope ? new Field(source.scope, closure, context).getProps() : closure;
+    if (source.scope) {
+      const owner = new Field(source.scope, closure, context);
 
-    if (scope instanceof Promise) {
-      this.field = scope.then(getField);
+      owner.connect(() => {
+        // TODO
+        // this.field.disconnect(this);
+
+        const scope = owner.getProps();
+
+        if (scope instanceof Promise) {
+          this.field = scope.then(getField);
+        } else {
+          this.field = getField(scope);
+        }
+      });
     } else {
-      this.field = getField(scope);
+      this.field = getField(closure);
     }
   }
 
@@ -556,7 +581,11 @@ class Reference extends Channel implements Owner {
       });
     }
 
-    return this.field.getProps();
+    if (this.field instanceof Field) {
+      return this.field.getProps();
+    }
+
+    return new StaticProps({});
   }
 }
 
@@ -604,7 +633,7 @@ class Implication extends Channel implements Owner {
 
 class Expression extends Channel implements Owner {
   readonly source: Abstract.Expression;
-  readonly proxy: Field | Promise<Field>;
+  readonly proxy: Promise<Field>;
   readonly scope?: Field;
   readonly args: Array<Field>;
 
@@ -620,7 +649,7 @@ class Expression extends Channel implements Owner {
       return arg;
     });
 
-    const getResult = (method: Property): Field => {
+    const getResult = (method?: Property): Field => {
       let result: Field;
 
       if (Abstract.isComponent(method) && method.kind === "method") {
@@ -633,9 +662,9 @@ class Expression extends Channel implements Owner {
         );
 
         result = new Field(method.result, closureWithParams, { isTransient: true });
-      } else if (typeof method === "function") {
+      } else if (typeof method === "function" || method === undefined) {
         console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, this.args);
-        const value = method(...this.args);
+        const value = method?.(...this.args);
         console.log(`...returned:`, value);
         result = new Field(
           {
@@ -652,7 +681,7 @@ class Expression extends Channel implements Owner {
         if (!context.isTransient) {
           const updateResult = () => {
             console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, this.args);
-            const nextValue = method(...this.args);
+            const nextValue = method?.(...this.args);
             console.log(`...returned:`, nextValue);
             result.handleEvent(nextValue);
           };
@@ -664,7 +693,9 @@ class Expression extends Channel implements Owner {
           });
         }
       } else {
-        throw new Error("Cannot express something which is not an abstract method or a function.");
+        console.error(method);
+        console.log(source);
+        throw new Error("Cannot express something which is not an abstract method, a function, or undefined.");
       }
 
       result.connect(this);
@@ -683,14 +714,10 @@ class Expression extends Channel implements Owner {
     });
   }
 
-  getProps() {
-    if (this.proxy instanceof Promise) {
-      return this.proxy.then((field) => {
-        return field.getProps();
-      });
-    }
-
-    return this.proxy.getProps();
+  async getProps() {
+    return this.proxy.then((field) => {
+      return field.getProps();
+    });
   }
 }
 
@@ -716,11 +743,9 @@ class Expectation extends Channel implements Owner {
     this.means.connect((meansValue) => {
       const attendant = Promise.resolve(meansValue)
         .then((value) => {
-          // SUCCESS
           const index = this.queue.indexOf(attendant);
 
           if (index !== -1) {
-            // Remove all attendants up to and including this one:
             this.queue.splice(0, index + 1);
 
             if (proxy) {
@@ -744,7 +769,6 @@ class Expectation extends Channel implements Owner {
           }
         })
         .catch((error) => {
-          // REJECTION
           const index = this.queue.indexOf(attendant);
 
           if (index !== -1) {
@@ -764,22 +788,73 @@ class Expectation extends Channel implements Owner {
   }
 }
 
-// TODO Each time any field within the stream changes, run it now or as soon as the current run completes.
-class Producer extends Channel implements Owner {
+class Producer extends Channel implements Owner, Subscriber<void> {
   readonly source: Abstract.Producer;
+  readonly closure: Props;
+  readonly proxy: Field;
 
   constructor(source: Abstract.Producer, closure: Props) {
     super();
 
     this.source = source;
+    this.closure = closure;
 
-    // TODO
-    throw new Error("Not yet implemented");
+    this.proxy = new Field(
+      {
+        kind: "field",
+        content: {
+          kind: "rawValue",
+          value: undefined,
+        },
+      },
+      this.closure,
+      { isTransient: true, listener: this },
+    );
+    this.proxy.connect(this);
   }
 
-  getProps(): Promise<Props> {
-    // TODO
-    throw new Error("Not yet implemented");
+  getProps() {
+    return this.proxy.getProps();
+  }
+
+  // TODO If called while already running, then don't run again until the first run finishes.
+  async handleEvent() {
+    const steps = [...this.source.steps];
+
+    // TODO Abort the remaining steps if one throws an error.
+    const run = async (step?: (typeof steps)[number]) => {
+      if (step?.kind === "field") {
+        const output = new Field(step, this.closure, { isTransient: true, listener: this });
+        await output.getProps();
+
+        const nextValue = output.getValue();
+        this.proxy.handleEvent(nextValue);
+      } else if (step) {
+        let executor: Subscriber<void>;
+
+        switch (step.kind) {
+          case "procedure":
+            executor = new Procedure(step, this.closure);
+            break;
+          case "call":
+            executor = new Call(step, this.closure);
+            break;
+          case "decision":
+            executor = new Decision(step, this.closure);
+            break;
+          case "invocation":
+            executor = new Invocation(step, this.closure);
+            break;
+          default:
+            throw new Error(`Cannot run producer step of invalid kind: ${(step as Abstract.Component).kind}`);
+        }
+
+        await executor.handleEvent();
+        run(steps.shift());
+      }
+    };
+
+    run(steps.shift());
   }
 }
 
@@ -841,7 +916,7 @@ class Procedure implements Subscriber<void> {
             executor = new Invocation(step, this.closure);
             break;
           default:
-            throw new Error(`Cannot run procedural step of invalid kind: ${(step as Abstract.Component).kind}`);
+            throw new Error(`Cannot run procedure step of invalid kind: ${(step as Abstract.Component).kind}`);
         }
 
         await executor.handleEvent();
@@ -872,10 +947,9 @@ class Call implements Subscriber<void> {
     if (action instanceof Action) {
       callTarget = action;
     } else if (typeof action === "function") {
-      let source = this.source;
       callTarget = {
-        handleEvent(calledArgs: Array<Field>) {
-          console.log(`Calling JavaScript function \`${source.actionName}\` with args:`, calledArgs);
+        handleEvent: (calledArgs: Array<Field>) => {
+          console.log(`Calling JavaScript function \`${this.source.actionName}\` with args:`, calledArgs);
           const returnValue = action(...calledArgs);
           console.log(`...returned (ignored value):`, returnValue);
         },
@@ -953,7 +1027,7 @@ interface Owner {
 }
 
 interface Props {
-  getMember(key: string): Property;
+  getMember(key: string): Property | undefined;
 }
 
 type Property =
@@ -971,11 +1045,7 @@ class RawObjectProps implements Props {
     this.value = value;
   }
 
-  getMember(key: string): Property {
-    if (!(key in this.value)) {
-      throw new Error(`Prop ${key} not found`);
-    }
-
+  getMember(key: string): Property | undefined {
     const memberValue = this.value[key];
 
     if (typeof memberValue === "function") {
@@ -1023,16 +1093,12 @@ class StaticProps implements Props {
     this.properties[key] = value;
   }
 
-  getMember(key: string): Property {
+  getMember(key: string): Property | undefined {
     if (key in this.properties) {
       return this.properties[key];
     }
 
-    if (this.closure) {
-      return this.closure.getMember(key);
-    }
-
-    throw new Error(`Prop ${key} not found`);
+    return this.closure?.getMember(key);
   }
 
   getOwnProperties(): Array<[string, Property]> {
@@ -1042,4 +1108,5 @@ class StaticProps implements Props {
 
 type Context = {
   isTransient: boolean;
+  listener?: Producer;
 };
