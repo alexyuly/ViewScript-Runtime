@@ -1,14 +1,15 @@
 import { Abstract } from "./abstract";
-import { Subscriber, Publisher, Channel } from "./pubsub";
+import { Subscriber, Publisher } from "./pubsub";
 
 /**
  * Foundation:
  */
 
 export class App {
-  readonly source: Abstract.App;
-  readonly props = new StaticProps({}, new RawObjectProps(window));
-  readonly stage: Array<Atom | ViewInstance> = [];
+  private readonly source: Abstract.App;
+
+  private readonly props = new StaticProps({}, new RawObjectProps(window));
+  private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
     this.source = source;
@@ -60,11 +61,12 @@ export class App {
  * Fields:
  */
 
-class Field extends Channel implements Owner {
-  readonly source: Abstract.Field;
-  readonly closure: Props;
+class Field extends Publisher implements DataSource {
+  private readonly source: Abstract.Field;
+  private readonly closure: Props;
+  private readonly context: Context;
 
-  readonly content:
+  private readonly content:
     | Atom
     | ViewInstance
     | ModelInstance
@@ -75,13 +77,12 @@ class Field extends Channel implements Owner {
     | Expectation
     | Emitter;
 
-  readonly isVoid = () => this.getValue() === undefined;
-
   constructor(source: Abstract.Field, closure: Props, context: Context) {
     super();
 
     this.source = source;
     this.closure = closure;
+    this.context = context;
 
     switch (source.content.kind) {
       case "atom": {
@@ -131,15 +132,7 @@ class Field extends Channel implements Owner {
     }
   }
 
-  getContent() {
-    return this.content;
-  }
-
-  getProps(): Props | Promise<Props> {
-    if (this.content instanceof Atom || this.content instanceof ViewInstance) {
-      return new StaticProps({});
-    }
-
+  getProps(): Props {
     return this.content.getProps();
   }
 
@@ -163,16 +156,26 @@ class Field extends Channel implements Owner {
       super.handleException(error);
     }
   }
+
+  isVoid(): boolean {
+    const value = this.getValue();
+    return value === void undefined;
+  }
 }
 
-class Atom extends Publisher<HTMLElement> implements Owner {
-  readonly source: Abstract.Atom;
-  readonly props = new StaticProps({});
+class Atom extends Publisher<HTMLElement> implements DataSource {
+  private readonly source: Abstract.Atom;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private readonly props = new StaticProps({});
 
   constructor(source: Abstract.Atom, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
     const element = document.createElement(source.tagName);
 
@@ -242,23 +245,28 @@ class Atom extends Publisher<HTMLElement> implements Owner {
       }
     });
 
-    this.publish(element);
+    this.handleEvent(element);
   }
 
-  getProps() {
+  getProps(): Props {
     return this.props;
   }
 }
 
-class ViewInstance extends Channel<HTMLElement> implements Owner {
-  readonly source: Abstract.ViewInstance;
-  readonly props: StaticProps;
-  readonly stage: Array<Atom | ViewInstance> = [];
+class ViewInstance extends Publisher<HTMLElement> implements DataSource {
+  private readonly source: Abstract.ViewInstance;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private readonly props: StaticProps;
+  private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.ViewInstance, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
     const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
 
@@ -325,22 +333,28 @@ class ViewInstance extends Channel<HTMLElement> implements Owner {
     });
   }
 
-  getProps() {
+  getProps(): Props {
     return this.props;
   }
 }
 
-class ModelInstance extends Channel implements Owner {
-  readonly source: Abstract.ModelInstance;
-  readonly props: Promise<StaticProps>;
-  readonly serialization: Record<string, unknown> = {};
+class ModelInstance extends Publisher implements DataSource {
+  private readonly source: Abstract.ModelInstance;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private readonly props: StaticProps;
+  private readonly serialization: Record<string, unknown> = {};
 
   constructor(source: Abstract.ModelInstance, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
-    const props = new StaticProps({}, closure);
+    this.props = new StaticProps({}, closure);
+    const props = this.props;
 
     Object.entries(source.outerProps).forEach(([key, value]) => {
       switch (value.kind) {
@@ -386,11 +400,13 @@ class ModelInstance extends Channel implements Owner {
       });
     }
 
-    this.props = Promise.all(
-      props
-        .getOwnProperties()
-        .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getProps() : Promise.resolve())),
-    ).then(() => {
+    (async () => {
+      await Promise.all(
+        props
+          .getOwnProperties()
+          .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getDelivery() : Promise.resolve())),
+      );
+
       props.getOwnProperties().forEach(([key, ownProp]) => {
         if (Abstract.isComponent(ownProp) && ownProp.kind === "method") {
           // TODO Serialize abstract methods
@@ -398,7 +414,7 @@ class ModelInstance extends Channel implements Owner {
           this.serialization[key] = ownProp.getValue();
           ownProp.connectPassively((ownPropValue) => {
             this.serialization[key] = ownPropValue;
-            this.publish({ ...this.serialization });
+            this.handleEvent({ ...this.serialization });
           });
         } else if (ownProp instanceof Action) {
           // TODO Serialize actions
@@ -409,23 +425,19 @@ class ModelInstance extends Channel implements Owner {
         }
       });
 
-      this.publish({ ...this.serialization });
-
-      return props;
-    });
+      this.handleEvent({ ...this.serialization });
+    })();
   }
 
-  getProps(): Promise<StaticProps> {
+  getProps(): Props {
     return this.props;
   }
 }
 
-class RawValue extends Channel implements Owner {
+class RawValue extends Publisher implements DataSource {
   readonly source: Abstract.RawValue;
   readonly closure: Props;
   readonly context: Context;
-
-  private props?: StaticProps;
 
   constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
@@ -434,21 +446,45 @@ class RawValue extends Channel implements Owner {
     this.closure = closure;
     this.context = context;
 
-    this.handleEvent(this.source.value);
+    let value = source.value;
+
+    if (source.value instanceof Array) {
+      value = source.value.map((arrayElement): Field => {
+        let field: Field;
+
+        if (Abstract.isComponent(arrayElement) && arrayElement.kind === "field") {
+          field = new Field(arrayElement as Abstract.Field, this.closure, this.context);
+        } else {
+          field = new Field(
+            {
+              kind: "field",
+              content: {
+                kind: "rawValue",
+                value: arrayElement,
+              },
+            },
+            new StaticProps({}),
+            this.context,
+          );
+        }
+
+        return field;
+      });
+    }
+
+    this.handleEvent(value);
   }
 
   getProps(): Props {
-    return this.props ?? new StaticProps({});
-  }
+    const value = this.getValue();
 
-  handleEvent(nextValue: unknown): void {
     const set = (arg: Field) => {
       const nextValue = arg?.getValue();
       this.handleEvent(nextValue);
     };
 
-    if (nextValue instanceof Array) {
-      this.props = new StaticProps({
+    if (value instanceof Array) {
+      return new StaticProps({
         map: (arg) => {
           const argValue = arg.getValue();
           if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
@@ -481,115 +517,77 @@ class RawValue extends Channel implements Owner {
         },
         set,
       });
-
-      const hydratedArray: Array<Field> = nextValue.map((arrayElement) => {
-        let field: Field;
-
-        if (Abstract.isComponent(arrayElement) && arrayElement.kind === "field") {
-          field = new Field(arrayElement as Abstract.Field, this.closure, this.context);
-        } else {
-          field = new Field(
-            {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: arrayElement,
-              },
-            },
-            new StaticProps({}),
-            this.context,
-          );
-        }
-
-        return field;
-      });
-
-      this.publish(hydratedArray);
-    } else {
-      if (Abstract.isRawObject(nextValue)) {
-        this.props = new StaticProps({ set }, new RawObjectProps(nextValue));
-      } else {
-        this.props = new StaticProps({ set }, this.closure);
-
-        if (typeof nextValue === "boolean") {
-          this.props.addMember("not", () => {
-            const result = !this.getValue();
-            return result;
-          });
-          this.props.addMember("toggle", () => {
-            const nextValue = !this.getValue();
-            this.handleEvent(nextValue);
-          });
-        } else if (typeof nextValue === "string") {
-          this.props.addMember("plus", (field) => {
-            const result = `${this.getValue()}${field.getValue()}`;
-            return result;
-          });
-        }
-      }
-
-      this.publish(nextValue);
     }
+
+    if (Abstract.isRawObject(value)) {
+      return new StaticProps({ set }, new RawObjectProps(value));
+    }
+
+    const props = new StaticProps({ set }, this.closure);
+
+    if (typeof value === "boolean") {
+      props.addMember("not", () => {
+        const result = !this.getValue();
+        return result;
+      });
+      props.addMember("toggle", () => {
+        const nextValue = !this.getValue();
+        this.handleEvent(nextValue);
+      });
+    } else if (typeof value === "string") {
+      props.addMember("plus", (field) => {
+        const result = `${this.getValue()}${field.getValue()}`;
+        return result;
+      });
+    }
+
+    return props;
   }
 }
 
-class Reference extends Channel implements Owner {
+class Reference extends Publisher implements DataSource {
   readonly source: Abstract.Reference;
+  readonly closure: Props;
+  readonly context: Context;
 
-  private field?: Field | Promise<Field>;
+  private binding?: Property;
 
   constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
 
     this.source = source;
-
-    const getField = (scope: Props) => {
-      const field = scope.getMember(source.fieldName);
-
-      if (!(field instanceof Field)) {
-        throw new Error(`Cannot reference something which is not a field: ${source.fieldName}`);
-      }
-
-      field.connect(this);
-      return field;
-    };
+    this.closure = closure;
+    this.context = context;
 
     if (source.scope) {
-      const owner = new Field(source.scope, closure, context);
+      const scope = new Field(source.scope, closure, context);
 
-      owner.connect(() => {
-        // TODO
-        // this.field.disconnect(this);
+      scope.connect(() => {
+        if (this.binding instanceof Field) {
+          this.binding.disconnect(this);
+        }
 
-        const scope = owner.getProps();
+        this.binding = scope.getProps().getMember(source.fieldName);
 
-        if (scope instanceof Promise) {
-          this.field = scope.then(getField);
-        } else {
-          this.field = getField(scope);
+        if (this.binding instanceof Field) {
+          this.binding.connect(this);
         }
       });
     } else {
-      this.field = getField(closure);
+      this.binding = closure.getMember(source.fieldName);
+
+      if (this.binding instanceof Field) {
+        this.binding.connect(this);
+      }
     }
   }
 
-  getProps() {
-    if (this.field instanceof Promise) {
-      return this.field.then((fieldResult) => {
-        return fieldResult.getProps();
-      });
-    }
-
-    if (this.field instanceof Field) {
-      return this.field.getProps();
-    }
-
-    return new StaticProps({});
+  getProps(): Props {
+    return this.binding instanceof Field ? this.binding.getProps() : new StaticProps({});
   }
 }
 
-class Implication extends Channel implements Owner {
+class Implication extends Publisher implements DataSource {
   readonly source: Abstract.Implication;
   readonly condition: Field;
   readonly consequence: Field;
@@ -631,7 +629,7 @@ class Implication extends Channel implements Owner {
   }
 }
 
-class Expression extends Channel implements Owner {
+class Expression extends Publisher implements DataSource {
   readonly source: Abstract.Expression;
   readonly proxy: Promise<Field>;
   readonly scope?: Field;
@@ -704,7 +702,7 @@ class Expression extends Channel implements Owner {
 
     this.proxy = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
       if (this.scope && source.methodName === "isVoid") {
-        return getResult(this.scope.isVoid);
+        return getResult(this.scope.isVoid.bind(this.scope));
       }
 
       const scopeProps = Promise.resolve(this.scope ? this.scope.getProps() : closure);
@@ -721,7 +719,7 @@ class Expression extends Channel implements Owner {
   }
 }
 
-class Expectation extends Channel implements Owner {
+class Expectation extends Publisher implements DataSource {
   readonly source: Abstract.Expectation;
   readonly proxy: Promise<Field>;
   readonly queue: Array<Promise<unknown>> = [];
@@ -788,7 +786,7 @@ class Expectation extends Channel implements Owner {
   }
 }
 
-class Emitter extends Channel implements Owner, Subscriber<void> {
+class Emitter extends Publisher implements DataSource, Subscriber<void> {
   readonly source: Abstract.Emitter;
   readonly closure: Props;
   readonly proxy: Field;
@@ -1022,8 +1020,8 @@ class Invocation implements Subscriber<void> {
  * Utilities:
  */
 
-interface Owner {
-  getProps(): Props | Promise<Props>;
+interface DataSource {
+  getProps(): Props;
 }
 
 interface Props {

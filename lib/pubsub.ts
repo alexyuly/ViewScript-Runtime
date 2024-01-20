@@ -2,31 +2,52 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
-export abstract class Publisher<T = unknown> {
-  protected readonly subscribers: Array<Subscriber<T>> = [];
+export abstract class Publisher<T = unknown> implements Subscriber<T> {
+  private readonly deliverable: Promise<T>;
+  private readonly subscribers: Array<Subscriber<T>> = [];
+
+  private deliveryStatus: "pending" | "fulfilled" | "rejected" = "pending";
+  private error?: unknown;
+  private reject?: (error: unknown) => void;
+  private resolve?: (value: T) => void;
   private value?: T;
 
-  connect(target: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
-    const subscriber = this.connectPassively(target);
+  constructor() {
+    this.deliverable = new Promise<T>((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+
+  connect(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
+    const subscriber = typeof handleEvent === "function" ? { handleEvent } : handleEvent;
+
+    this.subscribers.push(subscriber);
 
     if (this.value !== undefined) {
       subscriber.handleEvent(this.value);
     }
   }
 
-  connectPassively(target: Subscriber<T>["handleEvent"] | Subscriber<T>): Subscriber<T> {
-    const subscriber = typeof target === "function" ? { handleEvent: target } : target;
+  connectPassively(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
+    const subscriber = typeof handleEvent === "function" ? { handleEvent } : handleEvent;
 
     this.subscribers.push(subscriber);
+  }
 
-    return subscriber;
+  getDelivery(): Promise<T> {
+    return this.deliverable;
+  }
+
+  getError(): unknown {
+    return this.error;
   }
 
   getValue(): T | undefined {
     return this.value;
   }
 
-  protected publish(value: T): void {
+  handleEvent(value: T): void {
     if (this.value === value) {
       return;
     }
@@ -36,26 +57,14 @@ export abstract class Publisher<T = unknown> {
     this.subscribers.forEach((subscriber) => {
       subscriber.handleEvent(value);
     });
-  }
-}
 
-// TODO How is this going to work for action error handling?
-export abstract class Channel<T = unknown> extends Publisher<T> implements Subscriber<T> {
-  private error?: unknown;
-
-  getError(): unknown {
-    return this.error;
-  }
-
-  handleEvent(value: T): void {
-    this.publish(value);
+    if (this.deliveryStatus === "pending") {
+      this.deliveryStatus = "fulfilled";
+      this.resolve!(value);
+    }
   }
 
   handleException(error: unknown): void {
-    this.publishError(error);
-  }
-
-  protected publishError(error: unknown): void {
     if (this.error === error) {
       return;
     }
@@ -63,9 +72,14 @@ export abstract class Channel<T = unknown> extends Publisher<T> implements Subsc
     this.error = error;
 
     this.subscribers.forEach((subscriber) => {
-      if (subscriber instanceof Channel) {
+      if (subscriber instanceof Publisher) {
         subscriber.handleException(error);
       }
     });
+
+    if (this.deliveryStatus === "pending") {
+      this.deliveryStatus = "rejected";
+      this.reject!(error);
+    }
   }
 }
