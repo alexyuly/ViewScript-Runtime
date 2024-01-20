@@ -2,6 +2,7 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
+// TODO Split into two classes, one which is dumb and just forwards stuff but has the same interface.
 export abstract class Publisher<T = unknown> implements Subscriber<T> {
   private readonly deliverable: Promise<T>;
   private readonly subscribers: Array<Subscriber<T>> = [];
@@ -19,7 +20,7 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
     });
   }
 
-  connect(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
+  connect(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): () => void {
     const subscriber = typeof handleEvent === "function" ? { handleEvent } : handleEvent;
 
     this.subscribers.push(subscriber);
@@ -27,12 +28,22 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
     if (this.value !== undefined) {
       subscriber.handleEvent(this.value);
     }
+
+    return () => {
+      const index = this.subscribers.indexOf(subscriber);
+      this.subscribers.splice(index, 1);
+    };
   }
 
-  connectPassively(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): void {
+  connectPassively(handleEvent: Subscriber<T>["handleEvent"] | Subscriber<T>): () => void {
     const subscriber = typeof handleEvent === "function" ? { handleEvent } : handleEvent;
 
     this.subscribers.push(subscriber);
+
+    return () => {
+      const index = this.subscribers.indexOf(subscriber);
+      this.subscribers.splice(index, 1);
+    };
   }
 
   getDelivery(): Promise<T> {

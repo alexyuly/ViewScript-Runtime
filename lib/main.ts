@@ -61,7 +61,7 @@ export class App {
  * Fields:
  */
 
-class Field extends Publisher implements DataSource {
+class Field extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Field;
   private readonly closure: Props;
   private readonly context: Context;
@@ -163,7 +163,7 @@ class Field extends Publisher implements DataSource {
   }
 }
 
-class Atom extends Publisher<HTMLElement> implements DataSource {
+class Atom extends Publisher<HTMLElement> implements PropertyOwner {
   private readonly source: Abstract.Atom;
   private readonly closure: Props;
   private readonly context: Context;
@@ -253,7 +253,7 @@ class Atom extends Publisher<HTMLElement> implements DataSource {
   }
 }
 
-class ViewInstance extends Publisher<HTMLElement> implements DataSource {
+class ViewInstance extends Publisher<HTMLElement> implements PropertyOwner {
   private readonly source: Abstract.ViewInstance;
   private readonly closure: Props;
   private readonly context: Context;
@@ -338,7 +338,7 @@ class ViewInstance extends Publisher<HTMLElement> implements DataSource {
   }
 }
 
-class ModelInstance extends Publisher implements DataSource {
+class ModelInstance extends Publisher implements PropertyOwner {
   private readonly source: Abstract.ModelInstance;
   private readonly closure: Props;
   private readonly context: Context;
@@ -434,10 +434,10 @@ class ModelInstance extends Publisher implements DataSource {
   }
 }
 
-class RawValue extends Publisher implements DataSource {
-  readonly source: Abstract.RawValue;
-  readonly closure: Props;
-  readonly context: Context;
+class RawValue extends Publisher implements PropertyOwner {
+  private readonly source: Abstract.RawValue;
+  private readonly closure: Props;
+  private readonly context: Context;
 
   constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
@@ -545,10 +545,10 @@ class RawValue extends Publisher implements DataSource {
   }
 }
 
-class Reference extends Publisher implements DataSource {
-  readonly source: Abstract.Reference;
-  readonly closure: Props;
-  readonly context: Context;
+class Reference extends Publisher implements PropertyOwner {
+  private readonly source: Abstract.Reference;
+  private readonly closure: Props;
+  private readonly context: Context;
 
   private binding?: Property;
 
@@ -559,44 +559,50 @@ class Reference extends Publisher implements DataSource {
     this.closure = closure;
     this.context = context;
 
+    let disconnect: (() => void) | undefined;
+
+    const assignBinding = (scopeProps: Props) => {
+      this.binding = scopeProps.getMember(source.fieldName);
+      if (this.binding instanceof Field) {
+        disconnect = this.binding.connect(this);
+      }
+    };
+
     if (source.scope) {
       const scope = new Field(source.scope, closure, context);
-
       scope.connect(() => {
-        if (this.binding instanceof Field) {
-          this.binding.disconnect(this);
-        }
-
-        this.binding = scope.getProps().getMember(source.fieldName);
-
-        if (this.binding instanceof Field) {
-          this.binding.connect(this);
-        }
+        disconnect?.();
+        assignBinding(scope.getProps());
       });
     } else {
-      this.binding = closure.getMember(source.fieldName);
-
-      if (this.binding instanceof Field) {
-        this.binding.connect(this);
-      }
+      assignBinding(closure);
     }
   }
 
   getProps(): Props {
-    return this.binding instanceof Field ? this.binding.getProps() : new StaticProps({});
+    if (this.binding instanceof Field) {
+      return this.binding.getProps();
+    }
+
+    return new StaticProps({});
   }
 }
 
-class Implication extends Publisher implements DataSource {
-  readonly source: Abstract.Implication;
-  readonly condition: Field;
-  readonly consequence: Field;
-  readonly alternative?: Field;
+class Implication extends Publisher implements PropertyOwner {
+  private readonly source: Abstract.Implication;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private readonly condition: Field;
+  private readonly consequence: Field;
+  private readonly alternative?: Field;
 
   constructor(source: Abstract.Implication, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
     this.condition = new Field(source.condition, closure, context);
     this.condition.connectPassively(this);
@@ -629,97 +635,103 @@ class Implication extends Publisher implements DataSource {
   }
 }
 
-class Expression extends Publisher implements DataSource {
-  readonly source: Abstract.Expression;
-  readonly proxy: Promise<Field>;
-  readonly scope?: Field;
-  readonly args: Array<Field>;
+class Expression extends Publisher implements PropertyOwner {
+  private readonly source: Abstract.Expression;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private result?: Field;
 
   constructor(source: Abstract.Expression, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
-    this.scope = source.scope && new Field(source.scope, closure, context);
+    // TODO Wait to generate result until all args are ready...
 
-    this.args = source.args.map((sourceArg) => {
+    let disconnect: (() => void) | undefined;
+
+    let scope: Field | undefined;
+    let method: Property | undefined;
+
+    if (source.scope) {
+      const localScope = new Field(source.scope, closure, context);
+      scope = localScope;
+      scope.connect(() => {
+        disconnect?.();
+        method =
+          source.methodName === "isVoid"
+            ? localScope.isVoid.bind(scope)
+            : localScope.getProps().getMember(source.methodName);
+      });
+    } else {
+      method = closure.getMember(source.methodName);
+    }
+
+    const args = source.args.map((sourceArg) => {
       const arg = new Field(sourceArg, closure, context);
       return arg;
     });
 
-    const getResult = (method?: Property): Field => {
-      let result: Field;
+    if (Abstract.isComponent(method) && method.kind === "method") {
+      const closureWithParams = new StaticProps(
+        method.params.reduce<Record<string, Field>>((acc, param, index) => {
+          acc[param] = args[index];
+          return acc;
+        }, {}),
+        closure,
+      );
 
-      if (Abstract.isComponent(method) && method.kind === "method") {
-        const closureWithParams = new StaticProps(
-          method.params.reduce<Record<string, Field>>((acc, param, index) => {
-            acc[param] = this.args[index];
-            return acc;
-          }, {}),
-          closure,
-        );
-
-        result = new Field(method.result, closureWithParams, { isTransient: true });
-      } else if (typeof method === "function" || method === undefined) {
-        console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, this.args);
-        const value = method?.(...this.args);
-        console.log(`...returned:`, value);
-        result = new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value,
-            },
+      this.result = new Field(method.result, closureWithParams, { isTransient: true });
+      this.result.connect(this);
+    } else if (typeof method === "function" || method === undefined) {
+      const callableMethod = method;
+      console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, args);
+      const value = callableMethod?.(...args);
+      console.log(`...returned:`, value);
+      const result = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value,
           },
-          new StaticProps({}),
-          { isTransient: true },
-        );
+        },
+        new StaticProps({}),
+        { isTransient: true },
+      );
+      this.result = result;
+      this.result.connect(this);
 
-        if (!context.isTransient) {
-          const updateResult = () => {
-            console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, this.args);
-            const nextValue = method?.(...this.args);
-            console.log(`...returned:`, nextValue);
-            result.handleEvent(nextValue);
-          };
+      if (!context.isTransient) {
+        const updateResult = () => {
+          console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, args);
+          const nextValue = callableMethod?.(...args);
+          console.log(`...returned:`, nextValue);
+          result.handleEvent(nextValue);
+        };
 
-          this.scope?.connectPassively(updateResult);
+        scope?.connectPassively(updateResult);
 
-          this.args.forEach((arg) => {
-            arg.connectPassively(updateResult);
-          });
-        }
-      } else {
-        console.error(method);
-        console.log(source);
-        throw new Error("Cannot express something which is not an abstract method, a function, or undefined.");
+        args.forEach((arg) => {
+          arg.connectPassively(updateResult);
+        });
       }
-
-      result.connect(this);
-      return result;
-    };
-
-    this.proxy = Promise.all(this.args.map((arg) => arg.getProps())).then(() => {
-      if (this.scope && source.methodName === "isVoid") {
-        return getResult(this.scope.isVoid.bind(this.scope));
-      }
-
-      const scopeProps = Promise.resolve(this.scope ? this.scope.getProps() : closure);
-      const proxy = scopeProps.then((props) => getResult(props.getMember(source.methodName)));
-
-      return proxy;
-    });
+    }
   }
 
-  async getProps() {
-    return this.proxy.then((field) => {
-      return field.getProps();
-    });
+  getProps(): Props {
+    if (this.result instanceof Field) {
+      return this.result.getProps();
+    }
+
+    return new StaticProps({});
   }
 }
 
-class Expectation extends Publisher implements DataSource {
+class Expectation extends Publisher implements PropertyOwner {
   readonly source: Abstract.Expectation;
   readonly proxy: Promise<Field>;
   readonly queue: Array<Promise<unknown>> = [];
@@ -786,7 +798,7 @@ class Expectation extends Publisher implements DataSource {
   }
 }
 
-class Emitter extends Publisher implements DataSource, Subscriber<void> {
+class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
   readonly source: Abstract.Emitter;
   readonly closure: Props;
   readonly proxy: Field;
@@ -1020,7 +1032,7 @@ class Invocation implements Subscriber<void> {
  * Utilities:
  */
 
-interface DataSource {
+interface PropertyOwner {
   getProps(): Props;
 }
 
