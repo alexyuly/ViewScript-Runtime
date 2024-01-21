@@ -550,7 +550,7 @@ class Reference extends Publisher implements PropertyOwner {
   private readonly closure: Props;
   private readonly context: Context;
 
-  private binding?: Property;
+  private link?: Property;
 
   constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
@@ -561,27 +561,32 @@ class Reference extends Publisher implements PropertyOwner {
 
     let disconnect: (() => void) | undefined;
 
-    const assignBinding = (scopeProps: Props) => {
-      this.binding = scopeProps.getMember(source.fieldName);
-      if (this.binding instanceof Field) {
-        disconnect = this.binding.connect(this);
+    const reconnect = (props: Props) => {
+      disconnect?.();
+
+      this.link = props.getMember(source.fieldName);
+
+      if (this.link instanceof Field) {
+        disconnect = this.link.connect(this);
+      } else {
+        console.warn(`Field name not found for reference:`, source);
       }
     };
 
     if (source.scope) {
       const scope = new Field(source.scope, closure, context);
+
       scope.connect(() => {
-        disconnect?.();
-        assignBinding(scope.getProps());
+        reconnect(scope.getProps());
       });
     } else {
-      assignBinding(closure);
+      reconnect(closure);
     }
   }
 
   getProps(): Props {
-    if (this.binding instanceof Field) {
-      return this.binding.getProps();
+    if (this.link instanceof Field) {
+      return this.link.getProps();
     }
 
     return new StaticProps({});
@@ -649,76 +654,84 @@ class Expression extends Publisher implements PropertyOwner {
     this.closure = closure;
     this.context = context;
 
-    // TODO Wait to generate result until all args are ready...
-
-    let disconnect: (() => void) | undefined;
-
-    let scope: Field | undefined;
-    let method: Property | undefined;
-
-    if (source.scope) {
-      const localScope = new Field(source.scope, closure, context);
-      scope = localScope;
-      scope.connect(() => {
-        disconnect?.();
-        method =
-          source.methodName === "isVoid"
-            ? localScope.isVoid.bind(scope)
-            : localScope.getProps().getMember(source.methodName);
-      });
-    } else {
-      method = closure.getMember(source.methodName);
-    }
-
     const args = source.args.map((sourceArg) => {
       const arg = new Field(sourceArg, closure, context);
       return arg;
     });
 
-    if (Abstract.isComponent(method) && method.kind === "method") {
-      const closureWithParams = new StaticProps(
-        method.params.reduce<Record<string, Field>>((acc, param, index) => {
-          acc[param] = args[index];
-          return acc;
-        }, {}),
-        closure,
-      );
+    const disconnect: Array<() => void> = [];
 
-      this.result = new Field(method.result, closureWithParams, { isTransient: true });
-      this.result.connect(this);
-    } else if (typeof method === "function" || method === undefined) {
-      const callableMethod = method;
-      console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, args);
-      const value = callableMethod?.(...args);
-      console.log(`...returned:`, value);
-      const result = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value,
+    const reconnect = async (method?: Property) => {
+      disconnect.forEach((x) => x());
+
+      await Promise.all(args.map((arg) => arg.getDelivery()));
+
+      if (Abstract.isComponent(method) && method.kind === "method") {
+        const closureWithParams = new StaticProps(
+          method.params.reduce<Record<string, Field>>((acc, param, index) => {
+            acc[param] = args[index];
+            return acc;
+          }, {}),
+          closure,
+        );
+
+        this.result = new Field(method.result, closureWithParams, { isTransient: true });
+        disconnect.push(this.result.connect(this));
+      } else if (typeof method === "function") {
+        console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, args);
+        const value = method(...args);
+        console.log(`...returned:`, value);
+        const result = (this.result = new Field(
+          {
+            kind: "field",
+            content: {
+              kind: "rawValue",
+              value,
+            },
           },
-        },
-        new StaticProps({}),
-        { isTransient: true },
-      );
-      this.result = result;
-      this.result.connect(this);
+          new StaticProps({}),
+          { isTransient: true },
+        ));
+        disconnect.push(this.result.connect(this));
 
-      if (!context.isTransient) {
-        const updateResult = () => {
-          console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, args);
-          const nextValue = callableMethod?.(...args);
-          console.log(`...returned:`, nextValue);
-          result.handleEvent(nextValue);
-        };
+        if (!context.isTransient) {
+          const updateResult = () => {
+            console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, args);
+            const nextValue = method(...args);
+            console.log(`...returned:`, nextValue);
+            result.handleEvent(nextValue);
+          };
 
-        scope?.connectPassively(updateResult);
-
-        args.forEach((arg) => {
-          arg.connectPassively(updateResult);
-        });
+          args.forEach((arg) => {
+            disconnect.push(arg.connectPassively(updateResult));
+          });
+        }
+      } else {
+        console.warn(`Method name not found for expression:`, source);
       }
+    };
+
+    if (source.scope) {
+      const scope = new Field(source.scope, closure, context);
+
+      if (source.methodName === "isVoid") {
+        const method = scope.isVoid.bind(scope);
+        reconnect(method);
+      }
+
+      scope.connect(() => {
+        // TODO Disconnect scope in transient contexts
+        // if (context.isTransient) {
+        //   disconnectScope();
+        // }
+
+        const method =
+          source.methodName === "isVoid" ? scope.isVoid.bind(scope) : scope.getProps().getMember(source.methodName);
+        reconnect(method);
+      });
+    } else {
+      const method = closure.getMember(source.methodName);
+      reconnect(method);
     }
   }
 
@@ -732,36 +745,34 @@ class Expression extends Publisher implements PropertyOwner {
 }
 
 class Expectation extends Publisher implements PropertyOwner {
-  readonly source: Abstract.Expectation;
-  readonly proxy: Promise<Field>;
-  readonly queue: Array<Promise<unknown>> = [];
-  readonly means: Expression;
+  private readonly source: Abstract.Expectation;
+  private readonly closure: Props;
+  private readonly context: Context;
+
+  private proxy?: Field;
 
   constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
 
     this.source = source;
+    this.closure = closure;
+    this.context = context;
 
-    let proxy: Field | undefined;
-    let resolveProxy: (value: Field | Promise<Field>) => void;
+    const queue: Array<Promise<unknown>> = [];
 
-    this.proxy = new Promise((resolve) => {
-      resolveProxy = resolve;
-    });
-
-    this.means = new Expression(source.means, closure, context);
-    this.means.connect((meansValue) => {
+    const means = new Expression(source.means, closure, context);
+    means.connect((meansValue) => {
       const attendant = Promise.resolve(meansValue)
         .then((value) => {
-          const index = this.queue.indexOf(attendant);
+          const index = queue.indexOf(attendant);
 
           if (index !== -1) {
-            this.queue.splice(0, index + 1);
+            queue.splice(0, index + 1);
 
-            if (proxy) {
-              proxy.handleEvent(value);
+            if (this.proxy) {
+              this.proxy.handleEvent(value);
             } else {
-              proxy = new Field(
+              this.proxy = new Field(
                 {
                   kind: "field",
                   content: {
@@ -773,31 +784,33 @@ class Expectation extends Publisher implements PropertyOwner {
                 context,
               );
 
-              proxy.connect(this);
-              resolveProxy(proxy);
+              this.proxy.connect(this);
             }
           }
         })
         .catch((error) => {
-          const index = this.queue.indexOf(attendant);
+          const index = queue.indexOf(attendant);
 
           if (index !== -1) {
-            this.queue.splice(index, 1);
+            queue.splice(index, 1);
             this.handleException(error);
           }
         });
 
-      this.queue.push(attendant);
+      queue.push(attendant);
     });
   }
 
-  async getProps(): Promise<Props> {
-    return this.proxy.then((field) => {
-      return field.getProps();
-    });
+  getProps(): Props {
+    if (this.proxy instanceof Field) {
+      return this.proxy.getProps();
+    }
+
+    return new StaticProps({});
   }
 }
 
+// TODO Test and fix issues...
 class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
   readonly source: Abstract.Emitter;
   readonly closure: Props;
@@ -948,9 +961,13 @@ class Call implements Subscriber<void> {
   }
 
   async handleEvent() {
-    const owner = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
-    const scope = await Promise.resolve(owner ? owner.getProps() : this.closure);
-    const action = scope.getMember(this.source.actionName);
+    const scope = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
+    if (scope) {
+      await scope.getDelivery();
+    }
+
+    const props = scope ? scope.getProps() : this.closure;
+    const action = props.getMember(this.source.actionName);
 
     let callTarget: Subscriber<Array<Field>>;
 
@@ -973,7 +990,7 @@ class Call implements Subscriber<void> {
       return arg;
     });
 
-    await Promise.all(callArgs.map((arg) => arg.getProps()));
+    await Promise.all(callArgs.map((arg) => arg.getDelivery()));
 
     callTarget.handleEvent(callArgs);
   }
@@ -990,7 +1007,7 @@ class Decision implements Subscriber<void> {
 
   async handleEvent() {
     const condition = new Field(this.source.condition, this.closure, { isTransient: true });
-    await Promise.resolve(condition.getProps());
+    await condition.getDelivery();
 
     const conditionalValue = condition.getValue();
 
@@ -1019,7 +1036,7 @@ class Invocation implements Subscriber<void> {
       return arg;
     });
 
-    await Promise.all(invocationArgs.map((arg) => arg.getProps()));
+    await Promise.all(invocationArgs.map((arg) => arg.getDelivery()));
 
     if (this.source.target) {
       const target = new Action(this.source.target, this.closure);

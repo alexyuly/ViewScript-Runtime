@@ -2,8 +2,12 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
+export interface Catcher {
+  handleException(error: unknown): void;
+}
+
 // TODO Split into two classes, one which is dumb and just forwards stuff but has the same interface.
-export abstract class Publisher<T = unknown> implements Subscriber<T> {
+export abstract class Publisher<T = unknown> implements Subscriber<T>, Catcher {
   private readonly deliverable: Promise<T>;
   private readonly subscribers: Array<Subscriber<T>> = [];
 
@@ -83,7 +87,7 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
     this.error = error;
 
     this.subscribers.forEach((subscriber) => {
-      if (subscriber instanceof Publisher) {
+      if ("handleException" in subscriber && typeof subscriber.handleException === "function") {
         subscriber.handleException(error);
       }
     });
