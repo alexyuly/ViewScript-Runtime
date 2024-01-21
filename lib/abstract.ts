@@ -12,30 +12,32 @@ export namespace Abstract {
   // VIEW-INSTANCE
   export type App = {
     kind: "app";
-    innerProps: Record<string, View | Model | Method | Field | Action>;
-    stage: Array<Atom | ViewInstance>;
+    innerProps: Record<string, ViewTemplate | ModelTemplate | Method | Field | Action>;
+    stage: Array<Atom | View>;
   };
 
-  // view {
+  // TODO Add schema to ViewTemplate and ModelTemplate
+
+  // view template {
   //   INNER-PROP-NAME = METHOD
   //   INNER-PROP-NAME = FIELD
   //   INNER-PROP-NAME = ACTION
   //   ATOM
   //   VIEW-INSTANCE
   // }
-  export type View = {
-    kind: "view";
+  export type ViewTemplate = {
+    kind: "viewTemplate";
     innerProps: Record<string, Method | Field | Action>;
-    stage: Array<Atom | ViewInstance>;
+    stage: Array<Atom | View>;
   };
 
-  // model {
+  // model template {
   //   INNER-PROP-NAME = METHOD
   //   INNER-PROP-NAME = FIELD
   //   INNER-PROP-NAME = ACTION
   // }
-  export type Model = {
-    kind: "model";
+  export type ModelTemplate = {
+    kind: "modelTemplate";
     innerProps: Record<string, Method | Field | Action>;
   };
 
@@ -57,16 +59,7 @@ export namespace Abstract {
   // CONTENT otherwise FALLBACK
   export type Field = {
     kind: "field";
-    content:
-      | Atom
-      | ViewInstance
-      | ModelInstance
-      | RawValue
-      | Reference
-      | Implication
-      | Expression
-      | Expectation
-      | Emitter;
+    content: Atom | View | Model | RawValue | Reference | Implication | Expression | Expectation | Emitter;
     fallback?: Action;
   };
 
@@ -81,22 +74,26 @@ export namespace Abstract {
   };
 
   // VIEW-NAME {
-  //   OUTER-PROP-NAME: FIELD
-  //   OUTER-PROP-NAME: ACTION
+  //   OUTER-PROP-NAME: OUTER-PROP-VALUE
   // }
-  export type ViewInstance = {
-    kind: "viewInstance";
-    view: string | View;
+  // view {
+  //   OUTER-PROP-NAME: OUTER-PROP-VALUE
+  // }
+  export type View = {
+    kind: "view";
+    viewTemplate: string | ViewTemplate;
     outerProps: Record<string, Field | Action>;
   };
 
   // MODEL-NAME {
-  //   OUTER-PROP-NAME: FIELD
-  //   OUTER-PROP-NAME: ACTION
+  //   OUTER-PROP-NAME: OUTER-PROP-VALUE
   // }
-  export type ModelInstance = {
-    kind: "modelInstance";
-    model: string | Model;
+  // model {
+  //   OUTER-PROP-NAME: OUTER-PROP-VALUE
+  // }
+  export type Model = {
+    kind: "model";
+    modelTemplate: string | ModelTemplate;
     outerProps: Record<string, Field | Action>;
   };
 
@@ -155,7 +152,7 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // from { STEPS }
+  // emitter { STEPS }
   export type Emitter = {
     kind: "emitter";
     steps: Array<Field | Procedure | Call | Decision | Invocation>;

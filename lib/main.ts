@@ -9,15 +9,15 @@ export class App {
   private readonly source: Abstract.App;
 
   private readonly props = new StaticProps({}, new DynamicProps(window));
-  private readonly stage: Array<Atom | ViewInstance> = [];
+  private readonly stage: Array<Atom | View> = [];
 
   constructor(source: Abstract.App) {
     this.source = source;
 
     Object.entries(source.innerProps).forEach(([key, value]) => {
       switch (value.kind) {
-        case "view":
-        case "model":
+        case "viewTemplate":
+        case "modelTemplate":
         case "method":
           this.props.addMember(key, value);
           break;
@@ -43,12 +43,12 @@ export class App {
           });
           return atom;
         }
-        case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props, { isTransient: false });
-          viewInstance.connect((htmlElement) => {
+        case "view": {
+          const view = new View(component, this.props, { isTransient: false });
+          view.connect((htmlElement) => {
             document.body.append(htmlElement);
           });
-          return viewInstance;
+          return view;
         }
         default:
           throw new Error(`App cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`);
@@ -68,8 +68,8 @@ class Field extends Publisher implements PropertyOwner {
 
   private readonly content:
     | Atom
-    | ViewInstance
-    | ModelInstance
+    | View
+    | Model
     | RawValue
     | Reference
     | Implication
@@ -89,12 +89,12 @@ class Field extends Publisher implements PropertyOwner {
         this.content = new Atom(source.content, closure, context);
         break;
       }
-      case "viewInstance": {
-        this.content = new ViewInstance(source.content, closure, context);
+      case "view": {
+        this.content = new View(source.content, closure, context);
         break;
       }
-      case "modelInstance": {
-        this.content = new ModelInstance(source.content, closure, context);
+      case "model": {
+        this.content = new Model(source.content, closure, context);
         break;
       }
       case "rawValue": {
@@ -253,25 +253,27 @@ class Atom extends Publisher<HTMLElement> implements PropertyOwner {
   }
 }
 
-class ViewInstance extends Publisher<HTMLElement> implements PropertyOwner {
-  private readonly source: Abstract.ViewInstance;
+class View extends Publisher<HTMLElement> implements PropertyOwner {
+  private readonly source: Abstract.View;
   private readonly closure: Props;
   private readonly context: Context;
 
   private readonly props: StaticProps;
-  private readonly stage: Array<Atom | ViewInstance> = [];
+  private readonly stage: Array<Atom | View> = [];
 
-  constructor(source: Abstract.ViewInstance, closure: Props, context: Context) {
+  constructor(source: Abstract.View, closure: Props, context: Context) {
     super();
 
     this.source = source;
     this.closure = closure;
     this.context = context;
 
-    const view = Abstract.isComponent(source.view) ? source.view : closure.getMember(source.view);
+    const viewTemplate = Abstract.isComponent(source.viewTemplate)
+      ? source.viewTemplate
+      : closure.getMember(source.viewTemplate);
 
-    if (!(Abstract.isComponent(view) && view.kind === "view")) {
-      throw new Error("Cannot construct invalid view.");
+    if (!(Abstract.isComponent(viewTemplate) && viewTemplate.kind === "viewTemplate")) {
+      throw new Error("Cannot construct an invalid view template.");
     }
 
     this.props = new StaticProps({}, closure);
@@ -286,12 +288,12 @@ class ViewInstance extends Publisher<HTMLElement> implements PropertyOwner {
           break;
         default:
           throw new Error(
-            `ViewInstance cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+            `View cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
           );
       }
     });
 
-    Object.entries(view.innerProps).forEach(([key, value]) => {
+    Object.entries(viewTemplate.innerProps).forEach(([key, value]) => {
       if (key in this.props) {
         return;
       }
@@ -308,27 +310,25 @@ class ViewInstance extends Publisher<HTMLElement> implements PropertyOwner {
           break;
         default:
           throw new Error(
-            `ViewInstance cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+            `View cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
           );
       }
     });
 
-    this.stage = view.stage.map((component) => {
+    this.stage = viewTemplate.stage.map((component) => {
       switch (component.kind) {
         case "atom": {
           const atom = new Atom(component, this.props, context);
           atom.connect(this);
           return atom;
         }
-        case "viewInstance": {
-          const viewInstance = new ViewInstance(component, this.props, context);
-          viewInstance.connect(this);
-          return viewInstance;
+        case "view": {
+          const view = new View(component, this.props, context);
+          view.connect(this);
+          return view;
         }
         default:
-          throw new Error(
-            `ViewInstance cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`,
-          );
+          throw new Error(`View cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`);
       }
     });
   }
@@ -338,15 +338,15 @@ class ViewInstance extends Publisher<HTMLElement> implements PropertyOwner {
   }
 }
 
-class ModelInstance extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.ModelInstance;
+class Model extends Publisher implements PropertyOwner {
+  private readonly source: Abstract.Model;
   private readonly closure: Props;
   private readonly context: Context;
 
   private readonly props: StaticProps;
   private readonly serialization: Record<string, unknown> = {};
 
-  constructor(source: Abstract.ModelInstance, closure: Props, context: Context) {
+  constructor(source: Abstract.Model, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -368,22 +368,24 @@ class ModelInstance extends Publisher implements PropertyOwner {
         // TODO Allow functions to be passed in as outer props, here
         default:
           throw new Error(
-            `ModelInstance cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+            `Model cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
           );
       }
     });
 
-    const model = Abstract.isComponent(source.model) ? source.model : closure.getMember(source.model);
+    const modelTemplate = Abstract.isComponent(source.modelTemplate)
+      ? source.modelTemplate
+      : closure.getMember(source.modelTemplate);
 
-    if (Abstract.isComponent(model) && model.kind === "model") {
-      Object.entries(model.innerProps).forEach(([key, value]) => {
+    if (Abstract.isComponent(modelTemplate) && modelTemplate.kind === "modelTemplate") {
+      Object.entries(modelTemplate.innerProps).forEach(([key, value]) => {
         if (key in props) {
           return;
         }
 
         switch (value.kind) {
           case "method":
-            // TODO Provide proper closure scoping for ModelInstance methods:
+            // TODO Provide proper closure scoping for Model methods:
             props.addMember(key, value);
             break;
           case "field":
@@ -394,7 +396,7 @@ class ModelInstance extends Publisher implements PropertyOwner {
             break;
           default:
             throw new Error(
-              `ModelInstance cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
+              `Model cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
             );
         }
       });
@@ -481,6 +483,7 @@ class RawValue extends Publisher implements PropertyOwner {
     // TODO Cache props
     const props = new StaticProps(
       {
+        // TODO Define the `let` method
         set: (arg: Field) => {
           const nextValue = arg?.getValue();
           this.handleEvent(nextValue);
@@ -504,6 +507,7 @@ class RawValue extends Publisher implements PropertyOwner {
         return result;
       });
     } else if (value instanceof Array) {
+      // TODO Support ViewInstances being passed in as arg to map
       props.addMember("map", (arg) => {
         const argValue = arg.getValue();
         if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
@@ -915,6 +919,7 @@ class Action implements Subscriber<Array<Field>> {
   }
 }
 
+// TODO Ensure all steps of a nested procedure complete before continuing...
 class Procedure implements Subscriber<void> {
   readonly source: Abstract.Procedure;
   readonly closure: Props;
@@ -1065,8 +1070,8 @@ interface Props {
 }
 
 type Property =
-  | Abstract.View
-  | Abstract.Model
+  | Abstract.ViewTemplate
+  | Abstract.ModelTemplate
   | Abstract.Method
   | Field
   | Action
