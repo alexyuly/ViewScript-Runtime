@@ -2,15 +2,15 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
-// TODO Split into two classes, one which is dumb and just forwards stuff but has the same interface.
+// TODO Split into two classes, one which is dumb and just forwards stuff (for Fields, References, and Implications) but has the same interface.
 export abstract class Publisher<T = unknown> implements Subscriber<T> {
   private readonly deliverable: Promise<T>;
   private readonly subscribers: Array<Subscriber<T>> = [];
 
-  private deliveryStatus: "pending" | "fulfilled" | "rejected" = "pending";
   private error?: unknown;
   private reject?: (error: unknown) => void;
   private resolve?: (value: T) => void;
+  private status: "pending" | "rejected" | "fulfilled" | "stale" = "pending";
   private value?: T;
 
   constructor() {
@@ -69,10 +69,11 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
       subscriber.handleEvent(value);
     });
 
-    if (this.deliveryStatus === "pending") {
-      this.deliveryStatus = "fulfilled";
+    if (this.status === "pending") {
       this.resolve!(value);
     }
+
+    this.status = "fulfilled";
   }
 
   handleException(error: unknown): void {
@@ -88,9 +89,11 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
       }
     });
 
-    if (this.deliveryStatus === "pending") {
-      this.deliveryStatus = "rejected";
+    if (this.status === "pending") {
       this.reject!(error);
+      this.status = "rejected";
+    } else if (this.status === "fulfilled") {
+      this.status = "stale";
     }
   }
 }
