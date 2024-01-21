@@ -898,8 +898,8 @@ class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
  */
 
 class Action implements Subscriber<Array<Field>> {
-  readonly source: Abstract.Action;
-  readonly closure: Props;
+  private readonly source: Abstract.Action;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Action, closure: Props) {
     this.source = source;
@@ -921,8 +921,8 @@ class Action implements Subscriber<Array<Field>> {
 }
 
 class Procedure implements Subscriber<void> {
-  readonly source: Abstract.Procedure;
-  readonly closure: Props;
+  private readonly source: Abstract.Procedure;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Procedure, closure: Props) {
     this.source = source;
@@ -964,8 +964,8 @@ class Procedure implements Subscriber<void> {
 }
 
 class Call implements Subscriber<void> {
-  readonly source: Abstract.Call;
-  readonly closure: Props;
+  private readonly source: Abstract.Call;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Call, closure: Props) {
     this.source = source;
@@ -1009,8 +1009,8 @@ class Call implements Subscriber<void> {
 }
 
 class Decision implements Subscriber<void> {
-  readonly source: Abstract.Decision;
-  readonly closure: Props;
+  private readonly source: Abstract.Decision;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Decision, closure: Props) {
     this.source = source;
@@ -1034,8 +1034,8 @@ class Decision implements Subscriber<void> {
 }
 
 class Invocation implements Subscriber<void> {
-  readonly source: Abstract.Invocation;
-  readonly closure: Props;
+  private readonly source: Abstract.Invocation;
+  private readonly closure: Props;
 
   constructor(source: Abstract.Invocation, closure: Props) {
     this.source = source;
@@ -1078,7 +1078,7 @@ type Property =
   | ((...args: Array<Field>) => unknown); // TODO Allow any type of args here, to integrate JS functions with ModelInstances?
 
 class DynamicProps implements Props {
-  readonly value: any;
+  private readonly value: any;
 
   constructor(value: unknown) {
     this.value = value;
@@ -1124,8 +1124,8 @@ class DynamicProps implements Props {
 }
 
 class StaticProps implements Props {
-  readonly properties: Record<string, Property>;
-  readonly closure?: Props;
+  private readonly properties: Record<string, Property>;
+  private readonly closure?: Props;
 
   constructor(properties: StaticProps | Record<string, Property>, closure?: Props) {
     this.properties = properties instanceof StaticProps ? properties.properties : properties;
