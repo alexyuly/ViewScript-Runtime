@@ -915,11 +915,10 @@ class Action implements Subscriber<Array<Field>> {
     );
 
     const handler = new Procedure(this.source.handler, closureWithParams);
-    handler.handleEvent();
+    await handler.handleEvent();
   }
 }
 
-// TODO Ensure all steps of a nested procedure complete before continuing...
 class Procedure implements Subscriber<void> {
   readonly source: Abstract.Procedure;
   readonly closure: Props;
@@ -955,11 +954,11 @@ class Procedure implements Subscriber<void> {
         }
 
         await executor.handleEvent();
-        run(steps.shift());
+        await run(steps.shift());
       }
     };
 
-    run(steps.shift());
+    await run(steps.shift());
   }
 }
 
@@ -1004,7 +1003,7 @@ class Call implements Subscriber<void> {
 
     await Promise.all(callArgs.map((arg) => arg.getDeliverable()));
 
-    callTarget.handleEvent(callArgs);
+    await callTarget.handleEvent(callArgs);
   }
 }
 
@@ -1025,10 +1024,10 @@ class Decision implements Subscriber<void> {
 
     if (conditionalValue) {
       const consequence = new Procedure(this.source.consequence, this.closure);
-      consequence.handleEvent();
+      await consequence.handleEvent();
     } else if (this.source.alternative) {
       const alternative = new Procedure(this.source.alternative, this.closure);
-      alternative.handleEvent();
+      await alternative.handleEvent();
     }
   }
 }
@@ -1052,7 +1051,7 @@ class Invocation implements Subscriber<void> {
 
     if (this.source.target) {
       const target = new Action(this.source.target, this.closure);
-      target.handleEvent(invocationArgs);
+      await target.handleEvent(invocationArgs);
     }
   }
 }
