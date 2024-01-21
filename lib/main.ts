@@ -838,7 +838,7 @@ class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
         },
       },
       this.closure,
-      { isTransient: true, listener: this },
+      { isTransient: context.isTransient, listener: this },
     );
     this.proxy.connect(this);
   }
@@ -854,7 +854,7 @@ class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
     // TODO Abort the remaining steps if one throws an error.
     const run = async (step?: (typeof steps)[number]) => {
       if (step?.kind === "field") {
-        const output = new Field(step, this.closure, { isTransient: true, listener: this });
+        const output = new Field(step, this.closure, { isTransient: this.context.isTransient, listener: this });
         await output.getDeliverable();
 
         const nextValue = output.getValue();
@@ -1098,19 +1098,23 @@ class DynamicProps implements Props {
       return memberFunction;
     }
 
-    const memberField = new Field(
-      {
-        kind: "field",
-        content: {
-          kind: "rawValue",
-          value: memberValue,
+    if (memberValue !== undefined) {
+      const memberField = new Field(
+        {
+          kind: "field",
+          content: {
+            kind: "rawValue",
+            value: memberValue,
+          },
         },
-      },
-      new StaticProps({}),
-      { isTransient: true },
-    );
+        new StaticProps({}),
+        { isTransient: true },
+      );
 
-    return memberField;
+      return memberField;
+    }
+
+    return undefined;
   }
 }
 
