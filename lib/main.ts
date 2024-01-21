@@ -663,6 +663,7 @@ class Expression extends Publisher implements PropertyOwner {
         disconnect.shift()?.();
       }
 
+      // TODO Resolve scope and args simultaneously
       await Promise.all(args.map((arg) => arg.getDeliverable()));
 
       if (Abstract.isComponent(method) && method.kind === "method") {
@@ -818,7 +819,7 @@ class Expectation extends Publisher implements PropertyOwner {
   }
 }
 
-// TODO Test and fix issues...
+// TODO Test and fix any issues...
 class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
   private readonly source: Abstract.Emitter;
   private readonly closure: Props;
@@ -884,11 +885,11 @@ class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
         }
 
         await executor.handleEvent();
-        run(steps.shift());
+        await run(steps.shift());
       }
     };
 
-    run(steps.shift());
+    await run(steps.shift());
   }
 }
 
@@ -974,6 +975,7 @@ class Call implements Subscriber<void> {
   async handleEvent() {
     const scope = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
     if (scope) {
+      // TODO Resolve scope and args simultaneously
       await scope.getDeliverable();
     }
 
@@ -1002,7 +1004,6 @@ class Call implements Subscriber<void> {
     });
 
     await Promise.all(callArgs.map((arg) => arg.getDeliverable()));
-
     await callTarget.handleEvent(callArgs);
   }
 }
