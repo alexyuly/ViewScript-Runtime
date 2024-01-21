@@ -2,12 +2,8 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
-export interface Catcher {
-  handleException(error: unknown): void;
-}
-
 // TODO Split into two classes, one which is dumb and just forwards stuff but has the same interface.
-export abstract class Publisher<T = unknown> implements Subscriber<T>, Catcher {
+export abstract class Publisher<T = unknown> implements Subscriber<T> {
   private readonly deliverable: Promise<T>;
   private readonly subscribers: Array<Subscriber<T>> = [];
 
@@ -50,7 +46,7 @@ export abstract class Publisher<T = unknown> implements Subscriber<T>, Catcher {
     };
   }
 
-  getDelivery(): Promise<T> {
+  getDeliverable(): Promise<T> {
     return this.deliverable;
   }
 

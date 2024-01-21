@@ -8,7 +8,7 @@ import { Subscriber, Publisher } from "./pubsub";
 export class App {
   private readonly source: Abstract.App;
 
-  private readonly props = new StaticProps({}, new RawObjectProps(window));
+  private readonly props = new StaticProps({}, new DynamicProps(window));
   private readonly stage: Array<Atom | ViewInstance> = [];
 
   constructor(source: Abstract.App) {
@@ -118,7 +118,7 @@ class Field extends Publisher implements PropertyOwner {
         break;
       }
       case "emitter": {
-        this.content = new Emitter(source.content, closure);
+        this.content = new Emitter(source.content, closure, context);
         break;
       }
       default:
@@ -404,7 +404,7 @@ class ModelInstance extends Publisher implements PropertyOwner {
       await Promise.all(
         props
           .getOwnProperties()
-          .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getDelivery() : Promise.resolve())),
+          .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getDeliverable() : Promise.resolve())),
       );
 
       props.getOwnProperties().forEach(([key, ownProp]) => {
@@ -478,52 +478,16 @@ class RawValue extends Publisher implements PropertyOwner {
   getProps(): Props {
     const value = this.getValue();
 
-    const set = (arg: Field) => {
-      const nextValue = arg?.getValue();
-      this.handleEvent(nextValue);
-    };
-
-    if (value instanceof Array) {
-      return new StaticProps({
-        map: (arg) => {
-          const argValue = arg.getValue();
-          if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
-            throw new Error("Cannot map an array with an arg which is not a method.");
-          }
-
-          const method = argValue as Abstract.Method;
-          const currentValue = this.getValue();
-
-          const result: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map(
-            (innerArg) => {
-              const closureWithParams = new StaticProps(
-                {
-                  [method.params[0]]: innerArg,
-                },
-                this.closure,
-              );
-
-              const innerField = new Field(method.result, closureWithParams, this.context);
-              return innerField;
-            },
-          );
-
-          return result;
-        },
-        push: (arg) => {
-          const currentValue = this.getValue();
-          const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
+    // TODO Cache props
+    const props = new StaticProps(
+      {
+        set: (arg: Field) => {
+          const nextValue = arg?.getValue();
           this.handleEvent(nextValue);
         },
-        set,
-      });
-    }
-
-    if (Abstract.isRawObject(value)) {
-      return new StaticProps({ set }, new RawObjectProps(value));
-    }
-
-    const props = new StaticProps({ set }, this.closure);
+      },
+      new DynamicProps(value),
+    );
 
     if (typeof value === "boolean") {
       props.addMember("not", () => {
@@ -538,6 +502,35 @@ class RawValue extends Publisher implements PropertyOwner {
       props.addMember("plus", (field) => {
         const result = `${this.getValue()}${field.getValue()}`;
         return result;
+      });
+    } else if (value instanceof Array) {
+      props.addMember("map", (arg) => {
+        const argValue = arg.getValue();
+        if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
+          throw new Error("Cannot map an array with an arg which is not a method.");
+        }
+
+        const method = argValue as Abstract.Method;
+        const currentValue = this.getValue();
+
+        const result: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map((innerArg) => {
+          const closureWithParams = new StaticProps(
+            {
+              [method.params[0]]: innerArg,
+            },
+            this.closure,
+          );
+
+          const innerField = new Field(method.result, closureWithParams, this.context);
+          return innerField;
+        });
+
+        return result;
+      });
+      props.addMember("push", (arg) => {
+        const currentValue = this.getValue();
+        const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
+        this.handleEvent(nextValue);
       });
     }
 
@@ -662,9 +655,11 @@ class Expression extends Publisher implements PropertyOwner {
     const disconnect: Array<() => void> = [];
 
     const reconnect = async (method?: Property) => {
-      disconnect.forEach((x) => x());
+      while (disconnect.length > 0) {
+        disconnect.shift()?.();
+      }
 
-      await Promise.all(args.map((arg) => arg.getDelivery()));
+      await Promise.all(args.map((arg) => arg.getDeliverable()));
 
       if (Abstract.isComponent(method) && method.kind === "method") {
         const closureWithParams = new StaticProps(
@@ -678,10 +673,10 @@ class Expression extends Publisher implements PropertyOwner {
         this.result = new Field(method.result, closureWithParams, { isTransient: true });
         disconnect.push(this.result.connect(this));
       } else if (typeof method === "function") {
-        console.log(`Expression: calling JavaScript function \`${source.methodName}\` with args:`, args);
         const value = method(...args);
+        console.log(`Expression: called JavaScript function \`${source.methodName}\` with args:`, args);
         console.log(`...returned:`, value);
-        const result = (this.result = new Field(
+        const result = new Field(
           {
             kind: "field",
             content: {
@@ -691,19 +686,20 @@ class Expression extends Publisher implements PropertyOwner {
           },
           new StaticProps({}),
           { isTransient: true },
-        ));
+        );
+        this.result = result;
         disconnect.push(this.result.connect(this));
 
         if (!context.isTransient) {
-          const updateResult = () => {
-            console.log(`Expression: recalling JavaScript function \`${source.methodName}\` with args...`, args);
-            const nextValue = method(...args);
-            console.log(`...returned:`, nextValue);
-            result.handleEvent(nextValue);
-          };
-
           args.forEach((arg) => {
-            disconnect.push(arg.connectPassively(updateResult));
+            disconnect.push(
+              arg.connectPassively(() => {
+                const nextValue = method(...args);
+                console.log(`Expression: recalled JavaScript function \`${source.methodName}\` with args...`, args);
+                console.log(`...returned:`, nextValue);
+                result.handleEvent(nextValue);
+              }),
+            );
           });
         }
       } else {
@@ -717,18 +713,26 @@ class Expression extends Publisher implements PropertyOwner {
       if (source.methodName === "isVoid") {
         const method = scope.isVoid.bind(scope);
         reconnect(method);
+        scope.connect(() => {
+          // TODO Disconnect scope in transient contexts
+          // if (context.isTransient) {
+          //   disconnectScope();
+          // }
+
+          const method = scope.isVoid.bind(scope);
+          reconnect(method);
+        });
+      } else {
+        scope.connect(() => {
+          // TODO Disconnect scope in transient contexts
+          // if (context.isTransient) {
+          //   disconnectScope();
+          // }
+
+          const method = scope.getProps().getMember(source.methodName);
+          reconnect(method);
+        });
       }
-
-      scope.connect(() => {
-        // TODO Disconnect scope in transient contexts
-        // if (context.isTransient) {
-        //   disconnectScope();
-        // }
-
-        const method =
-          source.methodName === "isVoid" ? scope.isVoid.bind(scope) : scope.getProps().getMember(source.methodName);
-        reconnect(method);
-      });
     } else {
       const method = closure.getMember(source.methodName);
       reconnect(method);
@@ -758,9 +762,9 @@ class Expectation extends Publisher implements PropertyOwner {
     this.closure = closure;
     this.context = context;
 
+    const means = new Expression(source.means, closure, context);
     const queue: Array<Promise<unknown>> = [];
 
-    const means = new Expression(source.means, closure, context);
     means.connect((meansValue) => {
       const attendant = Promise.resolve(meansValue)
         .then((value) => {
@@ -812,15 +816,18 @@ class Expectation extends Publisher implements PropertyOwner {
 
 // TODO Test and fix issues...
 class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
-  readonly source: Abstract.Emitter;
-  readonly closure: Props;
+  private readonly source: Abstract.Emitter;
+  private readonly closure: Props;
+  private readonly context: Context;
+
   readonly proxy: Field;
 
-  constructor(source: Abstract.Emitter, closure: Props) {
+  constructor(source: Abstract.Emitter, closure: Props, context: Context) {
     super();
 
     this.source = source;
     this.closure = closure;
+    this.context = context;
 
     this.proxy = new Field(
       {
@@ -848,7 +855,7 @@ class Emitter extends Publisher implements PropertyOwner, Subscriber<void> {
     const run = async (step?: (typeof steps)[number]) => {
       if (step?.kind === "field") {
         const output = new Field(step, this.closure, { isTransient: true, listener: this });
-        await output.getProps();
+        await output.getDeliverable();
 
         const nextValue = output.getValue();
         this.proxy.handleEvent(nextValue);
@@ -963,7 +970,7 @@ class Call implements Subscriber<void> {
   async handleEvent() {
     const scope = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
     if (scope) {
-      await scope.getDelivery();
+      await scope.getDeliverable();
     }
 
     const props = scope ? scope.getProps() : this.closure;
@@ -976,8 +983,8 @@ class Call implements Subscriber<void> {
     } else if (typeof action === "function") {
       callTarget = {
         handleEvent: (calledArgs: Array<Field>) => {
-          console.log(`Calling JavaScript function \`${this.source.actionName}\` with args:`, calledArgs);
           const returnValue = action(...calledArgs);
+          console.log(`Called JavaScript function \`${this.source.actionName}\` with args:`, calledArgs);
           console.log(`...returned (ignored value):`, returnValue);
         },
       };
@@ -990,7 +997,7 @@ class Call implements Subscriber<void> {
       return arg;
     });
 
-    await Promise.all(callArgs.map((arg) => arg.getDelivery()));
+    await Promise.all(callArgs.map((arg) => arg.getDeliverable()));
 
     callTarget.handleEvent(callArgs);
   }
@@ -1007,7 +1014,7 @@ class Decision implements Subscriber<void> {
 
   async handleEvent() {
     const condition = new Field(this.source.condition, this.closure, { isTransient: true });
-    await condition.getDelivery();
+    await condition.getDeliverable();
 
     const conditionalValue = condition.getValue();
 
@@ -1036,7 +1043,7 @@ class Invocation implements Subscriber<void> {
       return arg;
     });
 
-    await Promise.all(invocationArgs.map((arg) => arg.getDelivery()));
+    await Promise.all(invocationArgs.map((arg) => arg.getDeliverable()));
 
     if (this.source.target) {
       const target = new Action(this.source.target, this.closure);
@@ -1065,10 +1072,10 @@ type Property =
   | Action
   | ((...args: Array<Field>) => unknown); // TODO Allow any type of args here, to integrate JS functions with ModelInstances?
 
-class RawObjectProps implements Props {
+class DynamicProps implements Props {
   readonly value: any;
 
-  constructor(value: object) {
+  constructor(value: unknown) {
     this.value = value;
   }
 
