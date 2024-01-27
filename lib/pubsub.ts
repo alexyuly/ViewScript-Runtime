@@ -9,7 +9,7 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
   private error?: unknown;
   private reject?: (error: unknown) => void;
   private resolve?: (value: T) => void;
-  private status: "pending" | "rejected" | "fulfilled" | "stale" = "pending";
+  private status: "VOID" | "INVALID" | "VALID" | "STALE" = "VOID";
   private value?: T;
 
   constructor() {
@@ -58,21 +58,7 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
   }
 
   handleEvent(value: T): void {
-    if (this.value === value) {
-      return;
-    }
-
-    this.value = value;
-
-    this.subscribers.forEach((subscriber) => {
-      subscriber.handleEvent(value);
-    });
-
-    if (this.status === "pending") {
-      this.resolve!(value);
-    }
-
-    this.status = "fulfilled";
+    this.publish(value);
   }
 
   handleException(error: unknown): void {
@@ -88,11 +74,29 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
       }
     });
 
-    if (this.status === "pending") {
+    if (this.status === "VOID") {
       this.reject!(error);
-      this.status = "rejected";
-    } else if (this.status === "fulfilled") {
-      this.status = "stale";
+      this.status = "INVALID";
+    } else if (this.status === "VALID") {
+      this.status = "STALE";
     }
+  }
+
+  protected publish(value: T): void {
+    if (this.value === value) {
+      return;
+    }
+
+    this.value = value;
+
+    this.subscribers.forEach((subscriber) => {
+      subscriber.handleEvent(value);
+    });
+
+    if (this.status === "VOID") {
+      this.resolve!(value);
+    }
+
+    this.status = "VALID";
   }
 }

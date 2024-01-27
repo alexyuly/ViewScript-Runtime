@@ -57,7 +57,7 @@ export namespace Abstract {
   // CONTENT otherwise FALLBACK
   export type Field = {
     kind: "field";
-    content: Atom | View | Model | RawValue | Reference | Implication | Expression | Expectation | Emitter;
+    content: Atom | View | Model | RawValue | Reference | Implication | Expression | Expectation | Procedure;
     fallback?: Action;
   };
 
@@ -120,6 +120,7 @@ export namespace Abstract {
     fieldName: string;
   };
 
+  // TODO Consider removing this in favor of `then` and `else` methods:
   // if CONDITION then CONSEQUENCE
   // if CONDITION then CONSEQUENCE else ALTERNATIVE
   export type Implication = {
@@ -150,12 +151,6 @@ export namespace Abstract {
     means: Expression;
   };
 
-  // emitter { STEPS }
-  export type Emitter = {
-    kind: "emitter";
-    steps: Array<Field | Procedure | Call | Decision | Invocation>;
-  };
-
   /**
    * Actions:
    */
@@ -172,9 +167,10 @@ export namespace Abstract {
 
   // do { STEPS }
   // do { STEPS } otherwise FALLBACK
+  // emitter { STEPS }
   export type Procedure = {
     kind: "procedure";
-    steps: Array<Procedure | Call | Decision | Invocation>;
+    steps: Array<Procedure | Call | Decision | Declaration | Field>;
     fallback?: Action;
   };
 
@@ -200,14 +196,12 @@ export namespace Abstract {
     alternative?: Procedure;
   };
 
-  // await ARG0
-  // await ARG0 \n await ARG1 \n [ETC...]
-  // let TARGET-PARAM0 = ARG0 \n TARGET-HANDLER
-  // let TARGET-PARAM0 = ARG0 \n let TARGET-PARAM1 = ARG1 \n [ETC...] \n TARGET-HANDLER
-  export type Invocation = {
-    kind: "invocation";
-    args: Array<Field>;
-    target?: Action;
+  // await VALUE
+  // let KEY = VALUE
+  export type Declaration = {
+    kind: "declaration";
+    key?: string;
+    value: Field;
   };
 
   /**
