@@ -483,7 +483,6 @@ class RawValue extends Publisher implements PropertyOwner {
     // TODO Cache props
     const props = new StaticProps(
       {
-        // TODO Define the `let` method
         set: (arg: Field) => {
           const nextValue = arg?.getValue();
           this.handleEvent(nextValue);

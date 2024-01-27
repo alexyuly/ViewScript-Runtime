@@ -2,7 +2,6 @@ export interface Subscriber<T = unknown> {
   handleEvent(value: T): void | Promise<void>;
 }
 
-// TODO Split into two classes, one which is dumb and just forwards stuff (for Fields, References, and Implications) but has the same interface.
 export abstract class Publisher<T = unknown> implements Subscriber<T> {
   private readonly deliverable: Promise<T>;
   private readonly subscribers: Array<Subscriber<T>> = [];

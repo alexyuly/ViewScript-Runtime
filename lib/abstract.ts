@@ -16,8 +16,6 @@ export namespace Abstract {
     stage: Array<Atom | View>;
   };
 
-  // TODO Add schema to ViewTemplate and ModelTemplate
-
   // view template {
   //   INNER-PROP-NAME = METHOD
   //   INNER-PROP-NAME = FIELD
