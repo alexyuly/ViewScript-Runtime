@@ -151,6 +151,12 @@ export namespace Abstract {
     means: Expression;
   };
 
+  // emitter { STEPS }
+  // export type Emitter = {
+  //   kind: "emitter";
+  //   steps: Array<Procedure | Call | Decision | Declaration | Field>;
+  // };
+
   /**
    * Actions:
    */
@@ -167,7 +173,6 @@ export namespace Abstract {
 
   // do { STEPS }
   // do { STEPS } otherwise FALLBACK
-  // emitter { STEPS }
   export type Procedure = {
     kind: "procedure";
     steps: Array<Procedure | Call | Decision | Declaration | Field>;

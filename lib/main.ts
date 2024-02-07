@@ -63,7 +63,7 @@ export class App {
 
 class Field extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Field;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private readonly content:
@@ -77,7 +77,7 @@ class Field extends Publisher implements PropertyOwner {
     | Expectation
     | Procedure;
 
-  constructor(source: Abstract.Field, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Field, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -127,10 +127,6 @@ class Field extends Publisher implements PropertyOwner {
     }
 
     this.content.connect(this);
-
-    if (context.listener) {
-      this.connect(context.listener);
-    }
   }
 
   getProps(): Props {
@@ -166,12 +162,12 @@ class Field extends Publisher implements PropertyOwner {
 
 class Atom extends Publisher<HTMLElement> implements PropertyOwner {
   private readonly source: Abstract.Atom;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private readonly props = new StaticProps({});
 
-  constructor(source: Abstract.Atom, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Atom, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -256,13 +252,13 @@ class Atom extends Publisher<HTMLElement> implements PropertyOwner {
 
 class View extends Publisher<HTMLElement> implements PropertyOwner {
   private readonly source: Abstract.View;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private readonly props: StaticProps;
   private readonly stage: Array<Atom | View> = [];
 
-  constructor(source: Abstract.View, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.View, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -341,13 +337,13 @@ class View extends Publisher<HTMLElement> implements PropertyOwner {
 
 class Model extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Model;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private readonly props: StaticProps;
   private readonly serialization: Record<string, unknown> = {};
 
-  constructor(source: Abstract.Model, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Model, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -439,10 +435,10 @@ class Model extends Publisher implements PropertyOwner {
 
 class RawValue extends Publisher implements PropertyOwner {
   private readonly source: Abstract.RawValue;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
-  constructor(source: Abstract.RawValue, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.RawValue, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -548,12 +544,12 @@ class RawValue extends Publisher implements PropertyOwner {
 
 class Reference extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Reference;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private link?: Property;
 
-  constructor(source: Abstract.Reference, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Reference, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -596,14 +592,14 @@ class Reference extends Publisher implements PropertyOwner {
 
 class Implication extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Implication;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private readonly condition: Field;
   private readonly consequence: Field;
   private readonly alternative?: Field;
 
-  constructor(source: Abstract.Implication, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Implication, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -643,12 +639,12 @@ class Implication extends Publisher implements PropertyOwner {
 
 class Expression extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Expression;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private result?: Field;
 
-  constructor(source: Abstract.Expression, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Expression, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -733,6 +729,7 @@ class Expression extends Publisher implements PropertyOwner {
         });
       } else {
         scope.connect(() => {
+          console.log(`scope changed for ${source.methodName}:`, scope);
           // TODO Disconnect scope in transient contexts
           // if (context.isTransient) {
           //   disconnectScope();
@@ -759,12 +756,12 @@ class Expression extends Publisher implements PropertyOwner {
 
 class Expectation extends Publisher implements PropertyOwner {
   private readonly source: Abstract.Expectation;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
 
   private proxy?: Field;
 
-  constructor(source: Abstract.Expectation, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Expectation, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -829,9 +826,9 @@ class Expectation extends Publisher implements PropertyOwner {
 
 class Action implements Subscriber<Array<Field>> {
   private readonly source: Abstract.Action;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
 
-  constructor(source: Abstract.Action, closure: StaticProps) {
+  constructor(source: Abstract.Action, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
@@ -852,11 +849,11 @@ class Action implements Subscriber<Array<Field>> {
 
 class Procedure extends Publisher implements PropertyOwner, Subscriber {
   private readonly source: Abstract.Procedure;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
   private readonly proxy: Field;
 
-  constructor(source: Abstract.Procedure, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Procedure, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -872,7 +869,7 @@ class Procedure extends Publisher implements PropertyOwner, Subscriber {
         },
       },
       this.closure,
-      { isTransient: true, listener: this },
+      this.context,
     );
     this.proxy.connect(this);
   }
@@ -885,35 +882,35 @@ class Procedure extends Publisher implements PropertyOwner, Subscriber {
   async handleEvent() {
     const steps = [...this.source.steps];
 
+    let stepsClosure = new StaticProps({}, this.closure);
+
     // TODO Abort the remaining steps if one throws an error.
     const run = async (step?: (typeof steps)[number]) => {
       if (step?.kind === "field") {
-        const output = new Field(step, this.closure, { isTransient: this.context.isTransient });
-        await output.getDeliverable();
-
-        const nextValue = output.getValue();
-        this.proxy.handleEvent(nextValue);
+        const output = new Field(step, stepsClosure, { isTransient: true });
+        output.connect(this.proxy);
       } else if (step) {
         switch (step.kind) {
           case "procedure": {
-            const procedure = new Procedure(step, this.closure, this.context);
+            const procedure = new Procedure(step, stepsClosure, { isTransient: true });
             await procedure.handleEvent();
-            this.publish(procedure.getValue());
+            this.proxy.handleEvent(procedure.getValue());
             break;
           }
           case "call": {
-            const call = new Call(step, this.closure);
+            const call = new Call(step, stepsClosure);
             await call.handleEvent();
             break;
           }
           case "decision": {
-            const decision = new Decision(step, this.closure, this.context);
+            const decision = new Decision(step, stepsClosure, { isTransient: true });
             await decision.handleEvent();
-            this.publish(decision.getValue());
+            this.proxy.handleEvent(decision.getValue());
             break;
           }
           case "declaration":
-            const declaration = new Declaration(step, this.closure);
+            stepsClosure = new StaticProps({}, stepsClosure);
+            const declaration = new Declaration(step, stepsClosure);
             await declaration.handleEvent();
             break;
           default:
@@ -930,9 +927,9 @@ class Procedure extends Publisher implements PropertyOwner, Subscriber {
 
 class Call implements Subscriber<void> {
   private readonly source: Abstract.Call;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
 
-  constructor(source: Abstract.Call, closure: StaticProps) {
+  constructor(source: Abstract.Call, closure: Props) {
     this.source = source;
     this.closure = closure;
   }
@@ -975,11 +972,11 @@ class Call implements Subscriber<void> {
 
 class Decision extends Publisher implements PropertyOwner, Subscriber<void> {
   private readonly source: Abstract.Decision;
-  private readonly closure: StaticProps;
+  private readonly closure: Props;
   private readonly context: Context;
   private proxy?: Procedure;
 
-  constructor(source: Abstract.Decision, closure: StaticProps, context: Context) {
+  constructor(source: Abstract.Decision, closure: Props, context: Context) {
     super();
 
     this.source = source;
@@ -1120,5 +1117,4 @@ class StaticProps implements Props {
 
 type Context = {
   isTransient: boolean;
-  listener?: Procedure;
 };

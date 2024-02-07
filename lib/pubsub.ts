@@ -58,7 +58,23 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
   }
 
   handleEvent(value: T): void {
-    this.publish(value);
+    if (this.value === value) {
+      return;
+    }
+
+    console.log("publishing value...", this, value);
+
+    this.value = value;
+
+    this.subscribers.forEach((subscriber) => {
+      subscriber.handleEvent(value);
+    });
+
+    if (this.status === "VOID") {
+      this.resolve!(value);
+    }
+
+    this.status = "VALID";
   }
 
   handleException(error: unknown): void {
@@ -80,23 +96,5 @@ export abstract class Publisher<T = unknown> implements Subscriber<T> {
     } else if (this.status === "VALID") {
       this.status = "STALE";
     }
-  }
-
-  protected publish(value: T): void {
-    if (this.value === value) {
-      return;
-    }
-
-    this.value = value;
-
-    this.subscribers.forEach((subscriber) => {
-      subscriber.handleEvent(value);
-    });
-
-    if (this.status === "VOID") {
-      this.resolve!(value);
-    }
-
-    this.status = "VALID";
   }
 }
