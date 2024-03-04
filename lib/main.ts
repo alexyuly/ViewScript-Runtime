@@ -1,1066 +1,114 @@
 import { Abstract } from "./abstract";
-import { Subscriber, Publisher } from "./pubsub";
-
-/**
- * Foundation:
- */
 
 export class App {
   private readonly source: Abstract.App;
-
-  private readonly props = new StaticProps({}, new DynamicProps(window));
-  private readonly stage: Array<Atom | View> = [];
+  private readonly scope = new Scope();
 
   constructor(source: Abstract.App) {
     this.source = source;
 
-    Object.entries(source.innerProps).forEach(([key, value]) => {
-      switch (value.kind) {
-        case "viewTemplate":
-        case "modelTemplate":
-        case "method":
-          this.props.addMember(key, value);
-          break;
-        case "field":
-          this.props.addMember(key, new Field(value, this.props, { isTransient: false }));
-          break;
-        case "action":
-          this.props.addMember(key, new Action(value, this.props));
-          break;
-        default:
-          throw new Error(
-            `App cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-          );
+    for (const member of this.source.members) {
+      if (member.kind === "val") {
+        this.scope.addMember(member.key, new Val(member, this.scope));
+      } else if (member.kind === "fun") {
+        this.scope.addMember(member.key, new Fun(member, this.scope));
+      } else {
+        throw new Error(`App has a member of unknown kind: ${(member as Abstract.Node).kind}.`);
       }
-    });
+    }
 
-    this.stage = source.stage.map((component) => {
-      switch (component.kind) {
-        case "atom": {
-          const atom = new Atom(component, this.props, { isTransient: false });
-          atom.connect((htmlElement) => {
-            document.body.append(htmlElement);
-          });
-          return atom;
-        }
-        case "view": {
-          const view = new View(component, this.props, { isTransient: false });
-          view.connect((htmlElement) => {
-            document.body.append(htmlElement);
-          });
-          return view;
-        }
-        default:
-          throw new Error(`App cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`);
-      }
-    });
+    const main = this.scope.getMember("main");
+
+    if (!(main instanceof Fun)) {
+      throw new Error("App has no expected member fun main.");
+    }
+
+    main.handleEvent();
   }
 }
 
-/**
- * Fields:
- */
+class Scope {
+  private readonly id = crypto.randomUUID();
+  private readonly members: Record<string, Val | Fun | Function> = {};
 
-class Field extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Field;
-  private readonly closure: Props;
-  private readonly context: Context;
+  addMember(key: string, member: Val | Fun | Function): void {
+    this.members[key] = member;
+  }
 
-  private readonly content:
-    | Atom
-    | View
-    | Model
-    | RawValue
-    | Reference
-    | Implication
-    | Expression
-    | Expectation
-    | Procedure;
+  getMember(key: string): Val | Fun | Function | undefined {
+    return this.members[key];
+  }
+}
 
-  constructor(source: Abstract.Field, closure: Props, context: Context) {
-    super();
+class Val {
+  private readonly source: Abstract.Val;
+  private readonly scope: Scope;
+  private readonly binding: Raw | Ref | Call | Component;
 
+  constructor(source: Abstract.Val, scope: Scope) {
     this.source = source;
-    this.closure = closure;
-    this.context = context;
+    this.scope = scope;
 
-    switch (source.content.kind) {
-      case "atom": {
-        this.content = new Atom(source.content, closure, context);
-        break;
-      }
-      case "view": {
-        this.content = new View(source.content, closure, context);
-        break;
-      }
-      case "model": {
-        this.content = new Model(source.content, closure, context);
-        break;
-      }
-      case "rawValue": {
-        this.content = new RawValue(source.content, closure, context);
-        break;
-      }
-      case "reference": {
-        this.content = new Reference(source.content, closure, context);
-        break;
-      }
-      case "implication": {
-        this.content = new Implication(source.content, closure, context);
-        break;
-      }
-      case "expression": {
-        this.content = new Expression(source.content, closure, context);
-        break;
-      }
-      case "expectation": {
-        this.content = new Expectation(source.content, closure, context);
-        break;
-      }
-      case "procedure": {
-        this.content = new Procedure(source.content, closure, context);
-        this.content.handleEvent();
-        break;
-      }
-      default:
-        throw new Error(`Cannot field some content of invalid kind: ${(source.content as Abstract.Component).kind}`);
-    }
-
-    this.content.connect(this);
-  }
-
-  getProps(): Props {
-    return this.content.getProps();
-  }
-
-  handleException(error: unknown): void {
-    if (this.source.fallback) {
-      const fallback = this.source.fallback && new Action(this.source.fallback, this.closure);
-      const errorArg = new Field(
-        {
-          kind: "field",
-          content: {
-            kind: "rawValue",
-            value: error,
-          },
-        },
-        new StaticProps({}),
-        { isTransient: true },
+    if (this.source.binding.kind === "raw") {
+      this.binding = new Raw(this.source.binding, this.scope);
+    } else if (this.source.binding.kind === "ref") {
+      this.binding = new Ref(this.source.binding, this.scope);
+    } else if (this.source.binding.kind === "call") {
+      this.binding = new Call(this.source.binding, this.scope);
+    } else if (this.source.binding.kind === "component") {
+      this.binding = new Component(this.source.binding, this.scope);
+    } else {
+      throw new Error(
+        `Val ${this.source.key} has a binding of unknown kind: ${(this.source.binding as Abstract.Node).kind}.`,
       );
-
-      fallback.handleEvent([errorArg]);
-    } else {
-      super.handleException(error);
     }
   }
 
-  isVoid(): boolean {
-    const value = this.getValue();
-    return value === void undefined;
+  getMember(key: string): Val | Function | undefined {
+    return this.binding.getMember(key);
+  }
+
+  getValue(): unknown {
+    return this.binding.getValue();
   }
 }
 
-class Atom extends Publisher<HTMLElement> implements PropertyOwner {
-  private readonly source: Abstract.Atom;
-  private readonly closure: Props;
-  private readonly context: Context;
+class Fun {
+  private readonly source: Abstract.Fun;
+  private readonly scope: Scope;
+  private readonly binding: Routine;
 
-  private readonly props = new StaticProps({});
-
-  constructor(source: Abstract.Atom, closure: Props, context: Context) {
-    super();
-
+  constructor(source: Abstract.Fun, scope: Scope) {
     this.source = source;
-    this.closure = closure;
-    this.context = context;
+    this.scope = scope;
 
-    const element = document.createElement(source.tagName);
-
-    Object.entries(source.outerProps).forEach(([key, value]) => {
-      switch (value.kind) {
-        case "field": {
-          const field = new Field(value, closure, context);
-          field.connect((fieldValue) => {
-            if (key === "content") {
-              const content: Array<Node | string> = [];
-              const handleContentValue = (contentValue: unknown) => {
-                if (contentValue instanceof Array) {
-                  contentValue.forEach((field: Field) => {
-                    field.connect(handleContentValue);
-                  });
-                } else if (contentValue instanceof Field) {
-                  contentValue.connect(handleContentValue);
-                } else if (!(fieldValue === false || fieldValue === null || fieldValue === undefined)) {
-                  // TODO Don't push -- assign to a specific index instead (to allow for async fields)?
-                  content.push(contentValue as Node | string);
-                }
-              };
-              handleContentValue(fieldValue);
-              element.replaceChildren(...content);
-            } else if (CSS.supports(key, fieldValue as string)) {
-              element.style.setProperty(key, fieldValue as string);
-            } else if (fieldValue === true) {
-              element.setAttribute(key, key);
-            } else if (fieldValue === false || fieldValue === null || fieldValue === undefined) {
-              element.removeAttribute(key);
-              element.style.removeProperty(key);
-            } else {
-              element.setAttribute(key, fieldValue as string);
-            }
-          });
-
-          this.props.addMember(key, field);
-          break;
-        }
-        case "action": {
-          const action = new Action(value, closure);
-          const eventType = key.toLowerCase();
-
-          element.addEventListener(eventType, (event) => {
-            const eventArg = new Field(
-              {
-                kind: "field",
-                content: {
-                  kind: "rawValue",
-                  value: event,
-                },
-              },
-              new StaticProps({}),
-              { isTransient: true },
-            );
-
-            action.handleEvent([eventArg]);
-          });
-
-          this.props.addMember(key, action);
-          break;
-        }
-        default:
-          throw new Error(
-            `Atom cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-          );
-      }
-    });
-
-    this.handleEvent(element);
+    this.binding = new Routine(this.source.binding, this.scope);
   }
 
-  getProps(): Props {
-    return this.props;
+  async handleEvent(...args: Array<Raw | Ref | Call | Component | Routine>): Promise<unknown> {
+    return this.binding.handleEvent(...args);
   }
 }
 
-class View extends Publisher<HTMLElement> implements PropertyOwner {
-  private readonly source: Abstract.View;
-  private readonly closure: Props;
-  private readonly context: Context;
+class Raw {
+  private readonly source: Abstract.Raw;
+  private readonly scope: Scope;
 
-  private readonly props: StaticProps;
-  private readonly stage: Array<Atom | View> = [];
-
-  constructor(source: Abstract.View, closure: Props, context: Context) {
-    super();
-
+  constructor(source: Abstract.Raw, scope: Scope) {
     this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    const viewTemplate = Abstract.isComponent(source.viewTemplate)
-      ? source.viewTemplate
-      : closure.getMember(source.viewTemplate);
-
-    if (!(Abstract.isComponent(viewTemplate) && viewTemplate.kind === "viewTemplate")) {
-      throw new Error("Cannot construct an invalid view template.");
-    }
-
-    this.props = new StaticProps({}, closure);
-
-    Object.entries(source.outerProps).forEach(([key, value]) => {
-      switch (value.kind) {
-        case "field":
-          this.props.addMember(key, new Field(value, closure, context));
-          break;
-        case "action":
-          this.props.addMember(key, new Action(value, closure));
-          break;
-        default:
-          throw new Error(
-            `View cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-          );
-      }
-    });
-
-    Object.entries(viewTemplate.innerProps).forEach(([key, value]) => {
-      if (key in this.props) {
-        return;
-      }
-
-      switch (value.kind) {
-        case "method":
-          this.props.addMember(key, value);
-          break;
-        case "field":
-          this.props.addMember(key, new Field(value, this.props, context));
-          break;
-        case "action":
-          this.props.addMember(key, new Action(value, this.props));
-          break;
-        default:
-          throw new Error(
-            `View cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-          );
-      }
-    });
-
-    this.stage = viewTemplate.stage.map((component) => {
-      switch (component.kind) {
-        case "atom": {
-          const atom = new Atom(component, this.props, context);
-          atom.connect(this);
-          return atom;
-        }
-        case "view": {
-          const view = new View(component, this.props, context);
-          view.connect(this);
-          return view;
-        }
-        default:
-          throw new Error(`View cannot stage something of invalid kind: ${(component as Abstract.Component).kind}`);
-      }
-    });
+    this.scope = scope;
   }
 
-  getProps(): Props {
-    return this.props;
-  }
-}
-
-class Model extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Model;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  private readonly props: StaticProps;
-  private readonly serialization: Record<string, unknown> = {};
-
-  constructor(source: Abstract.Model, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    this.props = new StaticProps({}, closure);
-    const props = this.props;
-
-    Object.entries(source.outerProps).forEach(([key, value]) => {
-      switch (value.kind) {
-        // TODO Allow methods to be passed in as outer props, here
-        case "field":
-          props.addMember(key, new Field(value, closure, context));
-          break;
-        case "action":
-          props.addMember(key, new Action(value, closure));
-          break;
-        // TODO Allow functions to be passed in as outer props, here
-        default:
-          throw new Error(
-            `Model cannot construct outer prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-          );
-      }
-    });
-
-    const modelTemplate = Abstract.isComponent(source.modelTemplate)
-      ? source.modelTemplate
-      : closure.getMember(source.modelTemplate);
-
-    if (Abstract.isComponent(modelTemplate) && modelTemplate.kind === "modelTemplate") {
-      Object.entries(modelTemplate.innerProps).forEach(([key, value]) => {
-        if (key in props) {
-          return;
-        }
-
-        switch (value.kind) {
-          case "method":
-            // TODO Provide proper closure scoping for Model methods:
-            props.addMember(key, value);
-            break;
-          case "field":
-            props.addMember(key, new Field(value, props, context));
-            break;
-          case "action":
-            props.addMember(key, new Action(value, props));
-            break;
-          default:
-            throw new Error(
-              `Model cannot construct inner prop ${key} of invalid kind: ${(value as Abstract.Component).kind}`,
-            );
-        }
-      });
-    }
-
-    (async () => {
-      await Promise.all(
-        props
-          .getOwnProperties()
-          .map(([_, ownProp]) => (ownProp instanceof Field ? ownProp.getDeliverable() : Promise.resolve())),
-      );
-
-      props.getOwnProperties().forEach(([key, ownProp]) => {
-        if (Abstract.isComponent(ownProp) && ownProp.kind === "method") {
-          // TODO Serialize abstract methods
-        } else if (ownProp instanceof Field) {
-          this.serialization[key] = ownProp.getValue();
-          ownProp.connectPassively((ownPropValue) => {
-            this.serialization[key] = ownPropValue;
-            this.handleEvent({ ...this.serialization });
-          });
-        } else if (ownProp instanceof Action) {
-          // TODO Serialize actions
-        } else if (typeof ownProp === "function") {
-          this.serialization[key] = ownProp;
-        } else {
-          // TODO Throw?
-        }
-      });
-
-      this.handleEvent({ ...this.serialization });
-    })();
-  }
-
-  getProps(): Props {
-    return this.props;
-  }
-}
-
-class RawValue extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.RawValue;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  constructor(source: Abstract.RawValue, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    let value = source.value;
-
-    if (source.value instanceof Array) {
-      value = source.value.map((arrayElement): Field => {
-        let field: Field;
-
-        if (Abstract.isComponent(arrayElement) && arrayElement.kind === "field") {
-          field = new Field(arrayElement as Abstract.Field, this.closure, this.context);
-        } else {
-          field = new Field(
-            {
-              kind: "field",
-              content: {
-                kind: "rawValue",
-                value: arrayElement,
-              },
-            },
-            new StaticProps({}),
-            this.context,
-          );
-        }
-
-        return field;
-      });
-    }
-
-    this.handleEvent(value);
-  }
-
-  getProps(): Props {
-    const value = this.getValue();
-
-    // TODO Cache props
-    const props = new StaticProps(
-      {
-        set: (arg: Field) => {
-          const nextValue = arg?.getValue();
-          this.handleEvent(nextValue);
-        },
-      },
-      new DynamicProps(value),
-    );
-
-    if (typeof value === "boolean") {
-      props.addMember("not", () => {
-        const result = !this.getValue();
-        return result;
-      });
-      props.addMember("toggle", () => {
-        const nextValue = !this.getValue();
-        this.handleEvent(nextValue);
-      });
-    } else if (typeof value === "string") {
-      props.addMember("plus", (field) => {
-        const result = `${this.getValue()}${field.getValue()}`;
-        return result;
-      });
-    } else if (value instanceof Array) {
-      props.addMember("into", (arg) => {
-        // TODO Implement `into` method
-        // The `into` method is like `map`, but `arg` is an abstract method applied to the singular value,
-        // instead of each Array element of the value.
-      });
-      props.addMember("map", (arg) => {
-        const argValue = arg.getValue();
-        if (!(Abstract.isComponent(argValue) && argValue.kind === "method")) {
-          throw new Error("Cannot map an array with an arg which is not a method.");
-        }
-
-        const method = argValue as Abstract.Method;
-        const currentValue = this.getValue();
-
-        const result: Array<Field> = (currentValue instanceof Array ? currentValue : [currentValue]).map((innerArg) => {
-          const closureWithParams = new StaticProps(
-            {
-              [method.params[0]]: innerArg,
-            },
-            this.closure,
-          );
-
-          const innerField = new Field(method.result, closureWithParams, this.context);
-          return innerField;
-        });
-
-        return result;
-      });
-      props.addMember("push", (arg) => {
-        const currentValue = this.getValue();
-        const nextValue = [...(currentValue instanceof Array ? currentValue : [currentValue]), arg];
-        this.handleEvent(nextValue);
-      });
-    }
-
-    return props;
-  }
-}
-
-class Reference extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Reference;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  private link?: Property;
-
-  constructor(source: Abstract.Reference, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    let disconnect: (() => void) | undefined;
-
-    const reconnect = (props: Props) => {
-      disconnect?.();
-
-      this.link = props.getMember(source.fieldName);
-
-      if (this.link instanceof Field) {
-        disconnect = this.link.connect(this);
-      } else {
-        console.warn(`Field name not found for reference:`, source);
-      }
-    };
-
-    if (source.scope) {
-      const scope = new Field(source.scope, closure, context);
-
-      scope.connect(() => {
-        reconnect(scope.getProps());
-      });
-    } else {
-      reconnect(closure);
-    }
-  }
-
-  getProps(): Props {
-    if (this.link instanceof Field) {
-      return this.link.getProps();
-    }
-
-    return new StaticProps({});
-  }
-}
-
-class Implication extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Implication;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  private readonly condition: Field;
-  private readonly consequence: Field;
-  private readonly alternative?: Field;
-
-  constructor(source: Abstract.Implication, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    this.condition = new Field(source.condition, closure, context);
-    this.condition.connectPassively(this);
-
-    this.consequence = new Field(source.consequence, closure, context);
-    this.consequence.connectPassively(this);
-
-    if (source.alternative) {
-      this.alternative = new Field(source.alternative, closure, context);
-      this.alternative.connectPassively(this);
-    }
-
-    this.handleEvent();
-  }
-
-  getProps() {
-    const conditionalValue = this.condition.getValue();
-    const impliedField = conditionalValue ? this.consequence : this.alternative ?? undefined;
-    const impliedProps = impliedField?.getProps() ?? new StaticProps({});
-
-    return impliedProps;
-  }
-
-  handleEvent() {
-    const conditionalValue = this.condition.getValue();
-    const impliedField = conditionalValue ? this.consequence : this.alternative ?? undefined;
-    const impliedValue = impliedField?.getValue();
-
-    super.handleEvent(impliedValue);
-  }
-}
-
-class Expression extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Expression;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  private result?: Field;
-
-  constructor(source: Abstract.Expression, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    const args = source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, closure, context);
-      return arg;
-    });
-
-    const disconnect: Array<() => void> = [];
-
-    const reconnect = async (method?: Property) => {
-      while (disconnect.length > 0) {
-        disconnect.shift()?.();
-      }
-
-      // TODO Resolve scope and args in parallel
-      await Promise.all(args.map((arg) => arg.getDeliverable()));
-
-      if (Abstract.isComponent(method) && method.kind === "method") {
-        const closureWithParams = new StaticProps(
-          method.params.reduce<Record<string, Field>>((acc, param, index) => {
-            acc[param] = args[index];
-            return acc;
-          }, {}),
-          closure,
-        );
-
-        this.result = new Field(method.result, closureWithParams, { isTransient: true });
-        disconnect.push(this.result.connect(this));
-      } else if (typeof method === "function") {
-        const value = method(...args);
-        console.log(`Expression: called JavaScript function \`${source.methodName}\` with args:`, args);
-        console.log(`...returned:`, value);
-        const result = new Field(
-          {
-            kind: "field",
-            content: {
-              kind: "rawValue",
-              value,
-            },
-          },
-          new StaticProps({}),
-          { isTransient: true },
-        );
-        this.result = result;
-        disconnect.push(this.result.connect(this));
-
-        if (!context.isTransient) {
-          args.forEach((arg) => {
-            disconnect.push(
-              arg.connectPassively(() => {
-                const nextValue = method(...args);
-                console.log(`Expression: recalled JavaScript function \`${source.methodName}\` with args...`, args);
-                console.log(`...returned:`, nextValue);
-                result.handleEvent(nextValue);
-              }),
-            );
-          });
-        }
-      } else {
-        console.warn(`Method name not found for expression:`, source);
-      }
-    };
-
-    if (source.scope) {
-      const scope = new Field(source.scope, closure, context);
-
-      if (source.methodName === "isVoid") {
-        const method = scope.isVoid.bind(scope);
-        reconnect(method);
-        scope.connect(() => {
-          // TODO Disconnect scope in transient contexts
-          // if (context.isTransient) {
-          //   disconnectScope();
-          // }
-
-          const method = scope.isVoid.bind(scope);
-          reconnect(method);
-        });
-      } else {
-        scope.connect(() => {
-          console.log(`scope changed for ${source.methodName}:`, scope);
-          // TODO Disconnect scope in transient contexts
-          // if (context.isTransient) {
-          //   disconnectScope();
-          // }
-
-          const method = scope.getProps().getMember(source.methodName);
-          reconnect(method);
-        });
-      }
-    } else {
-      const method = closure.getMember(source.methodName);
-      reconnect(method);
-    }
-  }
-
-  getProps(): Props {
-    if (this.result instanceof Field) {
-      return this.result.getProps();
-    }
-
-    return new StaticProps({});
-  }
-}
-
-class Expectation extends Publisher implements PropertyOwner {
-  private readonly source: Abstract.Expectation;
-  private readonly closure: Props;
-  private readonly context: Context;
-
-  private proxy?: Field;
-
-  constructor(source: Abstract.Expectation, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    const means = new Expression(source.means, closure, context);
-    const queue: Array<Promise<unknown>> = [];
-
-    means.connect((meansValue) => {
-      const attendant = Promise.resolve(meansValue)
-        .then((value) => {
-          const index = queue.indexOf(attendant);
-
-          if (index !== -1) {
-            queue.splice(0, index + 1);
-
-            if (this.proxy) {
-              this.proxy.handleEvent(value);
-            } else {
-              this.proxy = new Field(
-                {
-                  kind: "field",
-                  content: {
-                    kind: "rawValue",
-                    value,
-                  },
-                },
-                closure,
-                context,
-              );
-
-              this.proxy.connect(this);
-            }
-          }
-        })
-        .catch((error) => {
-          const index = queue.indexOf(attendant);
-
-          if (index !== -1) {
-            queue.splice(index, 1);
-            this.handleException(error);
-          }
-        });
-
-      queue.push(attendant);
-    });
-  }
-
-  getProps(): Props {
-    if (this.proxy instanceof Field) {
-      return this.proxy.getProps();
-    }
-
-    return new StaticProps({});
-  }
-}
-
-/**
- * Actions:
- */
-
-class Action implements Subscriber<Array<Field>> {
-  private readonly source: Abstract.Action;
-  private readonly closure: Props;
-
-  constructor(source: Abstract.Action, closure: Props) {
-    this.source = source;
-    this.closure = closure;
-  }
-
-  async handleEvent(args: Array<Field>): Promise<void> {
-    const closureWithParams = new StaticProps(
-      this.source.params.reduce<Record<string, Field>>((acc, param, index) => {
-        acc[param] = args[index];
-        return acc;
-      }, {}),
-      this.closure,
-    );
-
-    const handler = new Procedure(this.source.handler, closureWithParams, { isTransient: true });
-    await handler.handleEvent();
-  }
-}
-
-class Procedure extends Publisher implements PropertyOwner, Subscriber {
-  private readonly source: Abstract.Procedure;
-  private readonly closure: Props;
-  private readonly context: Context;
-  private readonly proxy: Field;
-
-  constructor(source: Abstract.Procedure, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-
-    this.proxy = new Field(
-      {
-        kind: "field",
-        content: {
-          kind: "rawValue",
-          value: undefined,
-        },
-      },
-      this.closure,
-      this.context,
-    );
-    this.proxy.connect(this);
-  }
-
-  getProps() {
-    return this.proxy.getProps();
-  }
-
-  // TODO If called while already running, then don't run again until the first run finishes.
-  async handleEvent() {
-    const steps = [...this.source.steps];
-
-    let stepsClosure = new StaticProps({}, this.closure);
-
-    // TODO Abort the remaining steps if one throws an error.
-    const run = async (step?: (typeof steps)[number]) => {
-      if (step?.kind === "field") {
-        const output = new Field(step, stepsClosure, { isTransient: true });
-        output.connect(this.proxy);
-      } else if (step) {
-        switch (step.kind) {
-          case "procedure": {
-            const procedure = new Procedure(step, stepsClosure, { isTransient: true });
-            await procedure.handleEvent();
-            this.proxy.handleEvent(procedure.getValue());
-            break;
-          }
-          case "call": {
-            const call = new Call(step, stepsClosure);
-            await call.handleEvent();
-            break;
-          }
-          case "decision": {
-            const decision = new Decision(step, stepsClosure, { isTransient: true });
-            await decision.handleEvent();
-            this.proxy.handleEvent(decision.getValue());
-            break;
-          }
-          case "declaration":
-            stepsClosure = new StaticProps({}, stepsClosure);
-            const declaration = new Declaration(step, stepsClosure);
-            await declaration.handleEvent();
-            break;
-          default:
-            throw new Error(`Cannot run procedure step of invalid kind: ${(step as Abstract.Component).kind}`);
-        }
-
-        await run(steps.shift());
-      }
-    };
-
-    await run(steps.shift());
-  }
-}
-
-class Call implements Subscriber<void> {
-  private readonly source: Abstract.Call;
-  private readonly closure: Props;
-
-  constructor(source: Abstract.Call, closure: Props) {
-    this.source = source;
-    this.closure = closure;
-  }
-
-  async handleEvent() {
-    const scope = this.source.scope && new Field(this.source.scope, this.closure, { isTransient: true });
-    if (scope) {
-      // TODO Resolve scope and args in parallel
-      await scope.getDeliverable();
-    }
-
-    const props = scope ? scope.getProps() : this.closure;
-    const action = props.getMember(this.source.actionName);
-
-    let callTarget: Subscriber<Array<Field>>;
-
-    if (action instanceof Action) {
-      callTarget = action;
-    } else if (typeof action === "function") {
-      callTarget = {
-        handleEvent: (calledArgs: Array<Field>) => {
-          const returnValue = action(...calledArgs);
-          console.log(`Called JavaScript function \`${this.source.actionName}\` with args:`, calledArgs);
-          console.log(`...returned (ignored value):`, returnValue);
-        },
-      };
-    } else {
-      throw new Error(`Cannot call something which is not an action or function: ${this.source.actionName}`);
-    }
-
-    const callArgs = this.source.args.map((sourceArg) => {
-      const arg = new Field(sourceArg, this.closure, { isTransient: true });
-      return arg;
-    });
-
-    await Promise.all(callArgs.map((arg) => arg.getDeliverable()));
-    await callTarget.handleEvent(callArgs);
-  }
-}
-
-class Decision extends Publisher implements PropertyOwner, Subscriber<void> {
-  private readonly source: Abstract.Decision;
-  private readonly closure: Props;
-  private readonly context: Context;
-  private proxy?: Procedure;
-
-  constructor(source: Abstract.Decision, closure: Props, context: Context) {
-    super();
-
-    this.source = source;
-    this.closure = closure;
-    this.context = context;
-  }
-
-  getProps() {
-    return this.proxy?.getProps() ?? new StaticProps({});
-  }
-
-  async handleEvent() {
-    const condition = new Field(this.source.condition, this.closure, { isTransient: true });
-    await condition.getDeliverable();
-
-    const conditionalValue = condition.getValue();
-
-    if (conditionalValue) {
-      const consequence = (this.proxy = new Procedure(this.source.consequence, this.closure, this.context));
-      await consequence.handleEvent();
-    } else if (this.source.alternative) {
-      const alternative = (this.proxy = new Procedure(this.source.alternative, this.closure, this.context));
-      await alternative.handleEvent();
-    }
-  }
-}
-
-class Declaration implements Subscriber<void> {
-  private readonly source: Abstract.Declaration;
-  private readonly closure: StaticProps;
-
-  constructor(source: Abstract.Declaration, closure: StaticProps) {
-    this.source = source;
-    this.closure = closure;
-  }
-
-  async handleEvent() {
-    const value = new Field(this.source.value, this.closure, { isTransient: true });
-    await value.getDeliverable();
-
-    if (this.source.key) {
-      this.closure.addMember(this.source.key, value);
-    }
-  }
-}
-
-/**
- * Utilities:
- */
-
-interface PropertyOwner {
-  getProps(): Props;
-}
-
-interface Props {
-  getMember(key: string): Property | undefined;
-}
-
-type Property =
-  | Abstract.ViewTemplate
-  | Abstract.ModelTemplate
-  | Abstract.Method
-  | Field
-  | Action
-  | ((...args: Array<Field>) => unknown); // TODO Allow any type of args here, to integrate JS functions with ModelInstances?
-
-class DynamicProps implements Props {
-  private readonly value: any;
-
-  constructor(value: unknown) {
-    this.value = value;
-  }
-
-  getMember(key: string): Property | undefined {
-    const memberValue = this.value[key];
+  getMember(key: string): Val | Function | undefined {
+    const memberValue = this.source.value[key];
 
     if (typeof memberValue === "function") {
       const callableMemberValue =
         memberValue.prototype?.constructor === memberValue
           ? (...args: Array<unknown>) => new memberValue(...args)
-          : memberValue.bind(this.value);
+          : memberValue.bind(this.source.value);
 
-      const memberFunction = (...args: Array<Field>) => {
-        // TODO For arg values which are abstract methods or actions, we need to pass in a JavaScript function instead:
+      const memberFunction = (...args: Array<Raw | Ref | Call | Component | Routine>) => {
         const argValues = args.map((arg) => arg.getValue());
         const result = callableMemberValue(...argValues);
         return result;
@@ -1070,51 +118,113 @@ class DynamicProps implements Props {
     }
 
     if (memberValue !== undefined) {
-      const memberField = new Field(
+      const memberVal = new Val(
         {
-          kind: "field",
-          content: {
-            kind: "rawValue",
+          kind: "val",
+          key,
+          binding: {
+            kind: "raw",
             value: memberValue,
           },
         },
-        new StaticProps({}),
-        { isTransient: true },
+        this.scope,
       );
 
-      return memberField;
+      return memberVal;
     }
 
     return undefined;
   }
+
+  getValue(): unknown {
+    return this.source.value;
+  }
 }
 
-class StaticProps implements Props {
-  private readonly properties: Record<string, Property>;
-  private readonly closure?: Props;
+class Ref {
+  private readonly source: Abstract.Ref;
+  private readonly scope: Scope;
+  private readonly pointer?: Val; // | Var
 
-  constructor(properties: StaticProps | Record<string, Property>, closure?: Props) {
-    this.properties = properties instanceof StaticProps ? properties.properties : properties;
-    this.closure = closure;
-  }
+  constructor(source: Abstract.Ref, scope: Scope) {
+    this.source = source;
+    this.scope = scope;
 
-  addMember(key: string, value: Property) {
-    this.properties[key] = value;
-  }
+    let sourceScope: Scope | Raw | Ref | Call = this.scope;
 
-  getMember(key: string): Property | undefined {
-    if (key in this.properties) {
-      return this.properties[key];
+    if (this.source.scope?.kind === "raw") {
+      sourceScope = new Raw(this.source.scope, this.scope);
+    } else if (this.source.scope?.kind === "ref") {
+      sourceScope = new Ref(this.source.scope, this.scope);
+    } else if (this.source.scope?.kind === "call") {
+      sourceScope = new Call(this.source.scope, this.scope);
+    } else if (this.source.scope !== undefined) {
+      throw new Error(
+        `Ref ${this.source.foreignKey} has a scope of unknown kind: ${(this.source.scope as Abstract.Node).kind}.`,
+      );
     }
 
-    return this.closure?.getMember(key);
+    const sourceScopeMember = sourceScope.getMember(this.source.foreignKey);
+
+    if (sourceScopeMember instanceof Val) {
+      this.pointer = sourceScopeMember;
+    } else if (sourceScopeMember === undefined) {
+      const windowRaw = new Raw({ kind: "raw", value: window }, this.scope);
+      const windowMember = windowRaw.getMember(this.source.foreignKey);
+
+      if (windowMember instanceof Val) {
+        this.pointer = windowMember;
+      }
+    }
   }
 
-  getOwnProperties(): Array<[string, Property]> {
-    return Object.entries(this.properties);
+  getMember(key: string): Val | Function | undefined {
+    return this.pointer?.getMember(key);
+  }
+
+  getValue(): unknown {
+    return this.pointer?.getValue();
   }
 }
 
-type Context = {
-  isTransient: boolean;
-};
+class Call {
+  private readonly source: Abstract.Call;
+  private readonly scope: Scope;
+  private readonly pointer?: Fun | Function;
+  private readonly args: Array<Raw | Ref | Call | Component | Routine>;
+
+  constructor(source: Abstract.Call, scope: Scope) {
+    this.source = source;
+    this.scope = scope;
+
+    let sourceScope: Scope | Raw | Ref | Call = this.scope;
+
+    if (this.source.scope?.kind === "raw") {
+      sourceScope = new Raw(this.source.scope, this.scope);
+    } else if (this.source.scope?.kind === "ref") {
+      sourceScope = new Ref(this.source.scope, this.scope);
+    } else if (this.source.scope?.kind === "call") {
+      sourceScope = new Call(this.source.scope, this.scope);
+    } else if (this.source.scope !== undefined) {
+      throw new Error(
+        `Call ${this.source.foreignKey} has a scope of unknown kind: ${(this.source.scope as Abstract.Node).kind}.`,
+      );
+    }
+
+    this.pointer =
+      sourceScope.getMember(this.source.foreignKey) ??
+      new Raw({ kind: "raw", value: window }, this.scope).getMember(this.source.foreignKey);
+  }
+
+  getMember(key: string): Val | Function | undefined {
+    return this.pointer?.getMember(key);
+  }
+
+  getValue(): unknown {
+    return this.pointer?.getValue();
+  }
+
+  async handleEvent(): Promise<unknown> {
+    return this.pointer?.handleEvent(...this.args);
+  }
+}
