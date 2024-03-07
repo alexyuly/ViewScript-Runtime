@@ -33,7 +33,7 @@ export namespace Abstract {
   };
 
   export type Field = Node<"field"> & {
-    binding: Raw | Ref | Call | Quest | List | Structure | Component;
+    binding: Raw | Ref | Call | List | Structure | Component | Quest;
   };
 
   export type Action = Node<"action"> & {
@@ -56,10 +56,6 @@ export namespace Abstract {
     args: Array<Field | Action>;
   };
 
-  export type Quest = Node<"quest"> & {
-    binding: Raw | Ref | Call;
-  };
-
   export type List = Node<"list"> & {
     args: Array<Field | Action>;
   };
@@ -71,5 +67,9 @@ export namespace Abstract {
   export type Component = Node<"component"> & {
     key: string;
     attributes: Array<Fun | Val>;
+  };
+
+  export type Quest = Node<"quest"> & {
+    binding: Raw | Ref | Call;
   };
 }

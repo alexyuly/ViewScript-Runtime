@@ -11,7 +11,7 @@ export class App {
       if (property.kind === "param") {
         this.properties[property.key] = new Param(property);
       } else if (property.kind === "fun") {
-        this.properties[property.key] = new Fun(property);
+        this.properties[property.key] = new Fun(property, this.properties);
       } else if (property.kind === "val") {
         this.properties[property.key] = new Val(property);
       } else if (property.kind === "var") {
@@ -43,13 +43,16 @@ export class Param {
 
 export class Fun {
   readonly source: Abstract.Fun;
+  private readonly properties: Record<string, Param | Fun | Val | Var | View>;
+  private readonly binding: Action;
 
-  constructor(source: Abstract.Fun) {
+  constructor(source: Abstract.Fun, properties: Record<string, Param | Fun | Val | Var | View>) {
     this.source = source;
+    this.properties = properties;
+    this.binding = new Action(source.binding, properties);
   }
 
-  handleEvent() {
-    // TODO
-    console.log("Handling event.");
+  handleEvent(...args: Array<Field | Action>) {
+    this.binding.handleEvent(...args);
   }
 }
