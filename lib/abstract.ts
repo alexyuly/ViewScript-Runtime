@@ -36,11 +36,6 @@ export namespace Abstract {
     binding: Raw | Ref | Call | List | Structure | Component | Quest;
   };
 
-  export type Action = Node<"action"> & {
-    params: Array<Param>;
-    steps: Array<Val | Call>;
-  };
-
   export type Raw = Node<"raw"> & {
     value: any;
   };
@@ -71,5 +66,10 @@ export namespace Abstract {
 
   export type Quest = Node<"quest"> & {
     binding: Raw | Ref | Call;
+  };
+
+  export type Action = Node<"action"> & {
+    params: Array<Param>;
+    steps: Array<Val | Call>;
   };
 }
