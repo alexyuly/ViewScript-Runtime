@@ -21,9 +21,7 @@ export namespace Abstract {
     binding: Field;
   };
 
-  export type Field = Node<"field"> & {
-    binding: Raw | Ref | Call | Quest | List | Structure | Component | Action | View;
-  };
+  export type Field = Raw | Ref | Call | Quest | List | Structure | Component | Action | View;
 
   export type Raw = Node<"raw"> & {
     value: any;
