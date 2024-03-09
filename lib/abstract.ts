@@ -4,16 +4,11 @@ export namespace Abstract {
   };
 
   export type App = Node<"app"> & {
-    properties: Array<Param | Fun | Val | Var | View>;
+    properties: Array<Param | Val | Var>;
   };
 
   export type Param = Node<"param"> & {
     key: string;
-  };
-
-  export type Fun = Node<"fun"> & {
-    key: string;
-    binding: Action;
   };
 
   export type Val = Node<"val"> & {
@@ -26,14 +21,8 @@ export namespace Abstract {
     binding: Field;
   };
 
-  export type View = Node<"view"> & {
-    key: string;
-    properties: Array<Param | Fun | Val | Var>;
-    binding: Component;
-  };
-
   export type Field = Node<"field"> & {
-    binding: Raw | Ref | Call | List | Structure | Component | Quest;
+    binding: Raw | Ref | Call | Quest | List | Structure | Component | Action | View;
   };
 
   export type Raw = Node<"raw"> & {
@@ -41,35 +30,39 @@ export namespace Abstract {
   };
 
   export type Ref = Node<"ref"> & {
-    scope?: Field;
+    scope?: Ref | Call | Quest;
     key: string;
   };
 
   export type Call = Node<"call"> & {
-    scope?: Field;
-    key: string;
-    args: Array<Field | Action>;
-  };
-
-  export type List = Node<"list"> & {
-    args: Array<Field | Action>;
-  };
-
-  export type Structure = Node<"structure"> & {
-    attributes: Array<Fun | Var>;
-  };
-
-  export type Component = Node<"component"> & {
-    key: string;
-    attributes: Array<Fun | Val>;
+    callee: Ref;
+    args: Array<Field>;
   };
 
   export type Quest = Node<"quest"> & {
-    binding: Raw | Ref | Call;
+    question: Raw | Ref | Call;
+  };
+
+  export type List = Node<"list"> & {
+    args: Array<Field>;
+  };
+
+  export type Structure = Node<"structure"> & {
+    attributes: Array<Var | Ref>;
+  };
+
+  export type Component = Node<"component"> & {
+    template: Ref;
+    attributes: Array<Val | Ref>;
   };
 
   export type Action = Node<"action"> & {
     params: Array<Param>;
-    steps: Array<Val | Call>;
+    steps: Array<Val | Field>;
+  };
+
+  export type View = Node<"view"> & {
+    properties: Array<Param | Val | Var>;
+    binding: Component;
   };
 }

@@ -2,7 +2,7 @@ import { Abstract } from "./abstract";
 
 export class App {
   readonly source: Abstract.App;
-  private readonly properties: Record<string, Param | Fun | Val | Var | View> = {};
+  private readonly properties: Record<string, Param | Val | Var> = {};
 
   constructor(source: Abstract.App) {
     this.source = source;
@@ -10,26 +10,21 @@ export class App {
     for (const property of source.properties) {
       if (property.kind === "param") {
         this.properties[property.key] = new Param(property, this.properties);
-      } else if (property.kind === "fun") {
-        this.properties[property.key] = new Fun(property, this.properties);
       } else if (property.kind === "val") {
         this.properties[property.key] = new Val(property, this.properties);
       } else if (property.kind === "var") {
         this.properties[property.key] = new Var(property, this.properties);
-      } else if (property.kind === "view") {
-        this.properties[property.key] = new View(property);
       } else {
         throw new Error(`Property of App has unknown kind "${(property as Abstract.Node).kind}".`);
       }
     }
 
-    const main = this.properties["main"];
-
-    if (!(main instanceof Fun)) {
-      throw new Error(`Property "main" of App is not a fun.`);
+    if ("main" in this.properties) {
+      const main = this.properties["main"];
+      main.handleEvent();
+    } else {
+      throw new Error(`App has no property "main".`);
     }
-
-    main.handleEvent();
   }
 }
 
@@ -53,7 +48,7 @@ export class Param {
     }
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     while (this.subscribers.length > 0) {
@@ -66,6 +61,7 @@ export class Param {
     if (this.binding !== undefined) {
       throw new Error(`Param "${this.source.key}" already has a binding.`);
     }
+
     this.binding = binding;
     this.binding.setSubscriber(this);
   }
@@ -80,29 +76,12 @@ export class ParamSequence extends Param {
     this.subscribers.push(subscriber);
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     for (const subscriber of this.subscribers) {
       subscriber.handleEvent(value);
     }
-  }
-}
-
-export class Fun {
-  readonly source: Abstract.Fun;
-  private readonly properties: App["properties"];
-  private readonly binding: Action;
-
-  constructor(source: Abstract.Fun, properties: App["properties"]) {
-    this.source = source;
-    this.properties = properties;
-
-    this.binding = new Action(source.binding, properties);
-  }
-
-  handleEvent(...args: Array<Field | Action>) {
-    this.binding.handleEvent(...args);
   }
 }
 
@@ -118,7 +97,7 @@ export class Val {
     this.properties = properties;
 
     this.binding = new Field(source.binding, properties);
-    this.binding.addSubscriber(this);
+    this.binding.setSubscriber(this);
   }
 
   addSubscriber(subscriber: Ref) {
@@ -129,7 +108,7 @@ export class Val {
     }
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     while (this.subscribers.length > 0) {
@@ -148,7 +127,7 @@ export class ValSequence extends Val {
     this.subscribers.push(subscriber);
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     for (const subscriber of this.subscribers) {
@@ -179,7 +158,7 @@ export class Var {
     }
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     while (this.subscribers.length > 0) {
@@ -204,7 +183,7 @@ export class VarSequence extends Var {
     this.subscribers.push(subscriber);
   }
 
-  handleEvent(value: unknown) {
+  handleEvent(value?: unknown) {
     this.value = value;
 
     for (const subscriber of this.subscribers) {
@@ -213,41 +192,34 @@ export class VarSequence extends Var {
   }
 }
 
-export class View {
-  readonly source: Abstract.View;
-
-  constructor(source: Abstract.View) {
-    this.source = source;
-  }
-}
-
 export class Field {
   readonly source: Abstract.Field;
-  protected subscriber?: Param | Val | Var;
+  protected subscriber?: { handleEvent(value: unknown): void };
+  private binding: Raw | Ref | Call | Quest | List | Structure | Component | Action | View;
 
   constructor(source: Abstract.Field, properties: App["properties"]) {
     this.source = source;
 
     if (source.binding.kind === "raw") {
-      new Raw(source.binding as Abstract.Raw);
+      this.binding = new Raw(source.binding as Abstract.Raw);
     } else if (source.binding.kind === "ref") {
-      new Ref(source.binding as Abstract.Ref, properties);
+      this.binding = new Ref(source.binding as Abstract.Ref, properties);
     } else if (source.binding.kind === "call") {
-      new Call(source.binding as Abstract.Call, properties);
-    } else if (source.binding.kind === "list") {
-      new List(source.binding as Abstract.List, properties);
-    } else if (source.binding.kind === "structure") {
-      new Structure(source.binding as Abstract.Structure, properties);
-    } else if (source.binding.kind === "component") {
-      new Component(source.binding as Abstract.Component, properties);
+      this.binding = new Call(source.binding as Abstract.Call, properties);
     } else if (source.binding.kind === "quest") {
-      new Quest(source.binding as Abstract.Quest, properties);
+      this.binding = new Quest(source.binding as Abstract.Quest, properties);
+    } else if (source.binding.kind === "list") {
+      this.binding = new List(source.binding as Abstract.List, properties);
+    } else if (source.binding.kind === "structure") {
+      this.binding = new Structure(source.binding as Abstract.Structure, properties);
+    } else if (source.binding.kind === "component") {
+      this.binding = new Component(source.binding as Abstract.Component, properties);
     } else {
       throw new Error(`Field has unknown binding kind "${(source.binding as Abstract.Node).kind}".`);
     }
   }
 
-  setSubscriber(subscriber: Param | Val | Var) {
+  setSubscriber(subscriber: { handleEvent(value: unknown): void }) {
     this.subscriber = subscriber;
   }
 
@@ -257,5 +229,13 @@ export class Field {
 
   handleEvent(value: unknown) {
     this.subscriber?.handleEvent(value);
+  }
+}
+
+export class Raw {
+  readonly source: Abstract.Raw;
+
+  constructor(source: Abstract.Raw) {
+    this.source = source;
   }
 }
