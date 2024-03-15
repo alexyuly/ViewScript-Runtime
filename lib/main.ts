@@ -14,13 +14,15 @@ export class App {
         this.members[member.parameter.name] = new Constant(member);
       } else if (member.kind === "variable") {
         this.members[member.parameter.name] = new Variable(member);
+      } else {
+        throw new Error(); // TODO: Add error message.
       }
     }
   }
 }
 
 interface Subscriber<Incoming = unknown> {
-  handleEvent(event: Incoming): void;
+  handleEvent(event: Incoming): void | Promise<void>;
 }
 
 abstract class Publisher<Outgoing = unknown> {
@@ -33,6 +35,14 @@ abstract class Publisher<Outgoing = unknown> {
     }
 
     this.listeners.push(listener);
+  }
+
+  removeEventListener(listener: Subscriber<Outgoing>): void {
+    const index = this.listeners.indexOf(listener);
+
+    if (index !== -1) {
+      this.listeners.splice(index, 1);
+    }
   }
 
   protected publish(nextValue: Outgoing): void {
@@ -65,10 +75,7 @@ class Property extends Vertex {
     this.source = source;
     this.parameter = new Parameter(source.parameter);
     this.binding = binding;
-  }
-
-  handleEvent(event: any) {
-    this.publish(event);
+    this.binding.addEventListener(this);
   }
 }
 
@@ -83,10 +90,7 @@ class Constant extends Vertex {
     this.source = source;
     this.parameter = new Parameter(source.parameter);
     this.binding = new Entity(source.binding);
-  }
-
-  handleEvent(event: any) {
-    this.publish(event);
+    this.binding.addEventListener(this);
   }
 }
 
@@ -101,14 +105,13 @@ class Variable extends Vertex {
     this.source = source;
     this.parameter = new Parameter(source.parameter);
     this.binding = new Entity(source.binding);
+    this.binding.addEventListener(this);
   }
 
-  handleEvent(event: any) {
-    this.publish(event);
-  }
-
-  setBinding(binding: Entity) {
+  setBinding(binding: Entity): void {
+    this.binding.removeEventListener(this);
     this.binding = binding;
+    this.binding.addEventListener(this);
   }
 }
 
@@ -154,5 +157,3 @@ class Entity extends Publisher {
     }
   }
 }
-
-// TODO ...
