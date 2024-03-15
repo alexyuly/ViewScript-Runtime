@@ -4,63 +4,76 @@ export namespace Abstract {
   };
 
   export type App = Node<"app"> & {
-    properties: Array<Param | Val | Var>;
+    members: Array<Property | Constant | Variable>;
   };
 
-  export type Param = Node<"param"> & {
-    key: string;
+  export type Property = Node<"property"> & {
+    parameter: Parameter;
   };
 
-  export type Val = Node<"val"> & {
-    key: string;
-    binding: Field;
+  export type Constant = Node<"constant"> & {
+    parameter: Parameter;
+    binding: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
   };
 
-  export type Var = Node<"var"> & {
-    key: string;
-    binding: Field;
+  export type Variable = Node<"variable"> & {
+    parameter: Parameter;
+    binding: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
   };
 
-  export type Field = Raw | Ref | Call | Quest | List | Structure | Component | Action | View;
+  export type Parameter = Node<"parameter"> & {
+    name: string;
+  };
 
-  export type Raw = Node<"raw"> & {
+  export type Data = Node<"data"> & {
     value: any;
   };
 
   export type Ref = Node<"ref"> & {
-    scope?: Ref | Call | Quest;
-    key: string;
+    scope: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
+    name: string;
   };
 
   export type Call = Node<"call"> & {
-    callee: Ref;
-    args: Array<Field>;
+    method: Ref;
+    args: Array<Data | Ref | Call | Quest | List | Structure | Action | View | Component>;
   };
 
   export type Quest = Node<"quest"> & {
-    question: Raw | Ref | Call;
+    target: Data | Ref | Call;
   };
 
   export type List = Node<"list"> & {
-    args: Array<Field>;
+    args: Array<Data | Ref | Call | Quest | List | Structure | Action | View | Component>;
   };
 
   export type Structure = Node<"structure"> & {
-    attributes: Array<Var | Ref>;
-  };
-
-  export type Component = Node<"component"> & {
-    template: Ref;
-    attributes: Array<Val | Ref>;
+    attributes: Array<Attribute>;
   };
 
   export type Action = Node<"action"> & {
-    params: Array<Param>;
-    steps: Array<Val | Field>;
+    parameters: Array<Parameter>;
+    statements: Array<Constant | Variable | Assignment | Quest>;
+    result: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
   };
 
   export type View = Node<"view"> & {
-    properties: Array<Param | Val | Var>;
-    binding: Component;
+    members: Array<Property | Constant | Variable>;
+    render: Component;
+  };
+
+  export type Component = Node<"component"> & {
+    tagName: string;
+    attributes: Array<Attribute>;
+  };
+
+  export type Attribute = Node<"attribute"> & {
+    name: string;
+    binding: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
+  };
+
+  export type Assignment = Node<"assignment"> & {
+    name: string;
+    binding: Data | Ref | Call | Quest | List | Structure | Action | View | Component;
   };
 }
