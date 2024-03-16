@@ -1,10 +1,10 @@
 export namespace Abstract {
-  export type Entity<T extends string = string> = {
-    kind: T;
+  export type Entity<Kind extends string> = {
+    kind: Kind;
   };
 
   export type App = Entity<"app"> & {
-    members: Array<Prop | Constant | Variable>;
+    properties: Array<Prop | Constant | Variable>;
   };
 
   export type Prop = Entity<"prop"> & {
@@ -13,12 +13,12 @@ export namespace Abstract {
 
   export type Constant = Entity<"constant"> & {
     parameter: Parameter;
-    binding: Field;
+    field: Field;
   };
 
   export type Variable = Entity<"variable"> & {
     parameter: Parameter;
-    binding: Field;
+    field: Field;
   };
 
   export type Parameter = Entity<"parameter"> & {
@@ -26,7 +26,7 @@ export namespace Abstract {
   };
 
   export type Field = Entity<"field"> & {
-    binding: Ref | Call | Quest | Raw | List | Structure | Action | View | Component;
+    binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
   };
 
   export type Ref = Entity<"ref"> & {
@@ -35,12 +35,12 @@ export namespace Abstract {
   };
 
   export type Call = Entity<"call"> & {
-    method: Ref;
+    ref: Ref;
     args: Array<Field>;
   };
 
   export type Quest = Entity<"quest"> & {
-    target: Ref | Call;
+    call: Call;
   };
 
   export type Raw = Entity<"raw"> & {
@@ -51,19 +51,18 @@ export namespace Abstract {
     args: Array<Field>;
   };
 
-  export type Structure = Entity<"structure"> & {
+  export type Struct = Entity<"struct"> & {
     attributes: Array<Attribute>;
   };
 
   export type Action = Entity<"action"> & {
     parameters: Array<Parameter>;
     statements: Array<Constant | Variable | Assignment | Field>;
-    result: Field;
   };
 
   export type View = Entity<"view"> & {
-    members: Array<Prop | Constant | Variable>;
-    render: Component;
+    properties: Array<Prop | Constant | Variable>;
+    component: Component;
   };
 
   export type Component = Entity<"component"> & {
@@ -73,11 +72,11 @@ export namespace Abstract {
 
   export type Attribute = Entity<"attribute"> & {
     name: string;
-    binding: Field;
+    field: Field;
   };
 
   export type Assignment = Entity<"assignment"> & {
-    target: Ref;
-    binding: Field;
+    ref: Ref;
+    field: Field;
   };
 }

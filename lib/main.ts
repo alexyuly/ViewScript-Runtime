@@ -1,15 +1,15 @@
 import { Abstract } from "./abstract";
 
 interface Entity {
-  getPropertyValue(name: string): Field;
-  setProperty(name: string, binding: Field): void;
+  getPropertyValue(name: string): Field | undefined; // TODO: Allow undefined?
+  setProperty(name: string, field: Field): void;
 }
 
 abstract class KnownEntity implements Entity {
-  protected readonly members: Record<string, Prop | Constant | Variable> = {};
+  protected readonly properties: Record<string, Prop | Constant | Variable> = {};
 
   getPropertyValue(name: string): Field {
-    const property = this.members[name];
+    const property = this.properties[name];
 
     if (!property) {
       throw new Error(); // TODO: Add error message.
@@ -18,14 +18,14 @@ abstract class KnownEntity implements Entity {
     return property.getValue();
   }
 
-  setProperty(name: string, binding: Field): void {
-    const property = this.members[name];
+  setProperty(name: string, field: Field): void {
+    const property = this.properties[name];
 
     if (!(property instanceof Variable)) {
       throw new Error(); // TODO: Add error message.
     }
 
-    property.set(binding);
+    property.set(field);
   }
 }
 
@@ -37,18 +37,18 @@ export class App extends KnownEntity {
 
     this.source = source;
 
-    for (const member of source.members) {
-      if (member.kind === "prop") {
+    for (const property of source.properties) {
+      if (property.kind === "prop") {
         const abstractField: Abstract.Field = {
           kind: "field",
-          binding: { kind: "raw", value: environment[member.parameter.name] },
+          binding: { kind: "raw", value: environment[property.parameter.name] },
         };
         const propertyValue = new Field(abstractField, this);
-        this.members[member.parameter.name] = new Prop(member, propertyValue);
-      } else if (member.kind === "constant") {
-        this.members[member.parameter.name] = new Constant(member, this);
-      } else if (member.kind === "variable") {
-        this.members[member.parameter.name] = new Variable(member, this);
+        this.properties[property.parameter.name] = new Prop(property, propertyValue);
+      } else if (property.kind === "constant") {
+        this.properties[property.parameter.name] = new Constant(property, this);
+      } else if (property.kind === "variable") {
+        this.properties[property.parameter.name] = new Variable(property, this);
       } else {
         throw new Error(); // TODO: Add error message.
       }
@@ -62,11 +62,15 @@ interface Subscriber<Incoming = unknown> {
 
 abstract class Publisher<Outgoing = unknown> {
   private readonly listeners: Subscriber<Outgoing>[] = [];
-  private lastPublishedValue?: Outgoing;
+  private publishedValue?: Outgoing;
 
-  addEventListener(listener: Subscriber<Outgoing>): void {
-    if (this.lastPublishedValue !== undefined) {
-      listener.handleEvent(this.lastPublishedValue);
+  getPublishedValue(): Outgoing | undefined {
+    return this.publishedValue;
+  }
+
+  addEventListener(listener: Subscriber<Outgoing>, silent = false): void {
+    if (this.publishedValue !== undefined && !silent) {
+      listener.handleEvent(this.publishedValue);
     }
 
     this.listeners.push(listener);
@@ -81,11 +85,11 @@ abstract class Publisher<Outgoing = unknown> {
   }
 
   protected publish(nextValue: Outgoing): void {
-    if (this.lastPublishedValue === nextValue) {
+    if (this.publishedValue === nextValue) {
       return;
     }
 
-    this.lastPublishedValue = nextValue;
+    this.publishedValue = nextValue;
 
     for (const listener of this.listeners) {
       listener.handleEvent(nextValue);
@@ -106,63 +110,63 @@ interface Property {
 class Prop extends Vertex implements Property {
   readonly source: Abstract.Prop;
   private readonly parameter: Parameter;
-  private readonly binding: Field;
+  private readonly field: Field;
 
-  constructor(source: Abstract.Prop, binding: Field) {
+  constructor(source: Abstract.Prop, field: Field) {
     super();
 
     this.source = source;
     this.parameter = new Parameter(source.parameter);
-    this.binding = binding;
-    this.binding.addEventListener(this);
+    this.field = field;
+    this.field.addEventListener(this);
   }
 
   getValue(): Field {
-    return this.binding;
+    return this.field;
   }
 }
 
 class Constant extends Vertex implements Property {
   readonly source: Abstract.Constant;
   private readonly parameter: Parameter;
-  private readonly binding: Field;
+  private readonly field: Field;
 
   constructor(source: Abstract.Constant, scope: KnownEntity) {
     super();
 
     this.source = source;
     this.parameter = new Parameter(source.parameter);
-    this.binding = new Field(source.binding, scope);
-    this.binding.addEventListener(this);
+    this.field = new Field(source.field, scope);
+    this.field.addEventListener(this);
   }
 
   getValue(): Field {
-    return this.binding;
+    return this.field;
   }
 }
 
 class Variable extends Vertex implements Property {
   readonly source: Abstract.Variable;
   private readonly parameter: Parameter;
-  private binding: Field;
+  private field: Field;
 
   constructor(source: Abstract.Variable, scope: KnownEntity) {
     super();
 
     this.source = source;
     this.parameter = new Parameter(source.parameter);
-    this.binding = new Field(source.binding, scope);
-    this.binding.addEventListener(this);
+    this.field = new Field(source.field, scope);
+    this.field.addEventListener(this);
   }
 
   getValue(): Field {
-    return this.binding;
+    return this.field;
   }
 
-  set(binding: Field): void {
-    this.binding.removeEventListener(this);
-    this.binding = binding;
-    this.binding.addEventListener(this);
+  set(field: Field): void {
+    this.field.removeEventListener(this);
+    this.field = field;
+    this.field.addEventListener(this);
   }
 }
 
@@ -176,7 +180,7 @@ class Parameter {
 
 class Field extends Publisher implements Entity {
   readonly source: Abstract.Field;
-  private readonly binding: Ref | Call | Quest | Raw | List | Structure | Action | View | Component;
+  private readonly binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
 
   constructor(source: Abstract.Field, scope: KnownEntity) {
     super();
@@ -186,15 +190,15 @@ class Field extends Publisher implements Entity {
     if (source.binding.kind === "ref") {
       this.binding = new Ref(source.binding, scope);
     } else if (source.binding.kind === "call") {
-      this.binding = new Call(source.binding);
+      this.binding = new Call(source.binding, scope);
     } else if (source.binding.kind === "quest") {
       this.binding = new Quest(source.binding);
     } else if (source.binding.kind === "raw") {
       this.binding = new Raw(source.binding);
     } else if (source.binding.kind === "list") {
       this.binding = new List(source.binding);
-    } else if (source.binding.kind === "structure") {
-      this.binding = new Structure(source.binding);
+    } else if (source.binding.kind === "struct") {
+      this.binding = new Struct(source.binding);
     } else if (source.binding.kind === "action") {
       this.binding = new Action(source.binding);
     } else if (source.binding.kind === "view") {
@@ -204,33 +208,103 @@ class Field extends Publisher implements Entity {
     } else {
       throw new Error(); // TODO: Add error message.
     }
-  }
 
-  getChild(name: string): Field {
-    return this.binding.getChild(name);
+    this.binding.addEventListener(this);
   }
 
   getPropertyValue(name: string): Field {
     return this.binding.getPropertyValue(name);
   }
 
-  setProperty(name: string, binding: Field): void {
-    this.binding.setProperty(name, binding);
+  setProperty(name: string, field: Field): void {
+    this.binding.setProperty(name, field);
   }
 }
 
-class Ref extends Vertex {
+class Ref extends Vertex implements Entity {
   readonly source: Abstract.Ref;
   private readonly scope: Entity;
-  private readonly binding: Field;
+  private readonly ref: Field;
 
   constructor(source: Abstract.Ref, scope: KnownEntity) {
     super();
 
     this.source = source;
     this.scope = source.scope ? new Field(source.scope, scope) : scope;
-    this.binding = this.scope.getPropertyValue(source.name);
+    this.ref = this.scope.getPropertyValue(source.name);
+    this.ref.addEventListener(this);
   }
+
+  getPropertyValue(name: string): Field {
+    return this.ref.getPropertyValue(name);
+  }
+
+  setProperty(name: string, field: Field): void {
+    this.ref.setProperty(name, field);
+  }
+}
+
+class Call extends Publisher implements Subscriber<void>, Entity {
+  readonly source: Abstract.Call;
+  private readonly ref: Ref;
+  private readonly args: Field[];
+  private result?: Field;
+
+  constructor(source: Abstract.Call, scope: KnownEntity) {
+    super();
+
+    this.source = source;
+    this.ref = new Ref(source.ref, scope);
+    this.args = source.args.map((arg) => new Field(arg, scope));
+
+    this.handleEvent();
+    this.ref.addEventListener(this, true);
+
+    for (const arg of this.args) {
+      arg.addEventListener(this, true);
+    }
+  }
+
+  handleEvent(): void {
+    const callee = this.ref.getPublishedValue();
+
+    if (typeof callee === "function") {
+      const result = callee(this.args);
+      this.publish(result);
+    } else {
+      throw new Error(); // TODO: Add error message.
+    }
+  }
+
+  getPropertyValue(name: string): Field | undefined {
+    return this.result?.getPropertyValue(name);
+  }
+
+  setProperty(name: string, field: Field): void {
+    this.result?.setProperty(name, field);
+  }
+}
+
+class Quest<T = unknown> extends Publisher<T> implements Subscriber<Promise<T>> {
+  readonly source: Abstract.Quest;
+  private readonly call: Call;
+
+  constructor(source: Abstract.Quest, scope: KnownEntity) {
+    super();
+
+    this.source = source;
+    this.call = new Call(source.call, scope);
+    this.call.addEventListener(this);
+  }
+
+  async handleEvent(promise: Promise<T>): Promise<void> {
+    const result = await promise;
+    this.publish(result);
+  }
+}
+
+class Raw extends Publisher {
+  // TODO
 }
 
 // TODO Roll this into class Raw? ...
