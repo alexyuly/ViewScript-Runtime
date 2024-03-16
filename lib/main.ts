@@ -1,19 +1,54 @@
 import { Abstract } from "./abstract";
 
-export class App {
-  readonly source: Abstract.App;
-  private readonly members: Record<string, Property | Constant | Variable> = {};
+interface Entity {
+  getPropertyValue(name: string): Field;
+  setProperty(name: string, binding: Field): void;
+}
 
-  constructor(source: Abstract.App) {
+abstract class KnownEntity implements Entity {
+  protected readonly members: Record<string, Prop | Constant | Variable> = {};
+
+  getPropertyValue(name: string): Field {
+    const property = this.members[name];
+
+    if (!property) {
+      throw new Error(); // TODO: Add error message.
+    }
+
+    return property.getValue();
+  }
+
+  setProperty(name: string, binding: Field): void {
+    const property = this.members[name];
+
+    if (!(property instanceof Variable)) {
+      throw new Error(); // TODO: Add error message.
+    }
+
+    property.set(binding);
+  }
+}
+
+export class App extends KnownEntity {
+  readonly source: Abstract.App;
+
+  constructor(source: Abstract.App, environment: Record<string, string> = {}) {
+    super();
+
     this.source = source;
 
     for (const member of source.members) {
-      if (member.kind === "property") {
-        this.members[member.parameter.name] = new Property(member);
+      if (member.kind === "prop") {
+        const abstractField: Abstract.Field = {
+          kind: "field",
+          binding: { kind: "raw", value: environment[member.parameter.name] },
+        };
+        const propertyValue = new Field(abstractField, this);
+        this.members[member.parameter.name] = new Prop(member, propertyValue);
       } else if (member.kind === "constant") {
-        this.members[member.parameter.name] = new Constant(member);
+        this.members[member.parameter.name] = new Constant(member, this);
       } else if (member.kind === "variable") {
-        this.members[member.parameter.name] = new Variable(member);
+        this.members[member.parameter.name] = new Variable(member, this);
       } else {
         throw new Error(); // TODO: Add error message.
       }
@@ -64,12 +99,16 @@ abstract class Vertex<Type = unknown> extends Publisher<Type> implements Subscri
   }
 }
 
-class Property extends Vertex {
-  readonly source: Abstract.Property;
-  private readonly parameter: Parameter;
-  private readonly binding: Entity;
+interface Property {
+  getValue(): Field;
+}
 
-  constructor(source: Abstract.Property, binding: Entity) {
+class Prop extends Vertex implements Property {
+  readonly source: Abstract.Prop;
+  private readonly parameter: Parameter;
+  private readonly binding: Field;
+
+  constructor(source: Abstract.Prop, binding: Field) {
     super();
 
     this.source = source;
@@ -77,38 +116,50 @@ class Property extends Vertex {
     this.binding = binding;
     this.binding.addEventListener(this);
   }
+
+  getValue(): Field {
+    return this.binding;
+  }
 }
 
-class Constant extends Vertex {
+class Constant extends Vertex implements Property {
   readonly source: Abstract.Constant;
   private readonly parameter: Parameter;
-  private readonly binding: Entity;
+  private readonly binding: Field;
 
-  constructor(source: Abstract.Constant) {
+  constructor(source: Abstract.Constant, scope: KnownEntity) {
     super();
 
     this.source = source;
     this.parameter = new Parameter(source.parameter);
-    this.binding = new Entity(source.binding);
+    this.binding = new Field(source.binding, scope);
     this.binding.addEventListener(this);
+  }
+
+  getValue(): Field {
+    return this.binding;
   }
 }
 
-class Variable extends Vertex {
+class Variable extends Vertex implements Property {
   readonly source: Abstract.Variable;
   private readonly parameter: Parameter;
-  private binding: Entity;
+  private binding: Field;
 
-  constructor(source: Abstract.Variable) {
+  constructor(source: Abstract.Variable, scope: KnownEntity) {
     super();
 
     this.source = source;
     this.parameter = new Parameter(source.parameter);
-    this.binding = new Entity(source.binding);
+    this.binding = new Field(source.binding, scope);
     this.binding.addEventListener(this);
   }
 
-  setBinding(binding: Entity): void {
+  getValue(): Field {
+    return this.binding;
+  }
+
+  set(binding: Field): void {
     this.binding.removeEventListener(this);
     this.binding = binding;
     this.binding.addEventListener(this);
@@ -123,25 +174,23 @@ class Parameter {
   }
 }
 
-class Entity extends Publisher {
-  readonly source: Abstract.Entity;
-  private readonly binding: Ref | Call | Expression | Quest | Data | List | Structure | Action | View | Component;
+class Field extends Publisher implements Entity {
+  readonly source: Abstract.Field;
+  private readonly binding: Ref | Call | Quest | Raw | List | Structure | Action | View | Component;
 
-  constructor(source: Abstract.Entity) {
+  constructor(source: Abstract.Field, scope: KnownEntity) {
     super();
 
     this.source = source;
 
     if (source.binding.kind === "ref") {
-      this.binding = new Ref(source.binding);
+      this.binding = new Ref(source.binding, scope);
     } else if (source.binding.kind === "call") {
       this.binding = new Call(source.binding);
-    } else if (source.binding.kind === "expression") {
-      this.binding = new Expression(source.binding);
     } else if (source.binding.kind === "quest") {
       this.binding = new Quest(source.binding);
-    } else if (source.binding.kind === "data") {
-      this.binding = new Data(source.binding);
+    } else if (source.binding.kind === "raw") {
+      this.binding = new Raw(source.binding);
     } else if (source.binding.kind === "list") {
       this.binding = new List(source.binding);
     } else if (source.binding.kind === "structure") {
@@ -156,4 +205,35 @@ class Entity extends Publisher {
       throw new Error(); // TODO: Add error message.
     }
   }
+
+  getChild(name: string): Field {
+    return this.binding.getChild(name);
+  }
+
+  getPropertyValue(name: string): Field {
+    return this.binding.getPropertyValue(name);
+  }
+
+  setProperty(name: string, binding: Field): void {
+    this.binding.setProperty(name, binding);
+  }
 }
+
+class Ref extends Vertex {
+  readonly source: Abstract.Ref;
+  private readonly scope: Entity;
+  private readonly binding: Field;
+
+  constructor(source: Abstract.Ref, scope: KnownEntity) {
+    super();
+
+    this.source = source;
+    this.scope = source.scope ? new Field(source.scope, scope) : scope;
+    this.binding = this.scope.getPropertyValue(source.name);
+  }
+}
+
+// TODO Roll this into class Raw? ...
+// abstract class UnknownEntity implements Entity {
+//   // TODO
+// }

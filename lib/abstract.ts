@@ -1,88 +1,83 @@
 export namespace Abstract {
-  export type Node<T extends string = string> = {
+  export type Entity<T extends string = string> = {
     kind: T;
   };
 
-  export type App = Node<"app"> & {
-    members: Array<Property | Constant | Variable>;
+  export type App = Entity<"app"> & {
+    members: Array<Prop | Constant | Variable>;
   };
 
-  export type Property = Node<"property"> & {
+  export type Prop = Entity<"prop"> & {
     parameter: Parameter;
   };
 
-  export type Constant = Node<"constant"> & {
+  export type Constant = Entity<"constant"> & {
     parameter: Parameter;
-    binding: Entity;
+    binding: Field;
   };
 
-  export type Variable = Node<"variable"> & {
+  export type Variable = Entity<"variable"> & {
     parameter: Parameter;
-    binding: Entity;
+    binding: Field;
   };
 
-  export type Parameter = Node<"parameter"> & {
+  export type Parameter = Entity<"parameter"> & {
     name: string;
   };
 
-  export type Entity = Node<"entity"> & {
-    binding: Ref | Call | Expression | Quest | Data | List | Structure | Action | View | Component;
+  export type Field = Entity<"field"> & {
+    binding: Ref | Call | Quest | Raw | List | Structure | Action | View | Component;
   };
 
-  export type Ref = Node<"ref"> & {
-    scope: Entity;
+  export type Ref = Entity<"ref"> & {
+    scope?: Field;
     name: string;
   };
 
-  export type Call = Node<"call"> & {
+  export type Call = Entity<"call"> & {
     method: Ref;
-    args: Array<Entity>;
+    args: Array<Field>;
   };
 
-  export type Expression = Node<"expression"> & {
-    method: Ref;
-    args: Array<Entity>;
+  export type Quest = Entity<"quest"> & {
+    target: Ref | Call;
   };
 
-  export type Quest = Node<"quest"> & {
-    target: Ref | Call | Expression;
+  export type Raw = Entity<"raw"> & {
+    value: unknown;
   };
 
-  export type Data = Node<"data"> & {
-    value: any;
+  export type List = Entity<"list"> & {
+    args: Array<Field>;
   };
 
-  export type List = Node<"list"> & {
-    args: Array<Entity>;
-  };
-
-  export type Structure = Node<"structure"> & {
+  export type Structure = Entity<"structure"> & {
     attributes: Array<Attribute>;
   };
 
-  export type Action = Node<"action"> & {
+  export type Action = Entity<"action"> & {
     parameters: Array<Parameter>;
-    statements: Array<Constant | Variable | Assignment | Entity>;
-    result: Entity;
+    statements: Array<Constant | Variable | Assignment | Field>;
+    result: Field;
   };
 
-  export type View = Node<"view"> & {
-    members: Array<Property | Constant | Variable>;
+  export type View = Entity<"view"> & {
+    members: Array<Prop | Constant | Variable>;
     render: Component;
   };
 
-  export type Component = Node<"component"> & {
+  export type Component = Entity<"component"> & {
     name: string;
     attributes: Array<Attribute>;
   };
 
-  export type Attribute = Node<"attribute"> & {
+  export type Attribute = Entity<"attribute"> & {
     name: string;
-    binding: Entity;
+    binding: Field;
   };
 
-  export type Assignment = Node<"assignment"> & {
-    name: string;
-    binding: Entity;
+  export type Assignment = Entity<"assignment"> & {
+    target: Ref;
+    binding: Field;
   };
 }
