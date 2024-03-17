@@ -142,7 +142,7 @@ interface Statement {
 
 export class App {
   readonly source: Abstract.App;
-  private readonly scope = new TreeEntity(new CoreEntity(window));
+  private readonly innerScope = new TreeEntity(new CoreEntity(window));
 
   constructor(source: Abstract.App, environment: Record<string, string> = {}) {
     this.source = source;
@@ -151,13 +151,13 @@ export class App {
       if (property.kind === "prop") {
         const propertyValue = Field.fromRawValue(environment[property.parameter.name]);
         const prop = new Prop(property, propertyValue);
-        this.scope.defineProperty(property.parameter.name, prop);
+        this.innerScope.defineProperty(property.parameter.name, prop);
       } else if (property.kind === "constant") {
-        const constant = new Constant(property, this.scope);
-        this.scope.defineProperty(property.parameter.name, constant);
+        const constant = new Constant(property, this.innerScope);
+        this.innerScope.defineProperty(property.parameter.name, constant);
       } else if (property.kind === "variable") {
-        const variable = new Variable(property, this.scope);
-        this.scope.defineProperty(property.parameter.name, variable);
+        const variable = new Variable(property, this.innerScope);
+        this.innerScope.defineProperty(property.parameter.name, variable);
       } else {
         throw new Error(); // TODO: Add error message.
       }
@@ -364,6 +364,8 @@ class Call extends Vertex implements Entity, Statement {
       throw new Error(); // TODO: Add error message.
     }
 
+    await Promise.all(this.args.map((arg) => arg.execute()));
+
     const result = callee(...this.args);
 
     if (!(result instanceof Field)) {
@@ -445,9 +447,8 @@ class Raw extends Publisher implements Entity, Statement {
   }
 }
 
-class List extends Publisher implements Entity, Statement {
+class List extends Vertex implements Entity, Statement {
   readonly source: Abstract.List;
-  private readonly scope: TreeEntity;
   private readonly args: Array<Field>;
   private result: Field = Field.fromRawValue(undefined);
 
@@ -455,7 +456,6 @@ class List extends Publisher implements Entity, Statement {
     super();
 
     this.source = source;
-    this.scope = scope;
 
     this.args = source.args.map((arg) => {
       const field = new Field(arg, scope);
@@ -464,18 +464,22 @@ class List extends Publisher implements Entity, Statement {
   }
 
   async execute(): Promise<void> {
+    await Promise.all(this.args.map((arg) => arg.execute()));
+
     const argPublishedValues = this.args.map((arg) => arg.getPublishedValue());
-    this.publish(argPublishedValues);
+    const result = Field.fromRawValue(argPublishedValues);
+
+    this.result.removeEventListener(this);
+    this.result = result;
+    this.result.addEventListener(this);
   }
 
   getPropertyValue(name: string): Field {
-    const listScope = Field.fromRawValue(this.getPublishedValue());
-    return listScope.getPropertyValue(name);
+    return this.result.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    const listScope = Field.fromRawValue(this.getPublishedValue());
-    listScope.setProperty(name, field);
+    this.result.setProperty(name, field);
   }
 }
 
