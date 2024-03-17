@@ -15,7 +15,6 @@ class CoreEntity implements Entity {
   getPropertyValue(name: string): Field {
     if (this.value === null || this.value === undefined) {
       const field = Field.fromRawValue(undefined);
-
       return field;
     }
 
@@ -30,28 +29,19 @@ class CoreEntity implements Entity {
       const treePropertyValue = (...args: Array<Field>) => {
         const result = callablePropertyValue(...args.map((arg) => arg.getPublishedValue()));
         const field = Field.fromRawValue(result);
-
         return field;
       };
 
       const field = Field.fromRawValue(treePropertyValue);
-
       return field;
     }
 
-    const field = new Field(
-      {
-        kind: "field",
-        binding: { kind: "raw", value: corePropertyValue },
-      },
-      new TreeEntity(),
-    );
-
+    const field = Field.fromRawValue(corePropertyValue);
     return field;
   }
 
   setProperty(name: string, field: Field): void {
-    throw new Error(); // TODO: Add error message.
+    throw new Error("Not implemented"); // TODO: Implement this method.
   }
 }
 
@@ -100,11 +90,7 @@ export class App extends TreeEntity {
 
     for (const property of source.properties) {
       if (property.kind === "prop") {
-        const abstractField: Abstract.Field = {
-          kind: "field",
-          binding: { kind: "raw", value: environment[property.parameter.name] },
-        };
-        const propertyValue = new Field(abstractField, this);
+        const propertyValue = Field.fromRawValue(environment[property.parameter.name]);
         this.properties[property.parameter.name] = new Prop(property, propertyValue);
       } else if (property.kind === "constant") {
         this.properties[property.parameter.name] = new Constant(property, this);
@@ -117,32 +103,24 @@ export class App extends TreeEntity {
   }
 }
 
-interface Subscriber<Incoming = unknown> {
-  handleEvent(event: Incoming): void | Promise<void>;
+interface Subscriber<Incoming = unknown, Outgoing = unknown> {
+  handleEvent(event: Incoming): Outgoing;
 }
 
 abstract class Publisher<Outgoing = unknown> {
   private readonly listeners: Subscriber<Outgoing>[] = [];
   private publishedValue?: Outgoing;
 
-  getPublishedValue(): Outgoing | undefined {
-    return this.publishedValue;
-  }
-
-  addEventListener(listener: Subscriber<Outgoing>, silent = false): void {
-    if (this.publishedValue !== undefined && !silent) {
+  addEventListener(listener: Subscriber<Outgoing>, passive = false): void {
+    if (this.publishedValue !== undefined && !passive) {
       listener.handleEvent(this.publishedValue);
     }
 
     this.listeners.push(listener);
   }
 
-  removeEventListener(listener: Subscriber<Outgoing>): void {
-    const index = this.listeners.indexOf(listener);
-
-    if (index !== -1) {
-      this.listeners.splice(index, 1);
-    }
+  getPublishedValue(): Outgoing | undefined {
+    return this.publishedValue;
   }
 
   protected publish(nextValue: Outgoing): void {
@@ -154,6 +132,14 @@ abstract class Publisher<Outgoing = unknown> {
 
     for (const listener of this.listeners) {
       listener.handleEvent(nextValue);
+    }
+  }
+
+  removeEventListener(listener: Subscriber<Outgoing>): void {
+    const index = this.listeners.indexOf(listener);
+
+    if (index !== -1) {
+      this.listeners.splice(index, 1);
     }
   }
 }
@@ -168,7 +154,11 @@ interface Property {
   getValue(): Field;
 }
 
-class Prop extends Vertex implements Property {
+interface Statement {
+  execute(): Promise<void>;
+}
+
+class Prop extends Vertex implements Property, Statement {
   readonly source: Abstract.Prop;
   private readonly parameter: Parameter;
   private readonly field: Field;
@@ -182,12 +172,16 @@ class Prop extends Vertex implements Property {
     this.field.addEventListener(this);
   }
 
+  execute(): Promise<void> {
+    return this.field.execute();
+  }
+
   getValue(): Field {
     return this.field;
   }
 }
 
-class Constant extends Vertex implements Property {
+class Constant extends Vertex implements Property, Statement {
   readonly source: Abstract.Constant;
   private readonly parameter: Parameter;
   private readonly field: Field;
@@ -201,12 +195,16 @@ class Constant extends Vertex implements Property {
     this.field.addEventListener(this);
   }
 
+  execute(): Promise<void> {
+    return this.field.execute();
+  }
+
   getValue(): Field {
     return this.field;
   }
 }
 
-class Variable extends Vertex implements Property {
+class Variable extends Vertex implements Property, Statement {
   readonly source: Abstract.Variable;
   private readonly parameter: Parameter;
   private field: Field;
@@ -218,6 +216,10 @@ class Variable extends Vertex implements Property {
     this.parameter = new Parameter(source.parameter);
     this.field = new Field(source.field, scope);
     this.field.addEventListener(this);
+  }
+
+  execute(): Promise<void> {
+    return this.field.execute();
   }
 
   getValue(): Field {
@@ -239,7 +241,7 @@ class Parameter {
   }
 }
 
-class Field extends Publisher implements Entity {
+class Field extends Publisher implements Entity, Statement {
   readonly source: Abstract.Field;
   private readonly binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
 
@@ -253,19 +255,19 @@ class Field extends Publisher implements Entity {
     } else if (source.binding.kind === "call") {
       this.binding = new Call(source.binding, scope);
     } else if (source.binding.kind === "quest") {
-      this.binding = new Quest(source.binding);
+      this.binding = new Quest(source.binding, scope);
     } else if (source.binding.kind === "raw") {
       this.binding = new Raw(source.binding);
     } else if (source.binding.kind === "list") {
-      this.binding = new List(source.binding);
+      this.binding = new List(source.binding, scope);
     } else if (source.binding.kind === "struct") {
-      this.binding = new Struct(source.binding);
+      this.binding = new Struct(source.binding, scope);
     } else if (source.binding.kind === "action") {
-      this.binding = new Action(source.binding);
+      this.binding = new Action(source.binding, scope);
     } else if (source.binding.kind === "view") {
       this.binding = new View(source.binding);
     } else if (source.binding.kind === "component") {
-      this.binding = new Component(source.binding);
+      this.binding = new Component(source.binding, scope);
     } else {
       throw new Error(); // TODO: Add error message.
     }
@@ -273,12 +275,8 @@ class Field extends Publisher implements Entity {
     this.binding.addEventListener(this);
   }
 
-  getPropertyValue(name: string): Field {
-    return this.binding.getPropertyValue(name);
-  }
-
-  setProperty(name: string, field: Field): void {
-    this.binding.setProperty(name, field);
+  execute(): Promise<void> {
+    return this.binding.execute();
   }
 
   static fromRawValue(value: unknown): Field {
@@ -292,9 +290,17 @@ class Field extends Publisher implements Entity {
 
     return field;
   }
+
+  getPropertyValue(name: string): Field {
+    return this.binding.getPropertyValue(name);
+  }
+
+  setProperty(name: string, field: Field): void {
+    this.binding.setProperty(name, field);
+  }
 }
 
-class Ref extends Vertex implements Entity {
+class Ref extends Vertex implements Entity, Statement {
   readonly source: Abstract.Ref;
   private readonly scope: Entity;
   private readonly ref: Field;
@@ -308,6 +314,10 @@ class Ref extends Vertex implements Entity {
     this.ref.addEventListener(this);
   }
 
+  execute(): Promise<void> {
+    return this.ref.execute();
+  }
+
   getPropertyValue(name: string): Field {
     return this.ref.getPropertyValue(name);
   }
@@ -317,70 +327,83 @@ class Ref extends Vertex implements Entity {
   }
 }
 
-class Call extends Publisher implements Subscriber<void>, Entity {
+class Call extends Vertex implements Entity, Statement {
   readonly source: Abstract.Call;
   private readonly ref: Ref;
   private readonly args: Field[];
-  private result?: Field;
+  private result: Field = Field.fromRawValue(undefined);
 
   constructor(source: Abstract.Call, scope: TreeEntity) {
     super();
 
     this.source = source;
     this.ref = new Ref(source.ref, scope);
-    this.args = source.args.map((arg) => new Field(arg, scope));
+    this.ref.addEventListener({ handleEvent: this.execute.bind(this) }, true);
 
-    this.handleEvent();
-    this.ref.addEventListener(this, true);
-
-    for (const arg of this.args) {
-      arg.addEventListener(this, true);
-    }
+    this.args = source.args.map((arg) => {
+      const field = new Field(arg, scope);
+      field.addEventListener({ handleEvent: this.execute.bind(this) }, true);
+      return field;
+    });
   }
 
-  handleEvent(): void {
+  async execute(): Promise<void> {
     const callee = this.ref.getPublishedValue();
 
     if (typeof callee === "function") {
-      const result = callee(this.args);
-      this.publish(result);
+      const result = callee(...this.args);
+
+      if (result instanceof Field) {
+        this.result?.removeEventListener(this);
+        this.result = result;
+        this.result.addEventListener(this);
+      } else {
+        throw new Error(); // TODO: Add error message.
+      }
     } else {
       throw new Error(); // TODO: Add error message.
     }
   }
 
   getPropertyValue(name: string): Field {
-    return this.result?.getPropertyValue(name); // TODO fix result
+    return this.result.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    this.result?.setProperty(name, field);
+    this.result.setProperty(name, field);
   }
 }
 
-class Quest<T = unknown> extends Publisher<T> implements Subscriber<Promise<T>> {
+class Quest extends Vertex implements Entity, Statement {
   readonly source: Abstract.Quest;
   private readonly call: Call;
+  private result: Field = Field.fromRawValue(undefined);
 
   constructor(source: Abstract.Quest, scope: TreeEntity) {
     super();
 
     this.source = source;
     this.call = new Call(source.call, scope);
-    this.call.addEventListener(this);
   }
 
-  async handleEvent(promise: Promise<T>): Promise<void> {
-    const result = await promise;
-    this.publish(result);
+  async execute(): Promise<void> {
+    await this.call.execute();
+  }
+
+  getPropertyValue(name: string): Field {
+    return this.result.getPropertyValue(name);
+  }
+
+  async handleEvent(callResultingValue: unknown): Promise<void> {
+    const resolvedValue = await Promise.resolve(callResultingValue);
+    const result = Field.fromRawValue(resolvedValue);
+
+    this.result?.removeEventListener(this);
+    this.result = result;
+    this.result.addEventListener(this);
+  }
+
+  setProperty(name: string, field: Field): void {
+    this.result.setProperty(name, field);
   }
 }
-
-class Raw extends Publisher {
-  // TODO
-}
-
-// TODO Roll this into class Raw? ...
-// abstract class UnknownEntity implements Entity {
-//   // TODO
-// }
