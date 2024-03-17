@@ -48,15 +48,28 @@ abstract class Vertex<Type = unknown> extends Publisher<Type> implements Subscri
 }
 
 interface Entity {
+  execute(): Promise<void>;
   getPropertyValue(name: string): Field;
   setProperty(name: string, field: Field): void;
 }
 
-class CoreEntity implements Entity {
+interface Property {
+  execute(): Promise<Field>;
+  getName(): string;
+  getValue(): Field;
+}
+
+class CoreEntity extends Publisher implements Entity {
   private readonly value: any;
 
   constructor(value: unknown) {
+    super();
+
     this.value = value;
+  }
+
+  async execute(): Promise<void> {
+    this.publish(this.value);
   }
 
   getPropertyValue(name: string): Field {
@@ -93,16 +106,40 @@ class CoreEntity implements Entity {
   }
 }
 
-class TreeEntity implements Entity {
+class TreeEntity extends Publisher implements Entity {
   private readonly context?: Entity;
   private readonly properties: Record<string, Property> = {};
 
   constructor(context?: Entity) {
+    super();
+
     this.context = context;
   }
 
   defineProperty(name: string, property: Property): void {
     this.properties[name] = property;
+  }
+
+  async execute(): Promise<void> {
+    const properties = Object.values(this.properties);
+
+    const fields = await Promise.all(
+      properties.map(async (property) => {
+        const field = await property.execute();
+        field.execute();
+        return field;
+      }),
+    );
+
+    const serializedValue: Record<string, unknown> = {};
+
+    for (let i = 0; i < fields.length; i++) {
+      const name = properties[i].getName();
+      const value = fields[i].getPublishedValue();
+      serializedValue[name] = value;
+    }
+
+    this.publish(serializedValue);
   }
 
   getPropertyValue(name: string): Field {
@@ -132,17 +169,9 @@ class TreeEntity implements Entity {
   }
 }
 
-interface Property {
-  getValue(): Field;
-}
-
-interface Statement {
-  execute(): Promise<unknown>;
-}
-
 export class App {
   readonly source: Abstract.App;
-  private readonly innerScope = new TreeEntity(new CoreEntity(window));
+  private readonly innerScope: TreeEntity = new TreeEntity(new CoreEntity(window));
 
   constructor(source: Abstract.App, environment: Record<string, string> = {}) {
     this.source = source;
@@ -167,7 +196,7 @@ export class App {
   }
 }
 
-class Prop extends Vertex implements Property, Statement {
+class Prop extends Vertex implements Property {
   readonly source: Abstract.Prop;
   private readonly parameter: Parameter;
   private readonly field: Field;
@@ -185,12 +214,16 @@ class Prop extends Vertex implements Property, Statement {
     return this.field;
   }
 
+  getName(): string {
+    return this.parameter.source.name;
+  }
+
   getValue(): Field {
     return this.field;
   }
 }
 
-class Constant extends Vertex implements Property, Statement {
+class Constant extends Vertex implements Property {
   readonly source: Abstract.Constant;
   private readonly parameter: Parameter;
   private readonly field: Field;
@@ -208,12 +241,16 @@ class Constant extends Vertex implements Property, Statement {
     return this.field;
   }
 
+  getName(): string {
+    return this.parameter.source.name;
+  }
+
   getValue(): Field {
     return this.field;
   }
 }
 
-class Variable extends Vertex implements Property, Statement {
+class Variable extends Vertex implements Property {
   readonly source: Abstract.Variable;
   private readonly parameter: Parameter;
   private field: Field;
@@ -229,6 +266,10 @@ class Variable extends Vertex implements Property, Statement {
 
   async execute(): Promise<Field> {
     return this.field;
+  }
+
+  getName(): string {
+    return this.parameter.source.name;
   }
 
   getValue(): Field {
@@ -250,7 +291,7 @@ class Parameter {
   }
 }
 
-class Field extends Vertex implements Entity, Statement {
+class Field extends Vertex implements Entity {
   readonly source: Abstract.Field;
   private readonly binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
 
@@ -284,9 +325,8 @@ class Field extends Vertex implements Entity, Statement {
     this.binding.addEventListener(this);
   }
 
-  async execute(): Promise<Field> {
+  async execute(): Promise<void> {
     await this.binding.execute();
-    return this;
   }
 
   static fromRawValue(value: unknown): Field {
@@ -310,7 +350,7 @@ class Field extends Vertex implements Entity, Statement {
   }
 }
 
-class Ref extends Vertex implements Entity, Statement {
+class Ref extends Vertex implements Entity {
   readonly source: Abstract.Ref;
   private readonly scope: Entity;
   private readonly field: Field;
@@ -324,7 +364,7 @@ class Ref extends Vertex implements Entity, Statement {
     this.field.addEventListener(this);
   }
 
-  async execute(): Promise<Field> {
+  async execute(): Promise<void> {
     return this.field.execute();
   }
 
@@ -337,7 +377,7 @@ class Ref extends Vertex implements Entity, Statement {
   }
 }
 
-class Call extends Vertex implements Entity, Statement {
+class Call extends Vertex implements Entity {
   readonly source: Abstract.Call;
   private readonly ref: Ref;
   private readonly args: Array<Field>;
@@ -351,13 +391,13 @@ class Call extends Vertex implements Entity, Statement {
     this.ref.addEventListener({ handleEvent: this.execute.bind(this) }, true);
 
     this.args = source.args.map((arg) => {
-      const field = new Field(arg, scope);
-      field.addEventListener({ handleEvent: this.execute.bind(this) }, true);
-      return field;
+      const argField = new Field(arg, scope);
+      argField.addEventListener({ handleEvent: this.execute.bind(this) }, true);
+      return argField;
     });
   }
 
-  async execute(): Promise<Field> {
+  async execute(): Promise<void> {
     const callee = this.ref.getPublishedValue();
 
     if (!(typeof callee === "function")) {
@@ -375,8 +415,6 @@ class Call extends Vertex implements Entity, Statement {
     this.result.removeEventListener(this);
     this.result = result;
     this.result.addEventListener(this);
-
-    return result;
   }
 
   getPropertyValue(name: string): Field {
@@ -388,7 +426,7 @@ class Call extends Vertex implements Entity, Statement {
   }
 }
 
-class Quest extends Vertex implements Entity, Statement {
+class Quest extends Vertex implements Entity {
   readonly source: Abstract.Quest;
   private readonly call: Call;
   private result: Field = Field.fromRawValue(undefined);
@@ -400,7 +438,7 @@ class Quest extends Vertex implements Entity, Statement {
     this.call = new Call(source.call, scope);
   }
 
-  async execute(): Promise<Field> {
+  async execute(): Promise<void> {
     await this.call.execute();
 
     const callPublishedValue = this.call.getPublishedValue();
@@ -410,8 +448,6 @@ class Quest extends Vertex implements Entity, Statement {
     this.result.removeEventListener(this);
     this.result = result;
     this.result.addEventListener(this);
-
-    return result;
   }
 
   getPropertyValue(name: string): Field {
@@ -423,31 +459,31 @@ class Quest extends Vertex implements Entity, Statement {
   }
 }
 
-class Raw extends Publisher implements Entity, Statement {
+class Raw extends Vertex implements Entity {
   readonly source: Abstract.Raw;
-  private readonly coreEntity: CoreEntity;
+  private readonly innerScope: CoreEntity;
 
   constructor(source: Abstract.Raw) {
     super();
 
     this.source = source;
-    this.coreEntity = new CoreEntity(source.value);
+    this.innerScope = new CoreEntity(source.value);
   }
 
   async execute(): Promise<void> {
-    this.publish(this.source.value);
+    this.innerScope.addEventListener(this);
   }
 
   getPropertyValue(name: string): Field {
-    return this.coreEntity.getPropertyValue(name);
+    return this.innerScope.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    this.coreEntity.setProperty(name, field);
+    this.innerScope.setProperty(name, field);
   }
 }
 
-class List extends Vertex implements Entity, Statement {
+class List extends Vertex implements Entity {
   readonly source: Abstract.List;
   private readonly args: Array<Field>;
   private result: Field = Field.fromRawValue(undefined);
@@ -483,4 +519,36 @@ class List extends Vertex implements Entity, Statement {
   }
 }
 
-// TODO: Implement remaining classes.
+class Struct extends Vertex implements Entity {
+  readonly source: Abstract.Struct;
+  private readonly innerScope: TreeEntity;
+
+  constructor(source: Abstract.Struct, scope: TreeEntity) {
+    super();
+
+    this.source = source;
+    this.innerScope = new TreeEntity();
+
+    for (const attribute of source.attributes) {
+      const field = new Field(attribute.field, scope);
+      const prop = new Prop({ kind: "prop", parameter: { kind: "parameter", name: attribute.name } }, field);
+      this.innerScope.defineProperty(attribute.name, prop);
+    }
+
+    this.innerScope.addEventListener(this);
+  }
+
+  async execute(): Promise<void> {
+    await this.innerScope.execute();
+  }
+
+  getPropertyValue(name: string): Field {
+    return this.innerScope.getPropertyValue(name);
+  }
+
+  setProperty(name: string, field: Field): void {
+    this.innerScope.setProperty(name, field);
+  }
+}
+
+// TODO: Implement the remaining classes.
