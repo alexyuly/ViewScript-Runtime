@@ -8,7 +8,7 @@ interface Entity {
 class CoreEntity implements Entity {
   private readonly value: any;
 
-  constructor(value: unknown = window) {
+  constructor(value: unknown) {
     this.value = value;
   }
 
@@ -53,6 +53,10 @@ class TreeEntity implements Entity {
     this.context = context;
   }
 
+  defineProperty(name: string, property: Prop | Constant | Variable): void {
+    this.properties[name] = property;
+  }
+
   getPropertyValue(name: string): Field {
     const property = this.properties[name];
 
@@ -80,26 +84,30 @@ class TreeEntity implements Entity {
   }
 }
 
-export class App extends TreeEntity {
+export class App {
+  private readonly scope = new TreeEntity(new CoreEntity(window));
   readonly source: Abstract.App;
 
   constructor(source: Abstract.App, environment: Record<string, string> = {}) {
-    super(new CoreEntity());
-
     this.source = source;
 
     for (const property of source.properties) {
       if (property.kind === "prop") {
         const propertyValue = Field.fromRawValue(environment[property.parameter.name]);
-        this.properties[property.parameter.name] = new Prop(property, propertyValue);
+        const prop = new Prop(property, propertyValue);
+        this.scope.defineProperty(property.parameter.name, prop);
       } else if (property.kind === "constant") {
-        this.properties[property.parameter.name] = new Constant(property, this);
+        const constant = new Constant(property, this.scope);
+        this.scope.defineProperty(property.parameter.name, constant);
       } else if (property.kind === "variable") {
-        this.properties[property.parameter.name] = new Variable(property, this);
+        const variable = new Variable(property, this.scope);
+        this.scope.defineProperty(property.parameter.name, variable);
       } else {
         throw new Error(); // TODO: Add error message.
       }
     }
+
+    // TODO: Call the main action.
   }
 }
 
@@ -354,7 +362,7 @@ class Call extends Vertex implements Entity, Statement {
       const result = callee(...this.args);
 
       if (result instanceof Field) {
-        this.result?.removeEventListener(this);
+        this.result.removeEventListener(this);
         this.result = result;
         this.result.addEventListener(this);
       } else {
@@ -388,22 +396,45 @@ class Quest extends Vertex implements Entity, Statement {
 
   async execute(): Promise<void> {
     await this.call.execute();
+
+    const callPublishedValue = this.call.getPublishedValue();
+    const resolvedValue = await Promise.resolve(callPublishedValue);
+    const result = Field.fromRawValue(resolvedValue);
+
+    this.result.removeEventListener(this);
+    this.result = result;
+    this.result.addEventListener(this);
   }
 
   getPropertyValue(name: string): Field {
     return this.result.getPropertyValue(name);
   }
 
-  async handleEvent(callResultingValue: unknown): Promise<void> {
-    const resolvedValue = await Promise.resolve(callResultingValue);
-    const result = Field.fromRawValue(resolvedValue);
+  setProperty(name: string, field: Field): void {
+    this.result.setProperty(name, field);
+  }
+}
 
-    this.result?.removeEventListener(this);
-    this.result = result;
-    this.result.addEventListener(this);
+class Raw extends Publisher implements Entity, Statement {
+  private readonly scope: CoreEntity;
+  readonly source: Abstract.Raw;
+
+  constructor(source: Abstract.Raw) {
+    super();
+
+    this.source = source;
+    this.scope = new CoreEntity(source.value);
+  }
+
+  execute(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  getPropertyValue(name: string): Field {
+    return this.scope.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    this.result.setProperty(name, field);
+    this.scope.setProperty(name, field);
   }
 }
