@@ -1,39 +1,100 @@
 import { Abstract } from "./abstract";
 
 interface Entity {
-  getPropertyValue(name: string): Field | undefined; // TODO: Allow undefined?
+  getPropertyValue(name: string): Field;
   setProperty(name: string, field: Field): void;
 }
 
-abstract class KnownEntity implements Entity {
+class CoreEntity implements Entity {
+  private readonly value: any;
+
+  constructor(value: unknown = window) {
+    this.value = value;
+  }
+
+  getPropertyValue(name: string): Field {
+    if (this.value === null || this.value === undefined) {
+      const field = Field.fromRawValue(undefined);
+
+      return field;
+    }
+
+    const corePropertyValue = this.value[name];
+
+    if (corePropertyValue === "function") {
+      const callablePropertyValue =
+        corePropertyValue.prototype?.constructor === corePropertyValue
+          ? (...args: Array<unknown>) => new corePropertyValue(...args)
+          : corePropertyValue.bind(this.value);
+
+      const treePropertyValue = (...args: Array<Field>) => {
+        const result = callablePropertyValue(...args.map((arg) => arg.getPublishedValue()));
+        const field = Field.fromRawValue(result);
+
+        return field;
+      };
+
+      const field = Field.fromRawValue(treePropertyValue);
+
+      return field;
+    }
+
+    const field = new Field(
+      {
+        kind: "field",
+        binding: { kind: "raw", value: corePropertyValue },
+      },
+      new TreeEntity(),
+    );
+
+    return field;
+  }
+
+  setProperty(name: string, field: Field): void {
+    throw new Error(); // TODO: Add error message.
+  }
+}
+
+class TreeEntity implements Entity {
+  private readonly context?: Entity;
   protected readonly properties: Record<string, Prop | Constant | Variable> = {};
+
+  constructor(context?: Entity) {
+    this.context = context;
+  }
 
   getPropertyValue(name: string): Field {
     const property = this.properties[name];
 
-    if (!property) {
-      throw new Error(); // TODO: Add error message.
+    if (property) {
+      return property.getValue();
     }
 
-    return property.getValue();
+    if (this.context) {
+      return this.context.getPropertyValue(name);
+    }
+
+    throw new Error(); // TODO: Add error message.
   }
 
   setProperty(name: string, field: Field): void {
     const property = this.properties[name];
 
-    if (!(property instanceof Variable)) {
+    if (property instanceof Variable) {
+      property.set(field);
+    } else if (this.context) {
+      this.context.setProperty(name, field);
+    } else {
       throw new Error(); // TODO: Add error message.
     }
-
-    property.set(field);
   }
 }
 
-export class App extends KnownEntity {
+export class App extends TreeEntity {
   readonly source: Abstract.App;
 
   constructor(source: Abstract.App, environment: Record<string, string> = {}) {
-    super();
+    super(new CoreEntity());
 
     this.source = source;
 
@@ -131,7 +192,7 @@ class Constant extends Vertex implements Property {
   private readonly parameter: Parameter;
   private readonly field: Field;
 
-  constructor(source: Abstract.Constant, scope: KnownEntity) {
+  constructor(source: Abstract.Constant, scope: TreeEntity) {
     super();
 
     this.source = source;
@@ -150,7 +211,7 @@ class Variable extends Vertex implements Property {
   private readonly parameter: Parameter;
   private field: Field;
 
-  constructor(source: Abstract.Variable, scope: KnownEntity) {
+  constructor(source: Abstract.Variable, scope: TreeEntity) {
     super();
 
     this.source = source;
@@ -182,7 +243,7 @@ class Field extends Publisher implements Entity {
   readonly source: Abstract.Field;
   private readonly binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
 
-  constructor(source: Abstract.Field, scope: KnownEntity) {
+  constructor(source: Abstract.Field, scope: TreeEntity) {
     super();
 
     this.source = source;
@@ -219,6 +280,18 @@ class Field extends Publisher implements Entity {
   setProperty(name: string, field: Field): void {
     this.binding.setProperty(name, field);
   }
+
+  static fromRawValue(value: unknown): Field {
+    const field = new Field(
+      {
+        kind: "field",
+        binding: { kind: "raw", value },
+      },
+      new TreeEntity(),
+    );
+
+    return field;
+  }
 }
 
 class Ref extends Vertex implements Entity {
@@ -226,7 +299,7 @@ class Ref extends Vertex implements Entity {
   private readonly scope: Entity;
   private readonly ref: Field;
 
-  constructor(source: Abstract.Ref, scope: KnownEntity) {
+  constructor(source: Abstract.Ref, scope: TreeEntity) {
     super();
 
     this.source = source;
@@ -250,7 +323,7 @@ class Call extends Publisher implements Subscriber<void>, Entity {
   private readonly args: Field[];
   private result?: Field;
 
-  constructor(source: Abstract.Call, scope: KnownEntity) {
+  constructor(source: Abstract.Call, scope: TreeEntity) {
     super();
 
     this.source = source;
@@ -276,8 +349,8 @@ class Call extends Publisher implements Subscriber<void>, Entity {
     }
   }
 
-  getPropertyValue(name: string): Field | undefined {
-    return this.result?.getPropertyValue(name);
+  getPropertyValue(name: string): Field {
+    return this.result?.getPropertyValue(name); // TODO fix result
   }
 
   setProperty(name: string, field: Field): void {
@@ -289,7 +362,7 @@ class Quest<T = unknown> extends Publisher<T> implements Subscriber<Promise<T>> 
   readonly source: Abstract.Quest;
   private readonly call: Call;
 
-  constructor(source: Abstract.Quest, scope: KnownEntity) {
+  constructor(source: Abstract.Quest, scope: TreeEntity) {
     super();
 
     this.source = source;

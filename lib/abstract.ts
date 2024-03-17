@@ -1,81 +1,81 @@
 export namespace Abstract {
-  export type Entity<Kind extends string> = {
+  export type TreeNode<Kind extends string> = {
     kind: Kind;
   };
 
-  export type App = Entity<"app"> & {
+  export type App = TreeNode<"app"> & {
     properties: Array<Prop | Constant | Variable>;
   };
 
-  export type Prop = Entity<"prop"> & {
+  export type Prop = TreeNode<"prop"> & {
     parameter: Parameter;
   };
 
-  export type Constant = Entity<"constant"> & {
-    parameter: Parameter;
-    field: Field;
-  };
-
-  export type Variable = Entity<"variable"> & {
+  export type Constant = TreeNode<"constant"> & {
     parameter: Parameter;
     field: Field;
   };
 
-  export type Parameter = Entity<"parameter"> & {
+  export type Variable = TreeNode<"variable"> & {
+    parameter: Parameter;
+    field: Field;
+  };
+
+  export type Parameter = TreeNode<"parameter"> & {
     name: string;
   };
 
-  export type Field = Entity<"field"> & {
+  export type Field = TreeNode<"field"> & {
     binding: Ref | Call | Quest | Raw | List | Struct | Action | View | Component;
   };
 
-  export type Ref = Entity<"ref"> & {
+  export type Ref = TreeNode<"ref"> & {
     scope?: Field;
     name: string;
   };
 
-  export type Call = Entity<"call"> & {
+  export type Call = TreeNode<"call"> & {
     ref: Ref;
     args: Array<Field>;
   };
 
-  export type Quest = Entity<"quest"> & {
+  export type Quest = TreeNode<"quest"> & {
     call: Call;
   };
 
-  export type Raw = Entity<"raw"> & {
+  export type Raw = TreeNode<"raw"> & {
     value: unknown;
   };
 
-  export type List = Entity<"list"> & {
+  export type List = TreeNode<"list"> & {
     args: Array<Field>;
   };
 
-  export type Struct = Entity<"struct"> & {
+  export type Struct = TreeNode<"struct"> & {
     attributes: Array<Attribute>;
   };
 
-  export type Action = Entity<"action"> & {
+  export type Action = TreeNode<"action"> & {
     parameters: Array<Parameter>;
     statements: Array<Constant | Variable | Assignment | Field>;
   };
 
-  export type View = Entity<"view"> & {
+  export type View = TreeNode<"view"> & {
     properties: Array<Prop | Constant | Variable>;
     component: Component;
   };
 
-  export type Component = Entity<"component"> & {
+  export type Component = TreeNode<"component"> & {
     name: string;
     attributes: Array<Attribute>;
   };
 
-  export type Attribute = Entity<"attribute"> & {
+  export type Attribute = TreeNode<"attribute"> & {
     name: string;
     field: Field;
   };
 
-  export type Assignment = Entity<"assignment"> & {
+  export type Assignment = TreeNode<"assignment"> & {
     ref: Ref;
     field: Field;
   };
