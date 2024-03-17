@@ -5,7 +5,7 @@ interface Subscriber<Incoming = unknown, Outgoing = unknown> {
 }
 
 abstract class Publisher<Outgoing = unknown> {
-  private readonly listeners: Subscriber<Outgoing>[] = [];
+  private readonly listeners: Array<Subscriber<Outgoing>> = [];
   private publishedValue?: Outgoing;
 
   addEventListener(listener: Subscriber<Outgoing>, passive = false): void {
@@ -74,8 +74,9 @@ class CoreEntity implements Entity {
           : corePropertyValue.bind(this.value);
 
       const treePropertyValue = (...args: Array<Field>) => {
-        const result = callablePropertyValue(...args.map((arg) => arg.getPublishedValue()));
-        const field = Field.fromRawValue(result);
+        const argPublishedValues = args.map((arg) => arg.getPublishedValue());
+        const callablePropertyReturnValue = callablePropertyValue(...argPublishedValues);
+        const field = Field.fromRawValue(callablePropertyReturnValue);
         return field;
       };
 
@@ -140,8 +141,8 @@ interface Statement {
 }
 
 export class App {
-  private readonly scope = new TreeEntity(new CoreEntity(window));
   readonly source: Abstract.App;
+  private readonly scope = new TreeEntity(new CoreEntity(window));
 
   constructor(source: Abstract.App, environment: Record<string, string> = {}) {
     this.source = source;
@@ -312,34 +313,34 @@ class Field extends Vertex implements Entity, Statement {
 class Ref extends Vertex implements Entity, Statement {
   readonly source: Abstract.Ref;
   private readonly scope: Entity;
-  private readonly ref: Field;
+  private readonly field: Field;
 
   constructor(source: Abstract.Ref, scope: TreeEntity) {
     super();
 
     this.source = source;
     this.scope = source.scope ? new Field(source.scope, scope) : scope;
-    this.ref = this.scope.getPropertyValue(source.name);
-    this.ref.addEventListener(this);
+    this.field = this.scope.getPropertyValue(source.name);
+    this.field.addEventListener(this);
   }
 
   async execute(): Promise<Field> {
-    return this.ref.execute();
+    return this.field.execute();
   }
 
   getPropertyValue(name: string): Field {
-    return this.ref.getPropertyValue(name);
+    return this.field.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    this.ref.setProperty(name, field);
+    this.field.setProperty(name, field);
   }
 }
 
 class Call extends Vertex implements Entity, Statement {
   readonly source: Abstract.Call;
   private readonly ref: Ref;
-  private readonly args: Field[];
+  private readonly args: Array<Field>;
   private result: Field = Field.fromRawValue(undefined);
 
   constructor(source: Abstract.Call, scope: TreeEntity) {
@@ -421,27 +422,60 @@ class Quest extends Vertex implements Entity, Statement {
 }
 
 class Raw extends Publisher implements Entity, Statement {
-  private readonly scope: CoreEntity;
   readonly source: Abstract.Raw;
+  private readonly coreEntity: CoreEntity;
 
   constructor(source: Abstract.Raw) {
     super();
 
     this.source = source;
-    this.scope = new CoreEntity(source.value);
-    this.publish(source.value);
+    this.coreEntity = new CoreEntity(source.value);
   }
 
-  async execute(): Promise<Raw> {
-    return this;
+  async execute(): Promise<void> {
+    this.publish(this.source.value);
   }
 
   getPropertyValue(name: string): Field {
-    return this.scope.getPropertyValue(name);
+    return this.coreEntity.getPropertyValue(name);
   }
 
   setProperty(name: string, field: Field): void {
-    this.scope.setProperty(name, field);
+    this.coreEntity.setProperty(name, field);
+  }
+}
+
+class List extends Publisher implements Entity, Statement {
+  readonly source: Abstract.List;
+  private readonly scope: TreeEntity;
+  private readonly args: Array<Field>;
+  private result: Field = Field.fromRawValue(undefined);
+
+  constructor(source: Abstract.List, scope: TreeEntity) {
+    super();
+
+    this.source = source;
+    this.scope = scope;
+
+    this.args = source.args.map((arg) => {
+      const field = new Field(arg, scope);
+      return field;
+    });
+  }
+
+  async execute(): Promise<void> {
+    const argPublishedValues = this.args.map((arg) => arg.getPublishedValue());
+    this.publish(argPublishedValues);
+  }
+
+  getPropertyValue(name: string): Field {
+    const listScope = Field.fromRawValue(this.getPublishedValue());
+    return listScope.getPropertyValue(name);
+  }
+
+  setProperty(name: string, field: Field): void {
+    const listScope = Field.fromRawValue(this.getPublishedValue());
+    listScope.setProperty(name, field);
   }
 }
 
